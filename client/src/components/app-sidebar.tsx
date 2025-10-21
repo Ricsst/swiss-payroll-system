@@ -1,4 +1,4 @@
-import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck } from "lucide-react";
+import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -27,6 +27,11 @@ const menuItems = [
     title: "Firma",
     url: "/company",
     icon: Building2,
+  },
+  {
+    title: "Lohnerfassung",
+    url: "/employee-payroll",
+    icon: PlusCircle,
   },
   {
     title: "Lohnauszahlungen",

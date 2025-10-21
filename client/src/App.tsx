@@ -13,6 +13,7 @@ import CompanyPage from "@/pages/company";
 import Payroll from "@/pages/payroll";
 import PayrollNew from "@/pages/payroll-new";
 import PayrollDetail from "@/pages/payroll-detail";
+import EmployeePayroll from "@/pages/employee-payroll";
 import MonthlyReport from "@/pages/monthly-report";
 import YearlyReport from "@/pages/yearly-report";
 import Templates from "@/pages/templates";
@@ -27,6 +28,7 @@ function Router() {
       <Route path="/payroll" component={Payroll} />
       <Route path="/payroll/new" component={PayrollNew} />
       <Route path="/payroll/:id" component={PayrollDetail} />
+      <Route path="/employee-payroll" component={EmployeePayroll} />
       <Route path="/monthly-report" component={MonthlyReport} />
       <Route path="/yearly-report" component={YearlyReport} />
       <Route path="/templates" component={Templates} />

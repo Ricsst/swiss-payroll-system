@@ -167,7 +167,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const itemsResults = (payrollItems || []).map((item: any) =>
         insertPayrollItemSchema.safeParse(item)
       );
-      const itemErrors = itemsResults.filter((r) => !r.success);
+      const itemErrors = itemsResults.filter((r: any) => !r.success);
       if (itemErrors.length > 0) {
         return res.status(400).json({
           error: "Invalid payroll items: " + fromError(itemErrors[0].error).toString(),
@@ -178,7 +178,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const deductionResults = (deductions || []).map((d: any) =>
         insertDeductionSchema.safeParse(d)
       );
-      const deductionErrors = deductionResults.filter((r) => !r.success);
+      const deductionErrors = deductionResults.filter((r: any) => !r.success);
       if (deductionErrors.length > 0) {
         return res.status(400).json({
           error: "Invalid deductions: " + fromError(deductionErrors[0].error).toString(),
@@ -187,8 +187,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const payment = await storage.createPayrollPayment(
         paymentResult.data,
-        itemsResults.map((r) => r.data!),
-        deductionResults.map((r) => r.data!)
+        itemsResults.map((r: any) => r.data!),
+        deductionResults.map((r: any) => r.data!)
       );
 
       res.status(201).json(payment);
@@ -531,7 +531,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       pdf.addSection("Bankverbindung");
       pdf.addText("Bank", employee.bankName || "-");
-      pdf.addText("IBAN", employee.iban || "-");
+      pdf.addText("IBAN", employee.bankIban || "-");
 
       pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
 
