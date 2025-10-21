@@ -179,7 +179,15 @@ export const insertPayrollItemSchema = createInsertSchema(payrollItems).omit({
   createdAt: true,
 });
 
+// Schema for creating payroll items without payrollPaymentId (used when creating payment)
+export const insertPayrollItemWithoutPaymentIdSchema = createInsertSchema(payrollItems).omit({
+  id: true,
+  payrollPaymentId: true,
+  createdAt: true,
+});
+
 export type InsertPayrollItem = z.infer<typeof insertPayrollItemSchema>;
+export type InsertPayrollItemWithoutPaymentId = z.infer<typeof insertPayrollItemWithoutPaymentIdSchema>;
 export type PayrollItem = typeof payrollItems.$inferSelect;
 
 // ============================================================================
@@ -217,7 +225,15 @@ export const insertDeductionSchema = createInsertSchema(deductions).omit({
   createdAt: true,
 });
 
+// Schema for creating deductions without payrollPaymentId (used when creating payment)
+export const insertDeductionWithoutPaymentIdSchema = createInsertSchema(deductions).omit({
+  id: true,
+  payrollPaymentId: true,
+  createdAt: true,
+});
+
 export type InsertDeduction = z.infer<typeof insertDeductionSchema>;
+export type InsertDeductionWithoutPaymentId = z.infer<typeof insertDeductionWithoutPaymentIdSchema>;
 export type Deduction = typeof deductions.$inferSelect;
 
 // ============================================================================

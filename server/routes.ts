@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertDeductionSchema, insertPayrollTemplateSchema } from "@shared/schema";
+import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertDeductionSchema, insertPayrollTemplateSchema, insertPayrollItemWithoutPaymentIdSchema, insertDeductionWithoutPaymentIdSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { PDFGenerator, formatCurrency, formatDate, formatPercentage } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
@@ -163,9 +163,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate payroll items
+      // Validate payroll items (without payrollPaymentId as it will be set by storage)
       const itemsResults = (payrollItems || []).map((item: any) =>
-        insertPayrollItemSchema.safeParse(item)
+        insertPayrollItemWithoutPaymentIdSchema.safeParse(item)
       );
       const itemErrors = itemsResults.filter((r: any) => !r.success);
       if (itemErrors.length > 0) {
@@ -174,9 +174,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Validate deductions
+      // Validate deductions (without payrollPaymentId as it will be set by storage)
       const deductionResults = (deductions || []).map((d: any) =>
-        insertDeductionSchema.safeParse(d)
+        insertDeductionWithoutPaymentIdSchema.safeParse(d)
       );
       const deductionErrors = deductionResults.filter((r: any) => !r.success);
       if (deductionErrors.length > 0) {

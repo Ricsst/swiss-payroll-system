@@ -13,7 +13,7 @@ import {
   SelectValue,
 } from "@/components/ui/select";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Save, Calculator } from "lucide-react";
+import { Plus, Trash2, Save, Calculator, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee, Company } from "@shared/schema";
 import { PAYROLL_ITEM_TYPES } from "@shared/schema";
@@ -30,8 +30,9 @@ export default function EmployeePayroll() {
   const { toast } = useToast();
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
   const [paymentDate, setPaymentDate] = useState(new Date().toISOString().split('T')[0]);
-  const [periodStart, setPeriodStart] = useState(new Date().toISOString().split('T')[0]);
-  const [periodEnd, setPeriodEnd] = useState(new Date().toISOString().split('T')[0]);
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [periodStart, setPeriodStart] = useState("");
+  const [periodEnd, setPeriodEnd] = useState("");
   const [notes, setNotes] = useState("");
   
   const [payrollItems, setPayrollItems] = useState<PayrollItemInput[]>([
@@ -68,6 +69,8 @@ export default function EmployeePayroll() {
       // Reset form
       setPayrollItems([{ type: "Monatslohn", description: "", amount: "", hours: "", hourlyRate: "" }]);
       setNotes("");
+      // Move to next employee
+      navigateToNextEmployee();
     },
     onError: (error: Error) => {
       toast({
@@ -77,6 +80,50 @@ export default function EmployeePayroll() {
       });
     },
   });
+
+  // Get active employees
+  const activeEmployees = employees.filter(e => e.isActive);
+  const currentEmployeeIndex = activeEmployees.findIndex(e => e.id === selectedEmployeeId);
+  const canNavigatePrevious = currentEmployeeIndex > 0;
+  const canNavigateNext = currentEmployeeIndex >= 0 && currentEmployeeIndex < activeEmployees.length - 1;
+
+  // Employee navigation
+  const navigateToPreviousEmployee = () => {
+    if (canNavigatePrevious) {
+      setSelectedEmployeeId(activeEmployees[currentEmployeeIndex - 1].id);
+    }
+  };
+
+  const navigateToNextEmployee = () => {
+    if (canNavigateNext) {
+      setSelectedEmployeeId(activeEmployees[currentEmployeeIndex + 1].id);
+    }
+  };
+
+  // Handle month selection
+  const handleMonthChange = (monthValue: string) => {
+    setSelectedMonth(monthValue);
+    
+    if (!monthValue) {
+      setPeriodStart("");
+      setPeriodEnd("");
+      return;
+    }
+
+    // Parse month value (format: "2025-10")
+    const [year, month] = monthValue.split("-").map(Number);
+    
+    // First day of month
+    const firstDay = new Date(year, month - 1, 1);
+    const startDate = firstDay.toISOString().split('T')[0];
+    
+    // Last day of month
+    const lastDay = new Date(year, month, 0);
+    const endDate = lastDay.toISOString().split('T')[0];
+    
+    setPeriodStart(startDate);
+    setPeriodEnd(endDate);
+  };
 
   const addPayrollItem = () => {
     setPayrollItems([...payrollItems, { type: "Monatslohn", description: "", amount: "", hours: "", hourlyRate: "" }]);
@@ -178,6 +225,15 @@ export default function EmployeePayroll() {
       return;
     }
 
+    if (!periodStart || !periodEnd) {
+      toast({
+        title: "Fehler",
+        description: "Bitte wählen Sie die Abrechnungsperiode",
+        variant: "destructive",
+      });
+      return;
+    }
+
     const { grossSalary } = calculateTotals();
     
     if (grossSalary === 0) {
@@ -218,12 +274,14 @@ export default function EmployeePayroll() {
   const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netSalary = grossSalary - totalDeductions;
 
+  const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
+
   return (
     <div className="space-y-6">
       <div>
         <h1 className="text-2xl font-semibold">Lohnerfassung pro Mitarbeiter</h1>
         <p className="text-sm text-muted-foreground">
-          Erfassen Sie Löhne mit allen Lohnarten und Zulagen
+          Erfassen Sie Löhne mit mehreren Lohnarten gleichzeitig
         </p>
       </div>
 
@@ -234,21 +292,62 @@ export default function EmployeePayroll() {
             <CardDescription>Wählen Sie den Mitarbeiter und die Abrechnungsperiode</CardDescription>
           </CardHeader>
           <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="employee">Mitarbeiter *</Label>
+            <div>
+              <Label htmlFor="employee">Mitarbeiter *</Label>
+              <div className="flex gap-2">
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={navigateToPreviousEmployee}
+                  disabled={!canNavigatePrevious}
+                  data-testid="button-previous-employee"
+                >
+                  <ChevronLeft className="h-4 w-4" />
+                </Button>
                 <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                  <SelectTrigger id="employee" data-testid="select-employee">
+                  <SelectTrigger id="employee" data-testid="select-employee" className="flex-1">
                     <SelectValue placeholder="Mitarbeiter wählen" />
                   </SelectTrigger>
                   <SelectContent>
-                    {employees.filter(e => e.isActive).map((emp) => (
+                    {activeEmployees.map((emp) => (
                       <SelectItem key={emp.id} value={emp.id}>
                         {emp.firstName} {emp.lastName}
                       </SelectItem>
                     ))}
                   </SelectContent>
                 </Select>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="icon"
+                  onClick={navigateToNextEmployee}
+                  disabled={!canNavigateNext}
+                  data-testid="button-next-employee"
+                >
+                  <ChevronRight className="h-4 w-4" />
+                </Button>
+              </div>
+              {selectedEmployee && (
+                <p className="text-sm text-muted-foreground mt-1">
+                  AHV: {selectedEmployee.ahvNumber}
+                </p>
+              )}
+            </div>
+
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="selectedMonth">Monat wählen</Label>
+                <Input
+                  id="selectedMonth"
+                  type="month"
+                  value={selectedMonth}
+                  onChange={(e) => handleMonthChange(e.target.value)}
+                  data-testid="input-month"
+                />
+                <p className="text-xs text-muted-foreground mt-1">
+                  Wählen Sie einen Monat für automatische Perioden
+                </p>
               </div>
               <div>
                 <Label htmlFor="paymentDate">Auszahlungsdatum *</Label>
@@ -306,7 +405,7 @@ export default function EmployeePayroll() {
             <div className="flex items-center justify-between">
               <div>
                 <CardTitle>Lohnarten & Zulagen</CardTitle>
-                <CardDescription>Fügen Sie alle Lohnbestandteile hinzu</CardDescription>
+                <CardDescription>Fügen Sie alle Lohnbestandteile hinzu (Stundenlohn, Zulagen, Provision, etc.)</CardDescription>
               </div>
               <Button type="button" variant="outline" size="sm" onClick={addPayrollItem} data-testid="button-add-item">
                 <Plus className="h-4 w-4 mr-2" />
