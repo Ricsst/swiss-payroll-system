@@ -306,37 +306,34 @@ export default function EmployeePayroll() {
   const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
 
   return (
-    <div className="space-y-6">
+    <div className="space-y-3 py-3">
       <div>
-        <h1 className="text-2xl font-semibold">Lohnerfassung pro Mitarbeiter</h1>
-        <p className="text-sm text-muted-foreground">
-          Schnelle Erfassung mit Tabellenansicht
-        </p>
+        <h1 className="text-xl font-semibold">Lohnerfassung</h1>
+        <p className="text-xs text-muted-foreground">Schnelle Erfassung</p>
       </div>
 
-      <form onSubmit={handleSubmit} className="space-y-6">
-        <Card>
-          <CardHeader>
-            <CardTitle>Mitarbeiter & Periode</CardTitle>
-            <CardDescription>Wählen Sie den Mitarbeiter und die Abrechnungsperiode</CardDescription>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div>
-              <Label htmlFor="employee">Mitarbeiter *</Label>
-              <div className="flex gap-2">
+      <form onSubmit={handleSubmit} className="space-y-3">
+        <Card className="py-3">
+          <CardContent className="space-y-3 py-0">
+            <div className="grid grid-cols-12 gap-2 items-end">
+              <div className="col-span-1 flex items-center justify-center">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={navigateToPreviousEmployee}
                   disabled={!canNavigatePrevious}
                   data-testid="button-previous-employee"
                 >
                   <ChevronLeft className="h-4 w-4" />
                 </Button>
+              </div>
+              <div className="col-span-3">
+                <Label className="text-xs">Mitarbeiter *</Label>
                 <Select value={selectedEmployeeId} onValueChange={setSelectedEmployeeId}>
-                  <SelectTrigger id="employee" data-testid="select-employee" className="flex-1">
-                    <SelectValue placeholder="Mitarbeiter wählen" />
+                  <SelectTrigger className="h-8 text-sm" data-testid="select-employee">
+                    <SelectValue placeholder="Wählen" />
                   </SelectTrigger>
                   <SelectContent>
                     {activeEmployees.map((emp) => (
@@ -346,10 +343,16 @@ export default function EmployeePayroll() {
                     ))}
                   </SelectContent>
                 </Select>
+                {selectedEmployee && (
+                  <p className="text-xs text-muted-foreground mt-0.5">AHV: {selectedEmployee.ahvNumber}</p>
+                )}
+              </div>
+              <div className="col-span-1 flex items-center justify-center">
                 <Button
                   type="button"
                   variant="outline"
                   size="icon"
+                  className="h-8 w-8"
                   onClick={navigateToNextEmployee}
                   disabled={!canNavigateNext}
                   data-testid="button-next-employee"
@@ -357,89 +360,64 @@ export default function EmployeePayroll() {
                   <ChevronRight className="h-4 w-4" />
                 </Button>
               </div>
-              {selectedEmployee && (
-                <p className="text-sm text-muted-foreground mt-1">
-                  AHV: {selectedEmployee.ahvNumber}
-                </p>
-              )}
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div>
-                <Label htmlFor="selectedMonth">Monat wählen</Label>
+              <div className="col-span-2">
+                <Label className="text-xs">Monat</Label>
                 <Input
-                  id="selectedMonth"
                   type="month"
                   value={selectedMonth}
                   onChange={(e) => handleMonthChange(e.target.value)}
+                  className="h-8 text-sm"
                   data-testid="input-month"
                 />
               </div>
-              <div>
-                <Label htmlFor="periodStart">Periode von *</Label>
+              <div className="col-span-2">
+                <Label className="text-xs">von *</Label>
                 <Input
-                  id="periodStart"
                   type="date"
                   value={periodStart}
                   onChange={(e) => setPeriodStart(e.target.value)}
                   required
+                  className="h-8 text-sm"
                   data-testid="input-period-start"
                 />
               </div>
-              <div>
-                <Label htmlFor="periodEnd">Periode bis *</Label>
+              <div className="col-span-2">
+                <Label className="text-xs">bis *</Label>
                 <Input
-                  id="periodEnd"
                   type="date"
                   value={periodEnd}
                   onChange={(e) => setPeriodEnd(e.target.value)}
                   required
+                  className="h-8 text-sm"
                   data-testid="input-period-end"
                 />
               </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-              <div>
-                <Label htmlFor="paymentDate">Auszahlungsdatum *</Label>
-                <Input
-                  id="paymentDate"
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  required
-                  data-testid="input-payment-date"
-                />
-              </div>
-              <div>
-                <Label htmlFor="notes">Notizen</Label>
-                <Input
-                  id="notes"
-                  value={notes}
-                  onChange={(e) => setNotes(e.target.value)}
-                  placeholder="Optionale Notizen"
-                  data-testid="input-notes"
-                />
+              <div className="col-span-1">
+                <Button
+                  type="submit"
+                  disabled={createPaymentMutation.isPending}
+                  className="h-8 w-full text-xs"
+                  data-testid="button-submit"
+                >
+                  <Save className="h-3 w-3 mr-1" />
+                  Speichern
+                </Button>
               </div>
             </div>
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle>Lohnarten & Zulagen</CardTitle>
-            <CardDescription>Tragen Sie die Beträge direkt in die Tabelle ein</CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="border rounded-md">
+        <Card className="py-3">
+          <CardContent className="py-0">
+            <div className="border rounded-md overflow-hidden">
               <Table>
                 <TableHeader>
-                  <TableRow>
-                    <TableHead className="w-[200px]">Lohnart</TableHead>
-                    <TableHead className="w-[200px]">Beschreibung</TableHead>
-                    <TableHead className="w-[120px] text-right">Menge/Std.</TableHead>
-                    <TableHead className="w-[120px] text-right">Ansatz</TableHead>
-                    <TableHead className="w-[140px] text-right">Betrag (CHF)</TableHead>
+                  <TableRow className="bg-muted/50">
+                    <TableHead className="h-8 text-xs w-[140px]">Lohnart</TableHead>
+                    <TableHead className="h-8 text-xs w-[140px]">Beschreibung</TableHead>
+                    <TableHead className="h-8 text-xs w-[80px] text-right">Std.</TableHead>
+                    <TableHead className="h-8 text-xs w-[80px] text-right">Ansatz</TableHead>
+                    <TableHead className="h-8 text-xs w-[100px] text-right">Betrag (CHF)</TableHead>
                   </TableRow>
                 </TableHeader>
                 <TableBody>
@@ -448,18 +426,18 @@ export default function EmployeePayroll() {
                     const isStundenlohn = type === "Stundenlohn";
                     
                     return (
-                      <TableRow key={type}>
-                        <TableCell className="font-medium">{type}</TableCell>
-                        <TableCell>
+                      <TableRow key={type} className="h-8">
+                        <TableCell className="py-1 text-xs font-medium">{type}</TableCell>
+                        <TableCell className="py-1">
                           <Input
                             value={row.description}
                             onChange={(e) => updatePayrollRow(type, "description", e.target.value)}
                             placeholder="Optional"
-                            className="h-8"
+                            className="h-7 text-xs"
                             data-testid={`input-description-${type}`}
                           />
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-1">
                           {isStundenlohn ? (
                             <Input
                               type="number"
@@ -467,14 +445,14 @@ export default function EmployeePayroll() {
                               value={row.hours}
                               onChange={(e) => updatePayrollRow(type, "hours", e.target.value)}
                               placeholder="0.00"
-                              className="h-8 text-right"
+                              className="h-7 text-xs text-right"
                               data-testid={`input-hours-${type}`}
                             />
                           ) : (
-                            <div className="h-8" />
+                            <div className="h-7" />
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-1">
                           {isStundenlohn ? (
                             <Input
                               type="number"
@@ -482,21 +460,21 @@ export default function EmployeePayroll() {
                               value={row.hourlyRate}
                               onChange={(e) => updatePayrollRow(type, "hourlyRate", e.target.value)}
                               placeholder="0.00"
-                              className="h-8 text-right"
+                              className="h-7 text-xs text-right"
                               data-testid={`input-hourly-rate-${type}`}
                             />
                           ) : (
-                            <div className="h-8" />
+                            <div className="h-7" />
                           )}
                         </TableCell>
-                        <TableCell>
+                        <TableCell className="py-1">
                           <Input
                             type="number"
                             step="0.01"
                             value={row.amount}
                             onChange={(e) => updatePayrollRow(type, "amount", e.target.value)}
                             placeholder="0.00"
-                            className="h-8 text-right font-medium"
+                            className="h-7 text-xs text-right font-medium"
                             data-testid={`input-amount-${type}`}
                           />
                         </TableCell>
@@ -509,63 +487,41 @@ export default function EmployeePayroll() {
           </CardContent>
         </Card>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center gap-2">
-              <Calculator className="h-5 w-5" />
-              Berechnung
-            </CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-4">
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              <div className="p-4 bg-secondary/50 rounded-md">
-                <p className="text-sm text-muted-foreground">Bruttolohn</p>
-                <p className="text-2xl font-bold" data-testid="text-gross-salary">
+        <Card className="py-2">
+          <CardContent className="py-0">
+            <div className="grid grid-cols-3 gap-3">
+              <div className="p-2 bg-secondary/50 rounded-md">
+                <p className="text-xs text-muted-foreground">Bruttolohn</p>
+                <p className="text-lg font-bold" data-testid="text-gross-salary">
                   CHF {grossSalary.toFixed(2)}
                 </p>
               </div>
-              <div className="p-4 bg-secondary/50 rounded-md">
-                <p className="text-sm text-muted-foreground">Abzüge</p>
-                <p className="text-2xl font-bold text-destructive" data-testid="text-deductions">
+              <div className="p-2 bg-secondary/50 rounded-md">
+                <p className="text-xs text-muted-foreground">Abzüge</p>
+                <p className="text-lg font-bold text-destructive" data-testid="text-deductions">
                   CHF {totalDeductions.toFixed(2)}
                 </p>
               </div>
-              <div className="p-4 bg-primary/10 rounded-md">
-                <p className="text-sm text-muted-foreground">Nettolohn</p>
-                <p className="text-2xl font-bold text-primary" data-testid="text-net-salary">
+              <div className="p-2 bg-primary/10 rounded-md">
+                <p className="text-xs text-muted-foreground">Nettolohn</p>
+                <p className="text-lg font-bold text-primary" data-testid="text-net-salary">
                   CHF {netSalary.toFixed(2)}
                 </p>
               </div>
             </div>
-
-            <Separator />
-
-            <div>
-              <h4 className="font-medium mb-2">Abzüge im Detail:</h4>
-              <div className="space-y-2">
-                {deductions.map((deduction, index) => (
-                  <div key={index} className="flex justify-between text-sm">
-                    <span className="text-muted-foreground">
-                      {deduction.type} {deduction.percentage && `(${deduction.percentage}%)`}
-                    </span>
-                    <span className="font-medium">CHF {parseFloat(deduction.amount).toFixed(2)}</span>
-                  </div>
-                ))}
-              </div>
+            <Separator className="my-2" />
+            <div className="grid grid-cols-4 gap-x-4 gap-y-1">
+              {deductions.map((deduction, index) => (
+                <div key={index} className="flex justify-between text-xs">
+                  <span className="text-muted-foreground">
+                    {deduction.type} {deduction.percentage && `(${deduction.percentage}%)`}
+                  </span>
+                  <span className="font-medium">CHF {parseFloat(deduction.amount).toFixed(2)}</span>
+                </div>
+              ))}
             </div>
           </CardContent>
         </Card>
-
-        <div className="flex justify-end gap-2">
-          <Button
-            type="submit"
-            disabled={createPaymentMutation.isPending}
-            data-testid="button-submit"
-          >
-            <Save className="h-4 w-4 mr-2" />
-            {createPaymentMutation.isPending ? "Speichern..." : "Lohnauszahlung speichern"}
-          </Button>
-        </div>
       </form>
     </div>
   );
