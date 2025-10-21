@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertDeductionSchema } from "@shared/schema";
+import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertDeductionSchema, insertPayrollTemplateSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { PDFGenerator, formatCurrency, formatDate, formatPercentage } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
@@ -541,6 +541,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=Lohnausweis_${year}_${employee.lastName}_${employee.firstName}.pdf`);
       res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PAYROLL TEMPLATES
+  // ============================================================================
+  app.get("/api/templates", async (req, res) => {
+    try {
+      const templates = await storage.getPayrollTemplates();
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/templates/:id", async (req, res) => {
+    try {
+      const template = await storage.getPayrollTemplate(req.params.id);
+      if (!template) {
+        return res.status(404).json({ error: "Template not found" });
+      }
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/templates", async (req, res) => {
+    try {
+      const validatedData = insertPayrollTemplateSchema.parse(req.body);
+      const template = await storage.createPayrollTemplate(validatedData);
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        const validationError = fromError(error);
+        return res.status(400).json({ error: validationError.toString() });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/templates/:id", async (req, res) => {
+    try {
+      const validatedData = insertPayrollTemplateSchema.parse(req.body);
+      const template = await storage.updatePayrollTemplate(req.params.id, validatedData);
+      res.json(template);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        const validationError = fromError(error);
+        return res.status(400).json({ error: validationError.toString() });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/templates/:id", async (req, res) => {
+    try {
+      await storage.deletePayrollTemplate(req.params.id);
+      res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

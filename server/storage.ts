@@ -4,6 +4,7 @@ import {
   payrollPayments,
   payrollItems,
   deductions,
+  payrollTemplates,
   type Company,
   type InsertCompany,
   type Employee,
@@ -14,6 +15,8 @@ import {
   type InsertPayrollItem,
   type Deduction,
   type InsertDeduction,
+  type PayrollTemplate,
+  type InsertPayrollTemplate,
 } from "@shared/schema";
 import { db } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
@@ -39,6 +42,13 @@ export interface IStorage {
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment>;
+  
+  // Payroll Templates
+  getPayrollTemplates(): Promise<PayrollTemplate[]>;
+  getPayrollTemplate(id: string): Promise<PayrollTemplate | undefined>;
+  createPayrollTemplate(template: InsertPayrollTemplate): Promise<PayrollTemplate>;
+  updatePayrollTemplate(id: string, template: InsertPayrollTemplate): Promise<PayrollTemplate>;
+  deletePayrollTemplate(id: string): Promise<void>;
   
   // Reports
   getMonthlyReport(year: number, month: number): Promise<any>;
@@ -436,6 +446,45 @@ export class DatabaseStorage implements IStorage {
       paymentsThisMonth: currentMonthPayments.length,
       totalPayrollThisMonth: totalPayrollThisMonth.toFixed(2),
     };
+  }
+
+  // ============================================================================
+  // PAYROLL TEMPLATES
+  // ============================================================================
+  async getPayrollTemplates(): Promise<PayrollTemplate[]> {
+    return db.select().from(payrollTemplates).orderBy(desc(payrollTemplates.createdAt));
+  }
+
+  async getPayrollTemplate(id: string): Promise<PayrollTemplate | undefined> {
+    const [template] = await db
+      .select()
+      .from(payrollTemplates)
+      .where(eq(payrollTemplates.id, id));
+    return template || undefined;
+  }
+
+  async createPayrollTemplate(insertTemplate: InsertPayrollTemplate): Promise<PayrollTemplate> {
+    const [template] = await db
+      .insert(payrollTemplates)
+      .values(insertTemplate)
+      .returning();
+    return template;
+  }
+
+  async updatePayrollTemplate(
+    id: string,
+    insertTemplate: InsertPayrollTemplate
+  ): Promise<PayrollTemplate> {
+    const [template] = await db
+      .update(payrollTemplates)
+      .set({ ...insertTemplate, updatedAt: new Date() })
+      .where(eq(payrollTemplates.id, id))
+      .returning();
+    return template;
+  }
+
+  async deletePayrollTemplate(id: string): Promise<void> {
+    await db.delete(payrollTemplates).where(eq(payrollTemplates.id, id));
   }
 }
 

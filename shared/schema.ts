@@ -221,6 +221,73 @@ export type InsertDeduction = z.infer<typeof insertDeductionSchema>;
 export type Deduction = typeof deductions.$inferSelect;
 
 // ============================================================================
+// PAYROLL TEMPLATES (Lohnvorlagen)
+// Templates for recurring payments with predefined items and deductions
+// ============================================================================
+export const payrollTemplates = pgTable("payroll_templates", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  name: text("name").notNull(), // Template name (e.g., "Monatslohn Standard")
+  description: text("description"), // Optional description
+  
+  // Template items (JSON array of payroll items)
+  items: text("items").notNull(), // Stored as JSON string
+  
+  // Template deductions (JSON array of deductions)
+  deductions: text("deductions").notNull(), // Stored as JSON string
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+// Validation schemas for template items and deductions
+const templateItemSchema = z.object({
+  type: z.string().min(1, "Type is required"),
+  description: z.string().optional(),
+  amount: z.string().or(z.number()).optional(),
+  hours: z.string().or(z.number()).optional(),
+  hourlyRate: z.string().or(z.number()).optional(),
+});
+
+const templateDeductionSchema = z.object({
+  type: z.string().min(1, "Type is required"),
+  description: z.string().optional(),
+  percentage: z.string().or(z.number()).optional(),
+  baseAmount: z.string().or(z.number()).optional(),
+  amount: z.string().or(z.number()).optional(),
+  isAutoCalculated: z.boolean().optional(),
+});
+
+export const insertPayrollTemplateSchema = createInsertSchema(payrollTemplates).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  items: z.string().refine((val) => {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) && parsed.every((item) => templateItemSchema.safeParse(item).success);
+    } catch {
+      return false;
+    }
+  }, "Items must be valid JSON array"),
+  deductions: z.string().refine((val) => {
+    try {
+      const parsed = JSON.parse(val);
+      return Array.isArray(parsed) && parsed.every((item) => templateDeductionSchema.safeParse(item).success);
+    } catch {
+      return false;
+    }
+  }, "Deductions must be valid JSON array"),
+});
+
+export type InsertPayrollTemplate = z.infer<typeof insertPayrollTemplateSchema>;
+export type PayrollTemplate = typeof payrollTemplates.$inferSelect;
+
+// Helper types for structured template data
+export type TemplateItem = z.infer<typeof templateItemSchema>;
+export type TemplateDeduction = z.infer<typeof templateDeductionSchema>;
+
+// ============================================================================
 // PAYROLL ITEM TYPES (Constants for dropdown/validation)
 // ============================================================================
 export const PAYROLL_ITEM_TYPES = [
