@@ -36,8 +36,16 @@ export default function Payroll() {
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
 
+  const buildQueryKey = () => {
+    const params = new URLSearchParams();
+    if (selectedYear) params.append('year', selectedYear.toString());
+    if (selectedMonth) params.append('month', selectedMonth.toString());
+    const queryString = params.toString();
+    return `/api/payroll/payments${queryString ? `?${queryString}` : ''}`;
+  };
+
   const { data: payments, isLoading } = useQuery<PayrollPaymentWithEmployee[]>({
-    queryKey: ["/api/payroll/payments", selectedYear, selectedMonth],
+    queryKey: [buildQueryKey()],
   });
 
   const monthNames = [
