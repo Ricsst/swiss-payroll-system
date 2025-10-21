@@ -12,6 +12,7 @@ import Employees from "@/pages/employees";
 import CompanyPage from "@/pages/company";
 import Payroll from "@/pages/payroll";
 import PayrollNew from "@/pages/payroll-new";
+import PayrollDetail from "@/pages/payroll-detail";
 import MonthlyReport from "@/pages/monthly-report";
 import YearlyReport from "@/pages/yearly-report";
 import NotFound from "@/pages/not-found";
@@ -24,6 +25,7 @@ function Router() {
       <Route path="/company" component={CompanyPage} />
       <Route path="/payroll" component={Payroll} />
       <Route path="/payroll/new" component={PayrollNew} />
+      <Route path="/payroll/:id" component={PayrollDetail} />
       <Route path="/monthly-report" component={MonthlyReport} />
       <Route path="/yearly-report" component={YearlyReport} />
       <Route component={NotFound} />

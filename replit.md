@@ -35,10 +35,10 @@ Preferred communication style: Simple, everyday language.
 
 **Key Pages**
 - Dashboard: Overview statistics (active employees, company status, payroll metrics)
-- Employees: CRUD operations for employee management
+- Employees: CRUD operations for employee management with Lohnausweis generation
 - Company: Single company configuration with Swiss social insurance rates
-- Payroll: Payment list and detail views
-- Monthly/Yearly Reports: Aggregated financial reporting
+- Payroll: Payment list and detail views with PDF export
+- Monthly/Yearly Reports: Aggregated financial reporting with multi-format exports (PDF, Excel, CSV)
 
 ### Backend Architecture
 
@@ -61,6 +61,12 @@ Preferred communication style: Simple, everyday language.
 - `/api/employees`: Employee management
 - `/api/payroll/payments`: Payroll payment CRUD with items and deductions
 - `/api/reports/monthly` & `/api/reports/yearly`: Aggregated reports
+- `/api/pdf/payroll/:id`: PDF export for individual payroll slips
+- `/api/pdf/monthly-report`: PDF export for monthly reports
+- `/api/pdf/yearly-report`: PDF export for yearly reports
+- `/api/pdf/lohnausweis/:employeeId`: Official Swiss salary certificate (Lohnausweis)
+- `/api/excel/monthly-report`: Excel/CSV export for monthly reports
+- `/api/excel/yearly-report`: Excel/CSV export for yearly reports
 
 ### Data Architecture
 

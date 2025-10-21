@@ -19,7 +19,15 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileDown } from "lucide-react";
+import { FileDown, FileSpreadsheet, FileType } from "lucide-react";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 
 interface YearlyReportData {
   year: number;
@@ -60,10 +68,36 @@ export default function YearlyReport() {
             Übersicht aller 12 Monate für den Lohnausweis
           </p>
         </div>
-        <Button variant="outline" data-testid="button-export-yearly">
-          <FileDown className="h-4 w-4 mr-2" />
-          Exportieren
-        </Button>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <Button variant="outline" data-testid="button-export-yearly">
+              <FileDown className="h-4 w-4 mr-2" />
+              Exportieren
+            </Button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end">
+            <DropdownMenuLabel>Export Format</DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => {
+              window.open(`/api/pdf/yearly-report?year=${selectedYear}`, '_blank');
+            }}>
+              <FileType className="h-4 w-4 mr-2" />
+              PDF
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              window.open(`/api/excel/yearly-report?year=${selectedYear}&format=xlsx`, '_blank');
+            }}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              Excel (XLSX)
+            </DropdownMenuItem>
+            <DropdownMenuItem onClick={() => {
+              window.open(`/api/excel/yearly-report?year=${selectedYear}&format=csv`, '_blank');
+            }}>
+              <FileSpreadsheet className="h-4 w-4 mr-2" />
+              CSV
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </div>
 
       <Card>
