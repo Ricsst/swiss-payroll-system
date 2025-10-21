@@ -12,18 +12,26 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/components/ui/select";
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 import { Separator } from "@/components/ui/separator";
-import { Plus, Trash2, Save, Calculator, ChevronLeft, ChevronRight } from "lucide-react";
+import { Save, Calculator, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import type { Employee, Company } from "@shared/schema";
 import { PAYROLL_ITEM_TYPES } from "@shared/schema";
 
-interface PayrollItemInput {
+interface PayrollItemRow {
   type: string;
   description: string;
   amount: string;
-  hours?: string;
-  hourlyRate?: string;
+  hours: string;
+  hourlyRate: string;
 }
 
 export default function EmployeePayroll() {
@@ -35,9 +43,20 @@ export default function EmployeePayroll() {
   const [periodEnd, setPeriodEnd] = useState("");
   const [notes, setNotes] = useState("");
   
-  const [payrollItems, setPayrollItems] = useState<PayrollItemInput[]>([
-    { type: "Monatslohn", description: "", amount: "", hours: "", hourlyRate: "" }
-  ]);
+  // Initialize all payroll item types as rows
+  const [payrollRows, setPayrollRows] = useState<Record<string, PayrollItemRow>>(() => {
+    const rows: Record<string, PayrollItemRow> = {};
+    PAYROLL_ITEM_TYPES.forEach(type => {
+      rows[type] = {
+        type,
+        description: "",
+        amount: "",
+        hours: "",
+        hourlyRate: "",
+      };
+    });
+    return rows;
+  });
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -67,7 +86,17 @@ export default function EmployeePayroll() {
         description: "Lohnauszahlung wurde erstellt",
       });
       // Reset form
-      setPayrollItems([{ type: "Monatslohn", description: "", amount: "", hours: "", hourlyRate: "" }]);
+      const resetRows: Record<string, PayrollItemRow> = {};
+      PAYROLL_ITEM_TYPES.forEach(type => {
+        resetRows[type] = {
+          type,
+          description: "",
+          amount: "",
+          hours: "",
+          hourlyRate: "",
+        };
+      });
+      setPayrollRows(resetRows);
       setNotes("");
       // Move to next employee
       navigateToNextEmployee();
@@ -125,35 +154,29 @@ export default function EmployeePayroll() {
     setPeriodEnd(endDate);
   };
 
-  const addPayrollItem = () => {
-    setPayrollItems([...payrollItems, { type: "Monatslohn", description: "", amount: "", hours: "", hourlyRate: "" }]);
-  };
-
-  const removePayrollItem = (index: number) => {
-    setPayrollItems(payrollItems.filter((_, i) => i !== index));
-  };
-
-  const updatePayrollItem = (index: number, field: keyof PayrollItemInput, value: string) => {
-    const updated = [...payrollItems];
-    updated[index] = { ...updated[index], [field]: value };
-    
-    // Auto-calculate amount for hourly rates
-    if (field === "hours" || field === "hourlyRate") {
-      const item = updated[index];
-      if (item.hours && item.hourlyRate) {
-        const hours = parseFloat(item.hours);
-        const rate = parseFloat(item.hourlyRate);
-        if (!isNaN(hours) && !isNaN(rate)) {
-          item.amount = (hours * rate).toFixed(2);
+  const updatePayrollRow = (type: string, field: keyof PayrollItemRow, value: string) => {
+    setPayrollRows(prev => {
+      const updated = { ...prev };
+      updated[type] = { ...updated[type], [field]: value };
+      
+      // Auto-calculate amount for Stundenlohn
+      if (type === "Stundenlohn" && (field === "hours" || field === "hourlyRate")) {
+        const item = updated[type];
+        if (item.hours && item.hourlyRate) {
+          const hours = parseFloat(item.hours);
+          const rate = parseFloat(item.hourlyRate);
+          if (!isNaN(hours) && !isNaN(rate)) {
+            item.amount = (hours * rate).toFixed(2);
+          }
         }
       }
-    }
-    
-    setPayrollItems(updated);
+      
+      return updated;
+    });
   };
 
   const calculateTotals = () => {
-    const grossSalary = payrollItems.reduce((sum, item) => {
+    const grossSalary = Object.values(payrollRows).reduce((sum, item) => {
       const amount = parseFloat(item.amount) || 0;
       return sum + amount;
     }, 0);
@@ -234,9 +257,18 @@ export default function EmployeePayroll() {
       return;
     }
 
-    const { grossSalary } = calculateTotals();
-    
-    if (grossSalary === 0) {
+    // Filter out empty rows
+    const payrollItems = Object.values(payrollRows)
+      .filter(row => parseFloat(row.amount) > 0)
+      .map(row => ({
+        type: row.type,
+        description: row.description || undefined,
+        amount: row.amount,
+        hours: row.hours || undefined,
+        hourlyRate: row.hourlyRate || undefined,
+      }));
+
+    if (payrollItems.length === 0) {
       toast({
         title: "Fehler",
         description: "Bitte fügen Sie mindestens eine Lohnart hinzu",
@@ -245,8 +277,8 @@ export default function EmployeePayroll() {
       return;
     }
 
+    const { grossSalary } = calculateTotals();
     const deductions = calculateDeductions(grossSalary);
-    const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
 
     const paymentData = {
       employeeId: selectedEmployeeId,
@@ -256,13 +288,7 @@ export default function EmployeePayroll() {
       paymentMonth: new Date(paymentDate).getMonth() + 1,
       paymentYear: new Date(paymentDate).getFullYear(),
       notes,
-      payrollItems: payrollItems.map(item => ({
-        type: item.type,
-        description: item.description || undefined,
-        amount: item.amount,
-        hours: item.hours || undefined,
-        hourlyRate: item.hourlyRate || undefined,
-      })),
+      payrollItems,
       deductions,
     };
 
@@ -281,7 +307,7 @@ export default function EmployeePayroll() {
       <div>
         <h1 className="text-2xl font-semibold">Lohnerfassung pro Mitarbeiter</h1>
         <p className="text-sm text-muted-foreground">
-          Erfassen Sie Löhne mit mehreren Lohnarten gleichzeitig
+          Schnelle Erfassung mit Tabellenansicht
         </p>
       </div>
 
@@ -335,7 +361,7 @@ export default function EmployeePayroll() {
               )}
             </div>
 
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               <div>
                 <Label htmlFor="selectedMonth">Monat wählen</Label>
                 <Input
@@ -345,24 +371,7 @@ export default function EmployeePayroll() {
                   onChange={(e) => handleMonthChange(e.target.value)}
                   data-testid="input-month"
                 />
-                <p className="text-xs text-muted-foreground mt-1">
-                  Wählen Sie einen Monat für automatische Perioden
-                </p>
               </div>
-              <div>
-                <Label htmlFor="paymentDate">Auszahlungsdatum *</Label>
-                <Input
-                  id="paymentDate"
-                  type="date"
-                  value={paymentDate}
-                  onChange={(e) => setPaymentDate(e.target.value)}
-                  required
-                  data-testid="input-payment-date"
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
               <div>
                 <Label htmlFor="periodStart">Periode von *</Label>
                 <Input
@@ -387,135 +396,113 @@ export default function EmployeePayroll() {
               </div>
             </div>
 
-            <div>
-              <Label htmlFor="notes">Notizen</Label>
-              <Input
-                id="notes"
-                value={notes}
-                onChange={(e) => setNotes(e.target.value)}
-                placeholder="Optionale Notizen"
-                data-testid="input-notes"
-              />
+            <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div>
+                <Label htmlFor="paymentDate">Auszahlungsdatum *</Label>
+                <Input
+                  id="paymentDate"
+                  type="date"
+                  value={paymentDate}
+                  onChange={(e) => setPaymentDate(e.target.value)}
+                  required
+                  data-testid="input-payment-date"
+                />
+              </div>
+              <div>
+                <Label htmlFor="notes">Notizen</Label>
+                <Input
+                  id="notes"
+                  value={notes}
+                  onChange={(e) => setNotes(e.target.value)}
+                  placeholder="Optionale Notizen"
+                  data-testid="input-notes"
+                />
+              </div>
             </div>
           </CardContent>
         </Card>
 
         <Card>
           <CardHeader>
-            <div className="flex items-center justify-between">
-              <div>
-                <CardTitle>Lohnarten & Zulagen</CardTitle>
-                <CardDescription>Fügen Sie alle Lohnbestandteile hinzu (Stundenlohn, Zulagen, Provision, etc.)</CardDescription>
-              </div>
-              <Button type="button" variant="outline" size="sm" onClick={addPayrollItem} data-testid="button-add-item">
-                <Plus className="h-4 w-4 mr-2" />
-                Hinzufügen
-              </Button>
-            </div>
+            <CardTitle>Lohnarten & Zulagen</CardTitle>
+            <CardDescription>Tragen Sie die Beträge direkt in die Tabelle ein</CardDescription>
           </CardHeader>
-          <CardContent className="space-y-4">
-            {payrollItems.map((item, index) => (
-              <div key={index} className="p-4 border rounded-md space-y-3">
-                <div className="flex items-center justify-between">
-                  <h4 className="font-medium">Position {index + 1}</h4>
-                  {payrollItems.length > 1 && (
-                    <Button
-                      type="button"
-                      variant="ghost"
-                      size="icon"
-                      onClick={() => removePayrollItem(index)}
-                      data-testid={`button-remove-item-${index}`}
-                    >
-                      <Trash2 className="h-4 w-4" />
-                    </Button>
-                  )}
-                </div>
-
-                <div className="grid grid-cols-1 md:grid-cols-2 gap-3">
-                  <div>
-                    <Label>Lohnart *</Label>
-                    <Select
-                      value={item.type}
-                      onValueChange={(value) => updatePayrollItem(index, "type", value)}
-                    >
-                      <SelectTrigger data-testid={`select-type-${index}`}>
-                        <SelectValue />
-                      </SelectTrigger>
-                      <SelectContent>
-                        {PAYROLL_ITEM_TYPES.map((type) => (
-                          <SelectItem key={type} value={type}>
-                            {type}
-                          </SelectItem>
-                        ))}
-                      </SelectContent>
-                    </Select>
-                  </div>
-                  <div>
-                    <Label>Beschreibung</Label>
-                    <Input
-                      value={item.description}
-                      onChange={(e) => updatePayrollItem(index, "description", e.target.value)}
-                      placeholder="Optional"
-                      data-testid={`input-description-${index}`}
-                    />
-                  </div>
-                </div>
-
-                {item.type === "Stundenlohn" && (
-                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <div>
-                      <Label>Stunden *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.hours}
-                        onChange={(e) => updatePayrollItem(index, "hours", e.target.value)}
-                        placeholder="0.00"
-                        data-testid={`input-hours-${index}`}
-                      />
-                    </div>
-                    <div>
-                      <Label>Stundensatz (CHF) *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.hourlyRate}
-                        onChange={(e) => updatePayrollItem(index, "hourlyRate", e.target.value)}
-                        placeholder="0.00"
-                        data-testid={`input-hourly-rate-${index}`}
-                      />
-                    </div>
-                    <div>
-                      <Label>Betrag (CHF) *</Label>
-                      <Input
-                        type="number"
-                        step="0.01"
-                        value={item.amount}
-                        onChange={(e) => updatePayrollItem(index, "amount", e.target.value)}
-                        required
-                        placeholder="0.00"
-                        data-testid={`input-amount-${index}`}
-                      />
-                    </div>
-                  </div>
-                )}
-
-                {item.type !== "Stundenlohn" && (
-                  <div>
-                    <Label>Betrag (CHF) *</Label>
-                    <Input
-                      type="number"
-                      step="0.01"
-                      value={item.amount}
-                      onChange={(e) => updatePayrollItem(index, "amount", e.target.value)}
-                      required
-                      placeholder="0.00"
-                      data-testid={`input-amount-${index}`}
-                    />
-                  </div>
-                )}
-              </div>
-            ))}
+          <CardContent>
+            <div className="border rounded-md">
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead className="w-[200px]">Lohnart</TableHead>
+                    <TableHead className="w-[200px]">Beschreibung</TableHead>
+                    <TableHead className="w-[120px] text-right">Menge/Std.</TableHead>
+                    <TableHead className="w-[120px] text-right">Ansatz</TableHead>
+                    <TableHead className="w-[140px] text-right">Betrag (CHF)</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {PAYROLL_ITEM_TYPES.map((type) => {
+                    const row = payrollRows[type];
+                    const isStundenlohn = type === "Stundenlohn";
+                    
+                    return (
+                      <TableRow key={type}>
+                        <TableCell className="font-medium">{type}</TableCell>
+                        <TableCell>
+                          <Input
+                            value={row.description}
+                            onChange={(e) => updatePayrollRow(type, "description", e.target.value)}
+                            placeholder="Optional"
+                            className="h-8"
+                            data-testid={`input-description-${type}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          {isStundenlohn ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={row.hours}
+                              onChange={(e) => updatePayrollRow(type, "hours", e.target.value)}
+                              placeholder="0.00"
+                              className="h-8 text-right"
+                              data-testid={`input-hours-${type}`}
+                            />
+                          ) : (
+                            <div className="h-8" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          {isStundenlohn ? (
+                            <Input
+                              type="number"
+                              step="0.01"
+                              value={row.hourlyRate}
+                              onChange={(e) => updatePayrollRow(type, "hourlyRate", e.target.value)}
+                              placeholder="0.00"
+                              className="h-8 text-right"
+                              data-testid={`input-hourly-rate-${type}`}
+                            />
+                          ) : (
+                            <div className="h-8" />
+                          )}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={row.amount}
+                            onChange={(e) => updatePayrollRow(type, "amount", e.target.value)}
+                            placeholder="0.00"
+                            className="h-8 text-right font-medium"
+                            data-testid={`input-amount-${type}`}
+                          />
+                        </TableCell>
+                      </TableRow>
+                    );
+                  })}
+                </TableBody>
+              </Table>
+            </div>
           </CardContent>
         </Card>
 
