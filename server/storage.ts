@@ -148,20 +148,22 @@ export class DatabaseStorage implements IStorage {
         },
       })
       .from(payrollPayments)
-      .innerJoin(employees, eq(payrollPayments.employeeId, employees.id))
-      .orderBy(desc(payrollPayments.paymentDate));
+      .innerJoin(employees, eq(payrollPayments.employeeId, employees.id));
 
+    // Build where conditions
+    const conditions = [];
     if (year !== undefined) {
-      query = query.where(eq(payrollPayments.paymentYear, year)) as any;
-      if (month !== undefined) {
-        query = query.where(
-          and(
-            eq(payrollPayments.paymentYear, year),
-            eq(payrollPayments.paymentMonth, month)
-          )
-        ) as any;
-      }
+      conditions.push(eq(payrollPayments.paymentYear, year));
     }
+    if (month !== undefined) {
+      conditions.push(eq(payrollPayments.paymentMonth, month));
+    }
+
+    if (conditions.length > 0) {
+      query = query.where(and(...conditions)) as any;
+    }
+
+    query = query.orderBy(desc(payrollPayments.paymentDate)) as any;
 
     return query;
   }

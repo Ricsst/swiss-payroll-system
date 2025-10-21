@@ -280,13 +280,16 @@ export default function EmployeePayroll() {
     const { grossSalary } = calculateTotals();
     const deductions = calculateDeductions(grossSalary);
 
+    // Calculate payment month and year based on period end date (not payment date)
+    const periodEndDate = new Date(periodEnd);
+    
     const paymentData = {
       employeeId: selectedEmployeeId,
       paymentDate,
       periodStart,
       periodEnd,
-      paymentMonth: new Date(paymentDate).getMonth() + 1,
-      paymentYear: new Date(paymentDate).getFullYear(),
+      paymentMonth: periodEndDate.getMonth() + 1,
+      paymentYear: periodEndDate.getFullYear(),
       notes,
       payrollItems,
       deductions,
