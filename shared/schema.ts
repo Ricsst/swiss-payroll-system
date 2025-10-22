@@ -167,6 +167,9 @@ export const payrollPayments = pgTable("payroll_payments", {
   // Notes
   notes: text("notes"),
   
+  // Lock status
+  isLocked: boolean("is_locked").notNull().default(false), // Locked payments cannot be edited
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
