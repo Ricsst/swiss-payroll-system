@@ -12,7 +12,7 @@ import {
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
-import { ArrowLeft, FileDown, Lock } from "lucide-react";
+import { ArrowLeft, FileDown, Lock, Edit } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 
@@ -119,6 +119,14 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
               <Lock className="h-3 w-3 mr-1" />
               Abgeschlossen
             </Badge>
+          )}
+          {!payment.isLocked && (
+            <Link href={`/payroll/${payment.id}/edit`}>
+              <Button variant="outline" data-testid="button-edit-payment">
+                <Edit className="h-4 w-4 mr-2" />
+                Bearbeiten
+              </Button>
+            </Link>
           )}
           <Button
             variant="outline"

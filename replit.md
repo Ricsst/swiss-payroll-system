@@ -213,6 +213,39 @@ Payroll payments can now be locked to prevent modifications after finalization, 
 - Maintains audit trail and data integrity
 - Flexible unlock capability for authorized corrections
 
+### Payroll Payment Editing (October 22, 2025)
+Unlocked payroll payments can now be edited to correct errors or make adjustments:
+
+**Edit Functionality:**
+- Edit button available on payroll detail page (only for unlocked payments)
+- Access via `/payroll/:id/edit` route
+- Full editing capabilities for payment dates, period, notes, and wage types
+
+**Features:**
+- Pre-filled form with existing payroll data
+- Intelligent deduction calculations based on payroll item type flags
+- Support for AHV (with Rentner allowance), ALV, NBU/SUVA, BVG, and QST
+- Real-time preview of gross salary, deductions, and net salary
+- Automatic recalculation when amounts change
+
+**Backend Implementation:**
+- PATCH `/api/payroll/payments/:id` endpoint
+- Updates existing payment, deletes old items/deductions, inserts new ones
+- Validates payment is not locked before allowing changes
+- Recalculates totals automatically
+
+**User Experience:**
+- Simple, focused interface for editing payroll data
+- Clear feedback on calculated deductions
+- Returns to detail view after successful save
+- Prevents editing of locked payments with clear messaging
+
+**Benefits:**
+- Correct payroll errors without deleting and recreating payments
+- Maintain payment history and ID references
+- Full audit trail via updated timestamps
+- Consistent deduction calculations matching payroll entry page
+
 ### Improved Monthly Report Layout (October 22, 2025)
 The monthly report PDF has been completely redesigned with a clean vertical layout:
 

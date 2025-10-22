@@ -215,6 +215,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.patch("/api/payroll/payments/:id", async (req, res) => {
+    try {
+      const { items, deductions, ...paymentData } = req.body;
+
+      // Validate payment data (partial update)
+      const paymentResult = insertPayrollPaymentSchema.partial().safeParse(paymentData);
+      if (!paymentResult.success) {
+        return res.status(400).json({
+          error: "Invalid payment data: " + fromError(paymentResult.error).toString(),
+        });
+      }
+
+      // Validate payroll items (without payrollPaymentId as it will be set by storage)
+      const itemsResults = (items || []).map((item: any) =>
+        insertPayrollItemWithoutPaymentIdSchema.safeParse(item)
+      );
+      const itemErrors = itemsResults.filter((r: any) => !r.success);
+      if (itemErrors.length > 0) {
+        return res.status(400).json({
+          error: "Invalid payroll items: " + fromError(itemErrors[0].error).toString(),
+        });
+      }
+
+      // Validate deductions (without payrollPaymentId as it will be set by storage)
+      const deductionResults = (deductions || []).map((d: any) =>
+        insertDeductionWithoutPaymentIdSchema.safeParse(d)
+      );
+      const deductionErrors = deductionResults.filter((r: any) => !r.success);
+      if (deductionErrors.length > 0) {
+        return res.status(400).json({
+          error: "Invalid deductions: " + fromError(deductionErrors[0].error).toString(),
+        });
+      }
+
+      const payment = await storage.updatePayrollPayment(
+        req.params.id,
+        paymentResult.data,
+        itemsResults.map((r: any) => r.data!),
+        deductionResults.map((r: any) => r.data!)
+      );
+
+      res.json(payment);
+    } catch (error: any) {
+      if (error.message.includes("Abgeschlossene")) {
+        res.status(403).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  });
+
   app.delete("/api/payroll/payments/:id", async (req, res) => {
     try {
       await storage.deletePayrollPayment(req.params.id);

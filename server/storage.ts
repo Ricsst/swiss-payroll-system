@@ -45,6 +45,12 @@ export interface IStorage {
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment>;
+  updatePayrollPayment(
+    id: string,
+    payment: Partial<InsertPayrollPayment>,
+    items: InsertPayrollItem[],
+    deductionsList: InsertDeduction[]
+  ): Promise<PayrollPayment>;
   
   // Payroll Item Types (Lohnarten)
   getPayrollItemTypes(): Promise<PayrollItemType[]>;
@@ -220,7 +226,7 @@ export class DatabaseStorage implements IStorage {
 
     return {
       ...payment,
-      payrollItems: items,
+      items: items,
       deductions: deductionsList,
     };
   }
@@ -267,6 +273,73 @@ export class DatabaseStorage implements IStorage {
         deductionsList.map((d) => ({
           ...d,
           payrollPaymentId: paymentRecord.id,
+        }))
+      );
+    }
+
+    return paymentRecord;
+  }
+
+  async updatePayrollPayment(
+    id: string,
+    payment: Partial<InsertPayrollPayment>,
+    items: InsertPayrollItem[],
+    deductionsList: InsertDeduction[]
+  ): Promise<PayrollPayment> {
+    // Check if payment is locked
+    const [existingPayment] = await db
+      .select({ isLocked: payrollPayments.isLocked })
+      .from(payrollPayments)
+      .where(eq(payrollPayments.id, id));
+    
+    if (existingPayment?.isLocked) {
+      throw new Error("Abgeschlossene Lohnauszahlungen können nicht bearbeitet werden");
+    }
+
+    // Calculate totals
+    const grossSalary = items.reduce(
+      (sum, item) => sum + parseFloat(item.amount),
+      0
+    );
+    const totalDeductions = deductionsList.reduce(
+      (sum, d) => sum + parseFloat(d.amount),
+      0
+    );
+    const netSalary = grossSalary - totalDeductions;
+
+    // Update payment
+    const [paymentRecord] = await db
+      .update(payrollPayments)
+      .set({
+        ...payment,
+        grossSalary: grossSalary.toFixed(2),
+        totalDeductions: totalDeductions.toFixed(2),
+        netSalary: netSalary.toFixed(2),
+        updatedAt: new Date(),
+      })
+      .where(eq(payrollPayments.id, id))
+      .returning();
+
+    // Delete old items and deductions
+    await db.delete(payrollItems).where(eq(payrollItems.payrollPaymentId, id));
+    await db.delete(deductions).where(eq(deductions.payrollPaymentId, id));
+
+    // Insert new payroll items
+    if (items.length > 0) {
+      await db.insert(payrollItems).values(
+        items.map((item) => ({
+          ...item,
+          payrollPaymentId: id,
+        }))
+      );
+    }
+
+    // Insert new deductions
+    if (deductionsList.length > 0) {
+      await db.insert(deductions).values(
+        deductionsList.map((d) => ({
+          ...d,
+          payrollPaymentId: id,
         }))
       );
     }
