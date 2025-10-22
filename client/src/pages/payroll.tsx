@@ -318,12 +318,10 @@ export default function Payroll() {
                     <TableCell>
                       {payment.isLocked ? (
                         <Badge variant="secondary" data-testid={`badge-locked-${payment.id}`}>
-                          <Lock className="h-3 w-3 mr-1" />
                           Abgeschlossen
                         </Badge>
                       ) : (
                         <Badge variant="outline" data-testid={`badge-unlocked-${payment.id}`}>
-                          <Unlock className="h-3 w-3 mr-1" />
                           Offen
                         </Badge>
                       )}
