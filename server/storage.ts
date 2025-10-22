@@ -386,7 +386,41 @@ export class DatabaseStorage implements IStorage {
           totalDeductions: payment.totalDeductions,
           totalNetSalary: payment.netSalary,
           paymentsCount: 1,
+          payrollItems: [],
+          deductions: [],
         });
+      }
+    }
+
+    // Add payroll items and deductions to each employee
+    for (const item of allPayrollItems) {
+      const payment = payments.find(p => p.paymentId === item.payrollPaymentId);
+      if (payment) {
+        const employee = employeeMap.get(payment.employeeId);
+        if (employee) {
+          const itemType = allPayrollItemTypes.find(t => t.code === item.type);
+          employee.payrollItems.push({
+            code: item.type,
+            name: itemType?.name || item.type,
+            description: item.description,
+            amount: item.amount,
+          });
+        }
+      }
+    }
+
+    for (const ded of allDeductions) {
+      const payment = payments.find(p => p.paymentId === ded.payrollPaymentId);
+      if (payment) {
+        const employee = employeeMap.get(payment.employeeId);
+        if (employee) {
+          employee.deductions.push({
+            type: ded.type,
+            amount: ded.amount,
+            rate: ded.percentage,
+            baseAmount: ded.baseAmount,
+          });
+        }
       }
     }
 

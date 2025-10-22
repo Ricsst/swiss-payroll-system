@@ -528,85 +528,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       ];
 
       const pdf = new PDFGenerator();
-      
-      pdf.addHeader({
-        title: "Monatsabrechnung",
-        subtitle: `${company.name} - ${monthNames[month - 1]} ${year}`,
-      });
 
+      // Generate a page for each employee
       if (report.employees && report.employees.length > 0) {
-        pdf.addSection("Mitarbeiter Übersicht");
-        const employeeRows = report.employees.map((emp: any) => [
-          emp.employeeName,
-          emp.paymentsCount.toString(),
-          formatCurrency(parseFloat(emp.totalGrossSalary)),
-          formatCurrency(parseFloat(emp.totalDeductions)),
-          formatCurrency(parseFloat(emp.totalNetSalary)),
-        ]);
-        pdf.addTable(
-          ["Mitarbeiter", "Anzahl", "Brutto", "Abzüge", "Netto"],
-          employeeRows
-        );
+        for (let i = 0; i < report.employees.length; i++) {
+          const emp = report.employees[i];
+          
+          // Add page break between employees (but not before first employee)
+          if (i > 0) {
+            pdf.addPageBreak();
+          }
+
+          // Title and period
+          pdf.addPayrollTitle("Lohnabrechnung", `${monthNames[month - 1]} ${year}`);
+
+          // Employee address (right side)
+          const employeeData = await storage.getEmployee(emp.employeeId);
+          if (employeeData) {
+            pdf.addWindowEnvelopeAddress(
+              `${employeeData.firstName} ${employeeData.lastName}`,
+              employeeData.address
+            );
+          }
+
+          // LOHNBESTANDTEILE Section
+          pdf.addSection("LOHNBESTANDTEILE");
+          
+          // Get payroll items for this employee
+          if (emp.payrollItems && emp.payrollItems.length > 0) {
+            emp.payrollItems.forEach((item: any) => {
+              const description = item.description ? ` (${item.description})` : "";
+              pdf.addPayrollLine(`${item.code}${description}`, formatCurrency(parseFloat(item.amount)), false, false);
+            });
+          }
+
+          // BRUTTOLOHN
+          pdf.addSeparatorLine();
+          pdf.addPayrollLine("BRUTTOLOHN", formatCurrency(parseFloat(emp.totalGrossSalary)), true, false);
+          pdf.addSeparatorLine();
+
+          // ABZÜGE Section
+          pdf.addSection("ABZÜGE");
+          
+          // Get deductions for this employee
+          if (emp.deductions && emp.deductions.length > 0) {
+            emp.deductions.forEach((ded: any) => {
+              const baseAmount = parseFloat(ded.baseAmount || emp.totalGrossSalary);
+              const rate = parseFloat(ded.rate || "0");
+              const description = `${ded.type} Abzug (${rate.toFixed(2)}% von ${formatCurrency(baseAmount)})`;
+              pdf.addPayrollLine(description, formatCurrency(parseFloat(ded.amount)), false, true);
+            });
+          }
+
+          // TOTAL ABZÜGE
+          pdf.addSeparatorLine();
+          pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(emp.totalDeductions)), true, true);
+          pdf.addSeparatorLine();
+
+          // NETTOLOHN
+          pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(emp.totalNetSalary)), true, false);
+        }
       }
-
-      // Deduction breakdown
-      if (report.deductionSummary && report.deductionSummary.length > 0) {
-        pdf.addSection("Abzüge Aufschlüsselung");
-        const deductionRows = report.deductionSummary.map((ded: any) => [
-          ded.type,
-          formatCurrency(parseFloat(ded.amount)),
-        ]);
-        pdf.addTable(
-          ["Abzugsart", "Betrag"],
-          deductionRows
-        );
-      }
-
-      pdf.addSection("Gesamtsummen");
-      pdf.addText("Anzahl Mitarbeiter", report.totalEmployees.toString());
-      pdf.addText("Anzahl Auszahlungen", report.totalPayments.toString());
-      pdf.addText("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)));
-      pdf.addText("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)));
-      pdf.addText("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)));
-
-      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
-
-      // ========== PAGE 2: Lohnarten- und Abzugstotale ==========
-      pdf.addPageBreak();
-
-      pdf.addPayrollTitle("Lohnarten- und Abzugstotale", `${company.name} - ${monthNames[month - 1]} ${year}`);
-
-      // Payroll Items Summary (Lohnarten)
-      if (report.payrollItemSummary && report.payrollItemSummary.length > 0) {
-        pdf.addSection("LOHNARTEN");
-        
-        // Add each payroll item as a line
-        report.payrollItemSummary.forEach((item: any) => {
-          pdf.addPayrollLine(item.type, formatCurrency(parseFloat(item.amount)), false, false);
-        });
-
-        pdf.addSeparatorLine();
-        pdf.addPayrollLine("TOTAL BRUTTOLOHN", formatCurrency(parseFloat(report.totals.grossSalary)), true, false);
-        pdf.addSeparatorLine();
-      }
-
-      // Deduction Summary
-      if (report.deductionSummary && report.deductionSummary.length > 0) {
-        pdf.addSection("ABZÜGE");
-        
-        // Add each deduction as a line
-        report.deductionSummary.forEach((ded: any) => {
-          pdf.addPayrollLine(ded.type, formatCurrency(parseFloat(ded.amount)), false, true);
-        });
-
-        pdf.addSeparatorLine();
-        pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(report.totals.deductions)), true, true);
-        pdf.addSeparatorLine();
-      }
-
-      pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
-
-      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
       const pdfBlob = pdf.getBlob();
       const buffer = Buffer.from(await pdfBlob.arrayBuffer());

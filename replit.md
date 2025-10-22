@@ -213,24 +213,34 @@ Payroll payments can now be locked to prevent modifications after finalization, 
 - Maintains audit trail and data integrity
 - Flexible unlock capability for authorized corrections
 
-### Improved Monthly Report Layout
-The monthly report PDF has been redesigned for better clarity and readability:
+### Improved Monthly Report Layout (October 22, 2025)
+The monthly report PDF has been completely redesigned with a clean vertical layout:
 
-**Lohnarten Names Instead of Codes:**
-- Payroll item types now display full names (e.g., "Monatslohn", "Kinderzulagen") instead of codes (e.g., "01", "15")
-- Makes reports easier to read and understand
-- Automatically maps codes to names from the payroll item types configuration
+**New Layout Structure:**
+- One page per employee in the monthly report
+- Title: "Lohnabrechnung" with month and year
+- Employee name and address displayed in the right window position (envelope-compatible)
+- Vertical single-column format (same as individual payroll slips)
 
-**Single-Column Layout for Totals:**
-- All totals displayed in a vertical, single-column format (like payroll slips)
-- Clear structure: Lohnarten → TOTAL BRUTTOLOHN → Abzüge → TOTAL ABZÜGE → NETTOLOHN
-- Separator lines between sections for improved visual clarity
-- Right-aligned amounts with consistent formatting
+**Content Sections:**
+1. **LOHNBESTANDTEILE** - All wage types with codes and descriptions
+2. **BRUTTOLOHN** - Total gross salary (highlighted)
+3. **ABZÜGE** - Detailed deductions with calculation basis (e.g., "AHV Abzug (5.30% von CHF 6'500.00)")
+4. **TOTAL ABZÜGE** - Total deductions (highlighted)
+5. **NETTOLOHN** - Net salary (highlighted)
+
+**Features:**
+- Clean, professional layout matching the payroll slip design
+- Each employee gets their own page in the monthly report
+- Deduction details show percentage and base amount for transparency
+- Right-aligned amounts with Swiss currency formatting
+- Separator lines between sections for clarity
 
 **Benefits:**
-- Professional, easy-to-read layout
-- Consistent design across payroll slips and reports
-- Better suited for printing and archival
+- Consistent design across all PDF reports
+- Easy to read and understand
+- Professional appearance suitable for official documentation
+- One PDF file contains all employees for the month
 
 ### Dynamic Wage Type Mapping for Child Allowances
 Child allowances now automatically appear under the correct wage type "Kinderzulagen" instead of generic "Zulagen":
