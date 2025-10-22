@@ -262,6 +262,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/reports/employee-payroll-overview", async (req, res) => {
+    try {
+      const employeeId = req.query.employeeId as string;
+      const year = parseInt(req.query.year as string);
+
+      if (!employeeId || !year) {
+        return res.status(400).json({ error: "Invalid employee ID or year" });
+      }
+
+      const overview = await storage.getEmployeePayrollOverview(employeeId, year);
+      res.json(overview);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // ============================================================================
   // PDF EXPORTS
   // ============================================================================

@@ -14,6 +14,7 @@ import Payroll from "@/pages/payroll";
 import PayrollNew from "@/pages/payroll-new";
 import PayrollDetail from "@/pages/payroll-detail";
 import EmployeePayroll from "@/pages/employee-payroll";
+import EmployeePayrollOverview from "@/pages/employee-payroll-overview";
 import MonthlyReport from "@/pages/monthly-report";
 import YearlyReport from "@/pages/yearly-report";
 import PayrollItemTypes from "@/pages/payroll-item-types";
@@ -30,6 +31,7 @@ function Router() {
       <Route path="/payroll/new" component={PayrollNew} />
       <Route path="/payroll/:id" component={PayrollDetail} />
       <Route path="/employee-payroll" component={EmployeePayroll} />
+      <Route path="/employee-payroll-overview" component={EmployeePayrollOverview} />
       <Route path="/monthly-report" component={MonthlyReport} />
       <Route path="/yearly-report" component={YearlyReport} />
       <Route path="/payroll-item-types" component={PayrollItemTypes} />

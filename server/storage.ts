@@ -767,6 +767,163 @@ export class DatabaseStorage implements IStorage {
   async deletePayrollTemplate(id: string): Promise<void> {
     await db.delete(payrollTemplates).where(eq(payrollTemplates.id, id));
   }
+
+  // ============================================================================
+  // EMPLOYEE PAYROLL OVERVIEW
+  // ============================================================================
+  async getEmployeePayrollOverview(employeeId: string, year: number) {
+    // Get employee details
+    const [employee] = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.id, employeeId));
+
+    if (!employee) {
+      throw new Error("Employee not found");
+    }
+
+    // Get all payments for this employee in the year
+    const payments = await db
+      .select()
+      .from(payrollPayments)
+      .where(
+        sql`${payrollPayments.employeeId} = ${employeeId} AND ${payrollPayments.paymentYear} = ${year}`
+      );
+
+    // Get all payroll items for these payments
+    const paymentIds = payments.map(p => p.id);
+    const allPayrollItems = paymentIds.length > 0
+      ? await db
+          .select()
+          .from(payrollItems)
+          .where(sql`${payrollItems.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
+      : [];
+
+    // Get all deductions for these payments
+    const allDeductions = paymentIds.length > 0
+      ? await db
+          .select()
+          .from(deductions)
+          .where(sql`${deductions.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
+      : [];
+
+    // Get all payroll item types to map codes to names
+    const allPayrollItemTypes = await db.select().from(payrollItemTypes);
+    const typeMap = new Map<string, { code: string; name: string }>();
+    for (const type of allPayrollItemTypes) {
+      typeMap.set(type.code, { code: type.code, name: type.name });
+    }
+
+    // Create monthly breakdown structure
+    const monthlyData: Record<string, Record<number, number>> = {};
+    const deductionMonthlyData: Record<string, Record<number, number>> = {};
+
+    // Process payroll items by month
+    for (const item of allPayrollItems) {
+      const payment = payments.find(p => p.id === item.payrollPaymentId);
+      if (!payment) continue;
+
+      const month = payment.paymentMonth;
+      const typeCode = item.type;
+      const amount = parseFloat(item.amount);
+
+      if (!monthlyData[typeCode]) {
+        monthlyData[typeCode] = {};
+      }
+      monthlyData[typeCode][month] = (monthlyData[typeCode][month] || 0) + amount;
+    }
+
+    // Process deductions by month
+    for (const deduction of allDeductions) {
+      const payment = payments.find(p => p.id === deduction.payrollPaymentId);
+      if (!payment) continue;
+
+      const month = payment.paymentMonth;
+      const deductionType = deduction.type;
+      const amount = parseFloat(deduction.amount);
+
+      if (!deductionMonthlyData[deductionType]) {
+        deductionMonthlyData[deductionType] = {};
+      }
+      deductionMonthlyData[deductionType][month] = (deductionMonthlyData[deductionType][month] || 0) + amount;
+    }
+
+    // Format payroll items with monthly breakdown
+    const payrollItemsBreakdown = Object.entries(monthlyData).map(([code, months]) => {
+      const typeInfo = typeMap.get(code);
+      const monthlyAmounts: Record<number, string> = {};
+      let total = 0;
+
+      for (let m = 1; m <= 13; m++) {
+        const amount = months[m] || 0;
+        monthlyAmounts[m] = amount.toFixed(2);
+        total += amount;
+      }
+
+      return {
+        code,
+        name: typeInfo?.name || code,
+        months: monthlyAmounts,
+        total: total.toFixed(2),
+      };
+    }).sort((a, b) => a.code.localeCompare(b.code));
+
+    // Format deductions with monthly breakdown
+    const deductionsBreakdown = Object.entries(deductionMonthlyData).map(([type, months]) => {
+      const monthlyAmounts: Record<number, string> = {};
+      let total = 0;
+
+      for (let m = 1; m <= 13; m++) {
+        const amount = months[m] || 0;
+        monthlyAmounts[m] = amount.toFixed(2);
+        total += amount;
+      }
+
+      return {
+        type,
+        months: monthlyAmounts,
+        total: total.toFixed(2),
+      };
+    }).sort((a, b) => a.type.localeCompare(b.type));
+
+    // Calculate monthly gross totals
+    const grossMonthlyTotals: Record<number, number> = {};
+    for (let m = 1; m <= 13; m++) {
+      grossMonthlyTotals[m] = payrollItemsBreakdown.reduce((sum, item) => {
+        return sum + parseFloat(item.months[m] || "0");
+      }, 0);
+    }
+
+    // Calculate monthly deduction totals
+    const deductionMonthlyTotals: Record<number, number> = {};
+    for (let m = 1; m <= 13; m++) {
+      deductionMonthlyTotals[m] = deductionsBreakdown.reduce((sum, item) => {
+        return sum + parseFloat(item.months[m] || "0");
+      }, 0);
+    }
+
+    return {
+      employee: {
+        id: employee.id,
+        firstName: employee.firstName,
+        lastName: employee.lastName,
+        ahvNumber: employee.ahvNumber,
+        entryDate: employee.entryDate,
+        exitDate: employee.exitDate,
+      },
+      year,
+      payrollItems: payrollItemsBreakdown,
+      deductions: deductionsBreakdown,
+      grossMonthlyTotals: Object.fromEntries(
+        Object.entries(grossMonthlyTotals).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      deductionMonthlyTotals: Object.fromEntries(
+        Object.entries(deductionMonthlyTotals).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      totalGross: Object.values(grossMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
+      totalDeductions: Object.values(deductionMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
+    };
+  }
 }
 
 export const storage = new DatabaseStorage();
