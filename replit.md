@@ -74,7 +74,48 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Features (October 2025)
 
-### Payroll Payment Lock/Unlock (Latest - October 22, 2025)
+### Smart Payroll Entry with Context-Aware Calculations (Latest - October 22, 2025)
+The payroll entry form now intelligently handles different wage types with automatic calculations:
+
+**Monatslohn (Monthly Salary):**
+- Std field: Displays monthly salary amount
+- Ansatz field: Shows employment level percentage (Anstellungsgrad)
+- Betrag: Automatically calculated as Monatslohn × Anstellungsgrad / 100
+- Auto-fills from employee defaults when employee is selected
+
+**Stundenlohn (Hourly Wage):**
+- Std field: Number of hours worked
+- Ansatz field: Hourly rate (CHF/hour)
+- Betrag: Automatically calculated as Hours × Rate
+
+**Überstundenzuschlag (Overtime Premium):**
+- Std field: Number of overtime hours
+- Ansatz field: Premium percentage
+- Betrag: Automatically calculated
+
+**Bonus:**
+- Std field: Base bonus amount
+- Ansatz field: Bonus rate percentage
+- Betrag: Automatically calculated as Bonus × Rate / 100
+
+**13. Monatslohn & Unfalltaggeld:**
+- Std field: Base amount (monthly salary for 13th month)
+- Ansatz field: Percentage
+- Betrag: Automatically calculated as Base × Percentage / 100
+
+**Benefits:**
+- Context-aware field behavior based on wage type
+- Real-time automatic calculations reduce errors
+- Consistent calculation logic across all wage types
+- Clear visual feedback with appropriate placeholders
+
+**Additional Features:**
+- Delete button for individual payroll payments (only for unlocked payments)
+- Narrower sidebar navigation (14rem instead of 20rem)
+- Payroll item types sorted by code in overview
+- Yearly report shows both code and name for wage types
+
+### Payroll Payment Lock/Unlock (October 22, 2025)
 Payroll payments can now be locked to prevent modifications after finalization, ensuring data integrity and compliance:
 
 **Lock/Unlock Functionality:**

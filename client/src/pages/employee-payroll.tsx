@@ -84,7 +84,11 @@ export default function EmployeePayroll() {
           
           // Set Monatslohn default value (code "01")
           if (employee.monthlySalary && updated["01"]) {
-            updated["01"].amount = employee.monthlySalary;
+            const employmentLevel = parseFloat(employee.employmentLevel || "100");
+            const monthlySalary = parseFloat(employee.monthlySalary);
+            updated["01"].hours = employee.monthlySalary; // Monatslohn in "Std"
+            updated["01"].hourlyRate = employmentLevel.toFixed(2); // Anstellungsgrad in "Ansatz"
+            updated["01"].amount = (monthlySalary * employmentLevel / 100).toFixed(2); // Berechnet
           }
           
           // Set Stundenlohn default value (code "02")
@@ -523,6 +527,14 @@ export default function EmployeePayroll() {
                       if (!row) return null;
                       
                       const isStundenlohn = itemType.code === "02" || itemType.name.toLowerCase().includes("stundenlohn");
+                      const isMonatslohn = itemType.code === "01" || itemType.name.toLowerCase().includes("monatslohn");
+                      const isOvertime = itemType.name.toLowerCase().includes("überstundenzuschlag") || itemType.name.toLowerCase().includes("ueberstundenzuschlag");
+                      const isBonus = itemType.name.toLowerCase().includes("bonus");
+                      const is13MonatslohnOrUnfalltaggeld = itemType.name.toLowerCase().includes("13") || itemType.name.toLowerCase().includes("unfalltaggeld");
+                      
+                      // Determine which fields should be editable
+                      const showStdField = isStundenlohn || isMonatslohn || isOvertime || isBonus || is13MonatslohnOrUnfalltaggeld;
+                      const showAnsatzField = isStundenlohn || isMonatslohn || isOvertime || isBonus || is13MonatslohnOrUnfalltaggeld;
                       
                       return (
                         <TableRow key={itemType.code} className="h-8">
@@ -537,13 +549,39 @@ export default function EmployeePayroll() {
                             />
                           </TableCell>
                           <TableCell className="py-1">
-                            {isStundenlohn ? (
+                            {showStdField ? (
                               <Input
                                 type="number"
                                 step="0.01"
                                 value={row.hours}
-                                onChange={(e) => updatePayrollRow(itemType.code, "hours", e.target.value)}
-                                placeholder="0.00"
+                                onChange={(e) => {
+                                  updatePayrollRow(itemType.code, "hours", e.target.value);
+                                  // Auto-calculate amount for Monatslohn
+                                  if (isMonatslohn && row.hourlyRate) {
+                                    const hours = parseFloat(e.target.value) || 0;
+                                    const rate = parseFloat(row.hourlyRate) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (hours * rate / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for Bonus
+                                  if (isBonus && row.hourlyRate) {
+                                    const bonus = parseFloat(e.target.value) || 0;
+                                    const rate = parseFloat(row.hourlyRate) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (bonus * rate / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for 13. Monatslohn
+                                  if (is13MonatslohnOrUnfalltaggeld && row.hourlyRate) {
+                                    const base = parseFloat(e.target.value) || 0;
+                                    const percent = parseFloat(row.hourlyRate) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (base * percent / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for Stundenlohn
+                                  if (isStundenlohn && row.hourlyRate) {
+                                    const hours = parseFloat(e.target.value) || 0;
+                                    const rate = parseFloat(row.hourlyRate) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (hours * rate).toFixed(2));
+                                  }
+                                }}
+                                placeholder={isMonatslohn ? "Monatslohn" : isBonus ? "Bonus" : "0.00"}
                                 className="h-7 text-xs text-right"
                                 data-testid={`input-hours-${itemType.code}`}
                               />
@@ -552,13 +590,39 @@ export default function EmployeePayroll() {
                             )}
                           </TableCell>
                           <TableCell className="py-1">
-                            {isStundenlohn ? (
+                            {showAnsatzField ? (
                               <Input
                                 type="number"
                                 step="0.01"
                                 value={row.hourlyRate}
-                                onChange={(e) => updatePayrollRow(itemType.code, "hourlyRate", e.target.value)}
-                                placeholder="0.00"
+                                onChange={(e) => {
+                                  updatePayrollRow(itemType.code, "hourlyRate", e.target.value);
+                                  // Auto-calculate amount for Monatslohn
+                                  if (isMonatslohn && row.hours) {
+                                    const hours = parseFloat(row.hours) || 0;
+                                    const rate = parseFloat(e.target.value) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (hours * rate / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for Bonus
+                                  if (isBonus && row.hours) {
+                                    const bonus = parseFloat(row.hours) || 0;
+                                    const rate = parseFloat(e.target.value) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (bonus * rate / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for 13. Monatslohn
+                                  if (is13MonatslohnOrUnfalltaggeld && row.hours) {
+                                    const base = parseFloat(row.hours) || 0;
+                                    const percent = parseFloat(e.target.value) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (base * percent / 100).toFixed(2));
+                                  }
+                                  // Auto-calculate for Stundenlohn
+                                  if (isStundenlohn && row.hours) {
+                                    const hours = parseFloat(row.hours) || 0;
+                                    const rate = parseFloat(e.target.value) || 0;
+                                    updatePayrollRow(itemType.code, "amount", (hours * rate).toFixed(2));
+                                  }
+                                }}
+                                placeholder={isMonatslohn ? "%" : isBonus ? "%" : "0.00"}
                                 className="h-7 text-xs text-right"
                                 data-testid={`input-hourly-rate-${itemType.code}`}
                               />
