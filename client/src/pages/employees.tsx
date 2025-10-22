@@ -78,6 +78,11 @@ export default function Employees() {
       bankName: "",
       bankIban: "",
       bankBic: "",
+      monthlySalary: undefined,
+      employmentLevel: undefined,
+      hourlyRate: undefined,
+      bvgDeductionAmount: undefined,
+      bvgDeductionPercentage: undefined,
       isActive: true,
       companyId: "",
     },
@@ -175,6 +180,11 @@ export default function Employees() {
       bankName: employee.bankName,
       bankIban: employee.bankIban,
       bankBic: employee.bankBic || "",
+      monthlySalary: employee.monthlySalary || undefined,
+      employmentLevel: employee.employmentLevel || undefined,
+      hourlyRate: employee.hourlyRate || undefined,
+      bvgDeductionAmount: employee.bvgDeductionAmount || undefined,
+      bvgDeductionPercentage: employee.bvgDeductionPercentage || undefined,
       isActive: employee.isActive,
       companyId: employee.companyId,
     });
@@ -511,6 +521,137 @@ export default function Employees() {
                       )}
                     />
                   </div>
+                </div>
+
+                <div className="space-y-4">
+                  <h3 className="text-sm font-medium">Lohnvorgaben (Standardwerte für Lohnerfassung)</h3>
+                  <p className="text-xs text-muted-foreground">
+                    Diese Werte werden bei der Lohnerfassung als Vorschläge übernommen, können aber überschrieben werden.
+                  </p>
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="monthlySalary"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Monatslohn (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
+                              placeholder="0.00"
+                              data-testid="input-monthlysalary"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="employmentLevel"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Anstellungsgrad (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
+                              placeholder="100.00"
+                              data-testid="input-employmentlevel"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="hourlyRate"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Stundenlohn (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
+                              placeholder="0.00"
+                              data-testid="input-hourlyrate"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="bvgDeductionAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>BVG-Abzug (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value || undefined;
+                                field.onChange(value);
+                                if (value) {
+                                  form.setValue('bvgDeductionPercentage', undefined);
+                                }
+                              }}
+                              placeholder="0.00"
+                              data-testid="input-bvgdeductionamount"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="bvgDeductionPercentage"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>BVG-Abzug (%)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => {
+                                const value = e.target.value || undefined;
+                                field.onChange(value);
+                                if (value) {
+                                  form.setValue('bvgDeductionAmount', undefined);
+                                }
+                              }}
+                              placeholder="3.50"
+                              data-testid="input-bvgdeductionpercentage"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Hinweis: BVG-Abzug kann entweder in CHF oder in % angegeben werden (nur eine Eingabe möglich)
+                  </p>
                 </div>
 
                 <FormField

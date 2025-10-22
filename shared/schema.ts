@@ -75,6 +75,13 @@ export const employees = pgTable("employees", {
   bankIban: text("bank_iban").notNull(), // IBAN
   bankBic: text("bank_bic"), // BIC (optional)
   
+  // Default payroll values (used as defaults in payroll entry)
+  monthlySalary: numeric("monthly_salary", { precision: 10, scale: 2 }), // Monatslohn (default)
+  employmentLevel: numeric("employment_level", { precision: 5, scale: 2 }), // Anstellungsgrad in % (e.g., 100.00, 80.00)
+  hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }), // Stundenlohn (default)
+  bvgDeductionAmount: numeric("bvg_deduction_amount", { precision: 10, scale: 2 }), // BVG-Abzug in CHF (either this OR percentage)
+  bvgDeductionPercentage: numeric("bvg_deduction_percentage", { precision: 5, scale: 2 }), // BVG-Abzug in % (either this OR amount)
+  
   // Status
   isActive: boolean("is_active").notNull().default(true),
   

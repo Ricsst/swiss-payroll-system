@@ -74,6 +74,30 @@ export default function EmployeePayroll() {
     }
   }, [payrollItemTypes]);
 
+  // Load default values from employee when employee changes
+  useEffect(() => {
+    if (selectedEmployeeId && employees.length > 0 && payrollItemTypes.length > 0) {
+      const employee = employees.find(e => e.id === selectedEmployeeId);
+      if (employee) {
+        setPayrollRows(prev => {
+          const updated = { ...prev };
+          
+          // Set Monatslohn default value (code "01")
+          if (employee.monthlySalary && updated["01"]) {
+            updated["01"].amount = employee.monthlySalary;
+          }
+          
+          // Set Stundenlohn default value (code "02")
+          if (employee.hourlyRate && updated["02"]) {
+            updated["02"].hourlyRate = employee.hourlyRate;
+          }
+          
+          return updated;
+        });
+      }
+    }
+  }, [selectedEmployeeId, employees, payrollItemTypes]);
+
   const createPaymentMutation = useMutation({
     mutationFn: async (data: any) => {
       const response = await fetch("/api/payroll/payments", {
@@ -266,10 +290,23 @@ export default function EmployeePayroll() {
       }
     }
 
-    // BVG - approximately 3.5% of BVG-subject salary
+    // BVG - use employee default or approximately 3.5% of BVG-subject salary
     const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
     if (bvgBaseAmount > 0) {
-      const bvgAmount = bvgBaseAmount * 0.035;
+      let bvgAmount: number;
+      
+      // Check if employee has custom BVG deduction
+      if (currentEmployee?.bvgDeductionAmount) {
+        // Use fixed CHF amount
+        bvgAmount = parseFloat(currentEmployee.bvgDeductionAmount);
+      } else if (currentEmployee?.bvgDeductionPercentage) {
+        // Use percentage of BVG-subject salary
+        bvgAmount = bvgBaseAmount * (parseFloat(currentEmployee.bvgDeductionPercentage) / 100);
+      } else {
+        // Default: 3.5% of BVG-subject salary
+        bvgAmount = bvgBaseAmount * 0.035;
+      }
+      
       deductions.push({
         type: "BVG",
         description: "Pensionskasse",

@@ -35,9 +35,9 @@ Preferred communication style: Simple, everyday language.
 
 **Key Pages**
 - Dashboard: Overview statistics (active employees, company status, payroll metrics)
-- Employees: CRUD operations for employee management with Lohnausweis generation
+- Employees: CRUD operations for employee management with Lohnausweis generation and default payroll values
 - Company: Single company configuration with Swiss social insurance rates
-- **Employee Payroll Entry**: Streamlined payroll entry with multiple simultaneous salary types, employee navigation, and automatic calculations
+- **Employee Payroll Entry**: Streamlined payroll entry with auto-fill from employee defaults, multiple simultaneous salary types, employee navigation, and automatic calculations
 - Payroll: Payment list and detail views with PDF export
 - Monthly/Yearly Reports: Aggregated financial reporting with multi-format exports (PDF, Excel, CSV)
 - Templates: Reusable payroll templates for recurring payments
@@ -80,7 +80,7 @@ Preferred communication style: Simple, everyday language.
 
 **Core Tables**
 - `companies`: Single company configuration with Swiss insurance rates (AHV, ALV, SUVA)
-- `employees`: Employee master data with Swiss-specific fields (AHV number, banking info, NBU insurance status, Rentner status)
+- `employees`: Employee master data with Swiss-specific fields (AHV number, banking info, NBU insurance status, Rentner status, default payroll values)
 - `payroll_item_types`: Configurable wage types with deduction applicability flags (AHV, ALV, NBU, BVG, QST)
 - `payroll_payments`: Payment header with period dates and totals
 - `payroll_items`: Line items per payment referencing payroll_item_types by code
@@ -105,6 +105,35 @@ Preferred communication style: Simple, everyday language.
 - Automatic calculation in employee payroll entry form with real-time preview
 
 ## Recent Features (October 2025)
+
+### Employee Default Payroll Values (Latest)
+Employees can now have pre-configured default payroll values that automatically populate in the payroll entry form:
+
+**New Employee Fields:**
+- **monthlySalary** (numeric): Default monthly salary in CHF
+- **employmentLevel** (numeric): Employment level percentage (e.g., 100, 80, 50)
+- **hourlyRate** (numeric): Default hourly wage rate in CHF
+- **bvgDeductionAmount** (numeric): BVG deduction as fixed CHF amount
+- **bvgDeductionPercentage** (numeric): BVG deduction as percentage of BVG-subject salary
+
+**Key Features:**
+- Default values configured in employee profile under "Lohnvorgaben" section
+- Values auto-populate in payroll entry when employee is selected
+- Monthly salary (code "01") and hourly rate (code "02") pre-fill automatically
+- BVG deduction uses employee-specific rate if configured:
+  - Fixed CHF amount takes priority
+  - Percentage rate as fallback
+  - Default 3.5% if neither is set
+- All values can be overridden during payroll entry
+- Mutual exclusivity: BVG amount and percentage fields clear each other
+
+**Form Handling:**
+- Input fields use HTML5 number type for validation
+- Values sent as strings from frontend
+- Backend (Drizzle/PostgreSQL) auto-converts to numeric types
+- Empty fields submit as undefined (not empty strings)
+
+## Configurable Payroll Item Types (Lohnarten) System
 
 ### Configurable Payroll Item Types (Lohnarten) System
 A flexible wage type configuration system allowing administrators to define which deductions apply to each salary component:
@@ -138,6 +167,12 @@ A flexible wage type configuration system allowing administrators to define whic
 ### Employee Payroll Entry Page (`/employee-payroll`)
 A streamlined interface for efficient payroll processing with the following capabilities:
 
+**Employee Default Values Auto-Fill**
+- Loads employee-specific defaults when employee is selected
+- Pre-fills monthly salary and hourly rate from employee profile
+- BVG deduction respects employee-specific settings (CHF or %)
+- All defaults can be overridden manually during entry
+
 **Dynamic Wage Type Loading**
 - Automatically loads active payroll item types from database
 - Supports unlimited payroll items in a single payment
@@ -155,18 +190,18 @@ A streamlined interface for efficient payroll processing with the following capa
 
 **Automatic Calculations**
 - Real-time calculation of gross salary (sum of all payroll items)
-- Automatic deduction calculations:
-  - AHV/IV/EO: 5.3% of gross
-  - ALV: 1.1% of gross
-  - NBU/SUVA: 1.168% of gross
-  - BVG: ~3.5% of gross
+- Automatic deduction calculations using employee-specific BVG rate:
+  - AHV/IV/EO: 5.3% of AHV-subject salary
+  - ALV: 1.1% of ALV-subject salary
+  - NBU/SUVA: 1.168% of NBU-subject salary (only for NBU-insured employees)
+  - BVG: Employee-specific rate or default 3.5% of BVG-subject salary
 - Net salary calculation (gross - total deductions)
 - Live preview of all calculations before saving
 
 **Intelligent Deduction Preview**
 - Real-time calculation of deductions based on wage type configuration
 - Separate base amounts per deduction type (AHV, ALV, NBU, BVG)
-- Respects employee-specific rules (NBU insurance status, Rentner allowance)
+- Respects employee-specific rules (NBU insurance status, Rentner allowance, BVG rate)
 - Live preview of net salary before saving
 
 **Data Validation**
