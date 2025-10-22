@@ -189,14 +189,25 @@ export default function EmployeePayroll() {
 
     const deductions: any[] = [];
     
-    // AHV (5.3%)
+    // Get current employee for NBU and Rentner status
+    const currentEmployee = employees?.find(e => e.id === selectedEmployeeId);
+    
+    // AHV (5.3%) - with Rentner allowance if applicable
     const ahvRate = parseFloat(company.ahvEmployeeRate) || 5.3;
+    let ahvBaseAmount = grossSalary;
+    
+    // Apply Rentner allowance if employee is Rentner
+    if (currentEmployee?.isRentner) {
+      const rentnerAllowance = parseFloat(company.ahvRentnerAllowance) || 1400;
+      ahvBaseAmount = Math.max(0, grossSalary - rentnerAllowance);
+    }
+    
     deductions.push({
       type: "AHV",
-      description: "AHV/IV/EO Abzug",
+      description: currentEmployee?.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
       percentage: ahvRate.toString(),
-      baseAmount: grossSalary.toFixed(2),
-      amount: (grossSalary * (ahvRate / 100)).toFixed(2),
+      baseAmount: ahvBaseAmount.toFixed(2),
+      amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
       isAutoCalculated: true,
     });
 
@@ -211,16 +222,18 @@ export default function EmployeePayroll() {
       isAutoCalculated: true,
     });
 
-    // NBU/SUVA (1.168%)
-    const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
-    deductions.push({
-      type: "NBU",
-      description: "NBU/SUVA Abzug",
-      percentage: suvaRate.toString(),
-      baseAmount: grossSalary.toFixed(2),
-      amount: (grossSalary * (suvaRate / 100)).toFixed(2),
-      isAutoCalculated: true,
-    });
+    // NBU/SUVA (1.168%) - only if employee is NBU insured
+    if (currentEmployee?.isNbuInsured) {
+      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+      deductions.push({
+        type: "NBU",
+        description: "NBU/SUVA Abzug",
+        percentage: suvaRate.toString(),
+        baseAmount: grossSalary.toFixed(2),
+        amount: (grossSalary * (suvaRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
 
     // BVG - approximately 3.5% of gross salary
     const bvgAmount = grossSalary * 0.035;

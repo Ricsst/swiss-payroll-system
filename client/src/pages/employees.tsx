@@ -73,6 +73,8 @@ export default function Employees() {
       hasAccidentInsurance: true,
       hasAhv: true,
       hasAlv: true,
+      isNbuInsured: true,
+      isRentner: false,
       bankName: "",
       bankIban: "",
       bankBic: "",
@@ -168,6 +170,8 @@ export default function Employees() {
       hasAccidentInsurance: employee.hasAccidentInsurance,
       hasAhv: employee.hasAhv,
       hasAlv: employee.hasAlv,
+      isNbuInsured: employee.isNbuInsured,
+      isRentner: employee.isRentner,
       bankName: employee.bankName,
       bankIban: employee.bankIban,
       bankBic: employee.bankBic || "",
@@ -189,6 +193,17 @@ export default function Employees() {
       setEditingEmployee(null);
       form.reset();
     }
+  };
+
+  const calculateAge = (birthDate: string): number => {
+    const today = new Date();
+    const birth = new Date(birthDate);
+    let age = today.getFullYear() - birth.getFullYear();
+    const monthDiff = today.getMonth() - birth.getMonth();
+    if (monthDiff < 0 || (monthDiff === 0 && today.getDate() < birth.getDate())) {
+      age--;
+    }
+    return age;
   };
 
   return (
@@ -403,6 +418,42 @@ export default function Employees() {
                         </FormItem>
                       )}
                     />
+                    <FormField
+                      control={form.control}
+                      name="isNbuInsured"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-isnbuinsured"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>NBU</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="isRentner"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-isrentner"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Rentner</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
                   </div>
                 </div>
 
@@ -523,7 +574,8 @@ export default function Employees() {
                   <TableHead>Name</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>AHV-Nummer</TableHead>
-                  <TableHead>Eintritt</TableHead>
+                  <TableHead>Geburtsdatum / Alter</TableHead>
+                  <TableHead>Versicherung</TableHead>
                   <TableHead>Status</TableHead>
                   <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
@@ -539,7 +591,24 @@ export default function Employees() {
                       {employee.ahvNumber}
                     </TableCell>
                     <TableCell>
-                      {new Date(employee.entryDate).toLocaleDateString("de-CH")}
+                      <div className="flex flex-col">
+                        <span className="text-sm">
+                          {new Date(employee.birthDate).toLocaleDateString("de-CH")}
+                        </span>
+                        <span className="text-xs text-muted-foreground">
+                          {calculateAge(employee.birthDate)} Jahre
+                        </span>
+                      </div>
+                    </TableCell>
+                    <TableCell>
+                      <div className="flex gap-1 flex-wrap">
+                        {employee.isNbuInsured && (
+                          <Badge variant="outline" className="text-xs">NBU</Badge>
+                        )}
+                        {employee.isRentner && (
+                          <Badge variant="outline" className="text-xs">Rentner</Badge>
+                        )}
+                      </div>
                     </TableCell>
                     <TableCell>
                       <Badge variant={employee.isActive ? "default" : "secondary"}>

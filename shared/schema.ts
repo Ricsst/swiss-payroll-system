@@ -67,6 +67,8 @@ export const employees = pgTable("employees", {
   hasAccidentInsurance: boolean("has_accident_insurance").notNull().default(true), // Unfallversicherung
   hasAhv: boolean("has_ahv").notNull().default(true), // AHV
   hasAlv: boolean("has_alv").notNull().default(true), // ALV
+  isNbuInsured: boolean("is_nbu_insured").notNull().default(true), // NBU (Nichtbetriebs-Unfallversicherung)
+  isRentner: boolean("is_rentner").notNull().default(false), // Rentner (AHV-Freibetrag)
   
   // Banking information
   bankName: text("bank_name").notNull(), // Name Bank und Ort
