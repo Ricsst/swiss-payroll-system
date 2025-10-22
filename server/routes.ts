@@ -529,6 +529,51 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
+      // ========== PAGE 2: Lohnarten- und Abzugstotale ==========
+      pdf.addPageBreak();
+
+      pdf.addHeader({
+        title: "Lohnarten- und Abzugstotale",
+        subtitle: `${company.name} - ${monthNames[month - 1]} ${year}`,
+      });
+
+      // Payroll Items Summary (Lohnarten)
+      if (report.payrollItemSummary && report.payrollItemSummary.length > 0) {
+        pdf.addSection("LOHNARTEN");
+        const payrollItemRows = report.payrollItemSummary.map((item: any) => [
+          item.type,
+          formatCurrency(parseFloat(item.amount)),
+        ]);
+        pdf.addTable(
+          ["Lohnart", "Betrag"],
+          payrollItemRows
+        );
+
+        pdf.addSection("TOTAL BRUTTOLOHN");
+        pdf.addText("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)));
+      }
+
+      // Deduction Summary
+      if (report.deductionSummary && report.deductionSummary.length > 0) {
+        pdf.addSection("ABZÜGE");
+        const deductionRows = report.deductionSummary.map((ded: any) => [
+          ded.type,
+          formatCurrency(parseFloat(ded.amount)),
+        ]);
+        pdf.addTable(
+          ["Abzugsart", "Betrag"],
+          deductionRows
+        );
+
+        pdf.addSection("TOTAL ABZÜGE");
+        pdf.addText("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)));
+      }
+
+      pdf.addSection("NETTOLOHN");
+      pdf.addText("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)));
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
       const pdfBlob = pdf.getBlob();
       const buffer = Buffer.from(await pdfBlob.arrayBuffer());
 

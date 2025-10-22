@@ -296,6 +296,19 @@ export class DatabaseStorage implements IStorage {
         )`
       );
 
+    // Get all payroll items for this month
+    const allPayrollItems = await db
+      .select()
+      .from(payrollItems)
+      .where(
+        sql`${payrollItems.payrollPaymentId} IN (
+          SELECT ${payrollPayments.id} 
+          FROM ${payrollPayments} 
+          WHERE ${payrollPayments.paymentYear} = ${year} 
+          AND ${payrollPayments.paymentMonth} = ${month}
+        )`
+      );
+
     // Group by employee
     const employeeMap = new Map<string, any>();
     
@@ -364,12 +377,29 @@ export class DatabaseStorage implements IStorage {
       }))
       .sort((a, b) => a.type.localeCompare(b.type));
 
+    // Calculate payroll item breakdowns by type
+    const payrollItemBreakdown: Record<string, number> = {};
+    for (const item of allPayrollItems) {
+      const type = item.type;
+      const amount = parseFloat(item.amount);
+      payrollItemBreakdown[type] = (payrollItemBreakdown[type] || 0) + amount;
+    }
+
+    // Convert to array and sort
+    const payrollItemSummary = Object.entries(payrollItemBreakdown)
+      .map(([type, amount]) => ({
+        type,
+        amount: amount.toFixed(2),
+      }))
+      .sort((a, b) => a.type.localeCompare(b.type));
+
     return {
       month,
       year,
       employees: employeesList,
       totals,
       deductionSummary,
+      payrollItemSummary,
       totalEmployees: employeesList.length,
       totalPayments: payments.length,
     };
