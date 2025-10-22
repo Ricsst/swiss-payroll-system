@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
@@ -37,7 +37,8 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Edit, Trash2, MoreVertical, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Edit, Trash2, MoreVertical, FileText, ArrowUpDown, ArrowUp, ArrowDown, Save } from "lucide-react";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertEmployeeSchema, type InsertEmployee, type Employee } from "@shared/schema";
@@ -61,6 +62,7 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
+  const [editableData, setEditableData] = useState<Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string }>>({});
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<Employee[]>({
@@ -156,6 +158,42 @@ export default function Employees() {
     },
   });
 
+  const batchUpdateMutation = useMutation({
+    mutationFn: async (updates: Array<{ id: string; data: Partial<InsertEmployee> }>) => {
+      return Promise.all(
+        updates.map(update =>
+          apiRequest("PATCH", `/api/employees/${update.id}`, update.data)
+        )
+      );
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/employees"] });
+      toast({ title: "Mitarbeiterdaten erfolgreich aktualisiert" });
+    },
+    onError: () => {
+      toast({
+        title: "Fehler",
+        description: "Mitarbeiterdaten konnten nicht aktualisiert werden",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Initialize editable data when employees load
+  useEffect(() => {
+    if (employees) {
+      const initialData: Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string }> = {};
+      employees.forEach(emp => {
+        initialData[emp.id] = {
+          monthlySalary: emp.monthlySalary || "",
+          employmentLevel: emp.employmentLevel || "",
+          bvgDeductionAmount: emp.bvgDeductionAmount || "",
+        };
+      });
+      setEditableData(initialData);
+    }
+  }, [employees]);
+
   const onSubmit = (data: InsertEmployee) => {
     const companyId = (company as any)?.id;
     if (!companyId) {
@@ -213,6 +251,49 @@ export default function Employees() {
     if (confirm("Möchten Sie diesen Mitarbeiter wirklich löschen?")) {
       deleteMutation.mutate(id);
     }
+  };
+
+  const handleFieldChange = (employeeId: string, field: 'monthlySalary' | 'employmentLevel' | 'bvgDeductionAmount', value: string) => {
+    setEditableData(prev => ({
+      ...prev,
+      [employeeId]: {
+        ...prev[employeeId],
+        [field]: value,
+      },
+    }));
+  };
+
+  const handleBatchSave = () => {
+    if (!employees) return;
+
+    const updates = employees
+      .filter(emp => {
+        const data = editableData[emp.id];
+        return data && (
+          data.monthlySalary !== (emp.monthlySalary || "") ||
+          data.employmentLevel !== (emp.employmentLevel || "") ||
+          data.bvgDeductionAmount !== (emp.bvgDeductionAmount || "")
+        );
+      })
+      .map(emp => ({
+        id: emp.id,
+        data: {
+          ...emp,
+          monthlySalary: editableData[emp.id].monthlySalary || undefined,
+          employmentLevel: editableData[emp.id].employmentLevel || undefined,
+          bvgDeductionAmount: editableData[emp.id].bvgDeductionAmount || undefined,
+        } as Partial<InsertEmployee>,
+      }));
+
+    if (updates.length === 0) {
+      toast({
+        title: "Keine Änderungen",
+        description: "Es wurden keine Änderungen vorgenommen",
+      });
+      return;
+    }
+
+    batchUpdateMutation.mutate(updates);
   };
 
   const handleDialogClose = (open: boolean) => {
@@ -821,12 +902,19 @@ export default function Employees() {
         </Dialog>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Mitarbeiterliste</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
+      <Tabs defaultValue="list" className="w-full">
+        <TabsList>
+          <TabsTrigger value="list">Mitarbeiterliste</TabsTrigger>
+          <TabsTrigger value="summary">Gesamttabelle</TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="list">
+          <Card>
+            <CardHeader>
+              <CardTitle>Mitarbeiterliste</CardTitle>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
             <div className="space-y-2">
               {[1, 2, 3].map((i) => (
                 <Skeleton key={i} className="h-12 w-full" />
@@ -953,8 +1041,107 @@ export default function Employees() {
               </p>
             </div>
           )}
-        </CardContent>
-      </Card>
+            </CardContent>
+          </Card>
+        </TabsContent>
+
+        <TabsContent value="summary">
+          <Card>
+            <CardHeader>
+              <div className="flex items-center justify-between">
+                <CardTitle>Gesamttabelle - Lohndaten</CardTitle>
+                <Button 
+                  onClick={handleBatchSave}
+                  disabled={batchUpdateMutation.isPending}
+                  data-testid="button-batch-save"
+                >
+                  <Save className="h-4 w-4 mr-2" />
+                  {batchUpdateMutation.isPending ? "Speichern..." : "Speichern"}
+                </Button>
+              </div>
+            </CardHeader>
+            <CardContent>
+              {isLoading ? (
+                <div className="space-y-2">
+                  {[1, 2, 3].map((i) => (
+                    <Skeleton key={i} className="h-12 w-full" />
+                  ))}
+                </div>
+              ) : employees && employees.length > 0 ? (
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Name</TableHead>
+                      <TableHead>AHV-Nummer</TableHead>
+                      <TableHead className="text-right">100% Monatslohn (CHF)</TableHead>
+                      <TableHead className="text-right">Beschäftigungsgrad (%)</TableHead>
+                      <TableHead className="text-right">BVG Abzug (CHF)</TableHead>
+                      <TableHead>Status</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {employees.map((employee) => (
+                      <TableRow key={employee.id}>
+                        <TableCell className="font-medium">
+                          {employee.firstName} {employee.lastName}
+                        </TableCell>
+                        <TableCell className="font-mono text-sm">
+                          {employee.ahvNumber}
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editableData[employee.id]?.monthlySalary || ""}
+                            onChange={(e) => handleFieldChange(employee.id, 'monthlySalary', e.target.value)}
+                            placeholder="0.00"
+                            className="h-8 text-right"
+                            data-testid={`input-monthly-salary-${employee.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editableData[employee.id]?.employmentLevel || ""}
+                            onChange={(e) => handleFieldChange(employee.id, 'employmentLevel', e.target.value)}
+                            placeholder="100.00"
+                            className="h-8 text-right"
+                            data-testid={`input-employment-level-${employee.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editableData[employee.id]?.bvgDeductionAmount || ""}
+                            onChange={(e) => handleFieldChange(employee.id, 'bvgDeductionAmount', e.target.value)}
+                            placeholder="0.00"
+                            className="h-8 text-right"
+                            data-testid={`input-bvg-deduction-${employee.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Badge variant={employee.isActive ? "default" : "secondary"}>
+                            {employee.isActive ? "Aktiv" : "Inaktiv"}
+                          </Badge>
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              ) : (
+                <div className="text-center py-12">
+                  <p className="text-muted-foreground">Keine Mitarbeiter erfasst</p>
+                  <p className="text-sm text-muted-foreground mt-1">
+                    Fügen Sie Ihren ersten Mitarbeiter hinzu
+                  </p>
+                </div>
+              )}
+            </CardContent>
+          </Card>
+        </TabsContent>
+      </Tabs>
     </div>
   );
 }
