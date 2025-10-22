@@ -480,25 +480,28 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payrollPayments.paymentYear, year));
 
     // Get all payroll items for the year
-    const allPayrollItems = await db
-      .select()
-      .from(payrollItems)
-      .innerJoin(payrollPayments, eq(payrollItems.payrollPaymentId, payrollPayments.id))
-      .where(eq(payrollPayments.paymentYear, year));
+    const paymentIds = allPayments.map(p => p.id);
+    const allPayrollItems = paymentIds.length > 0 
+      ? await db
+          .select()
+          .from(payrollItems)
+          .where(sql`${payrollItems.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
+      : [];
 
     // Get all deductions for the year
-    const allDeductions = await db
-      .select()
-      .from(deductions)
-      .innerJoin(payrollPayments, eq(deductions.payrollPaymentId, payrollPayments.id))
-      .where(eq(payrollPayments.paymentYear, year));
+    const allDeductions = paymentIds.length > 0
+      ? await db
+          .select()
+          .from(deductions)
+          .where(sql`${deductions.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
+      : [];
 
     // Aggregate payroll items by type
     const payrollItemBreakdown: Record<string, { quantity: number; amount: number }> = {};
     for (const item of allPayrollItems) {
-      const typeName = item.payroll_items.type;
-      const hours = item.payroll_items.hours ? parseFloat(item.payroll_items.hours) : 0;
-      const amount = parseFloat(item.payroll_items.amount);
+      const typeName = item.type;
+      const hours = item.hours ? parseFloat(item.hours) : 0;
+      const amount = parseFloat(item.amount);
 
       if (!payrollItemBreakdown[typeName]) {
         payrollItemBreakdown[typeName] = { quantity: 0, amount: 0 };
@@ -518,8 +521,8 @@ export class DatabaseStorage implements IStorage {
     // Aggregate deductions by type
     const deductionBreakdown: Record<string, number> = {};
     for (const ded of allDeductions) {
-      const type = ded.deductions.type;
-      const amount = parseFloat(ded.deductions.amount);
+      const type = ded.type;
+      const amount = parseFloat(ded.amount);
 
       if (!deductionBreakdown[type]) {
         deductionBreakdown[type] = 0;
