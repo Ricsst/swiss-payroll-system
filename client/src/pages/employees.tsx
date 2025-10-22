@@ -6,6 +6,13 @@ import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Checkbox } from "@/components/ui/checkbox";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Dialog,
   DialogContent,
   DialogDescription,
@@ -64,6 +71,7 @@ export default function Employees() {
     defaultValues: {
       firstName: "",
       lastName: "",
+      gender: "Mann",
       birthDate: "",
       address: "",
       email: "",
@@ -168,6 +176,7 @@ export default function Employees() {
     form.reset({
       firstName: employee.firstName,
       lastName: employee.lastName,
+      gender: employee.gender || "Mann",
       birthDate: employee.birthDate,
       address: employee.address,
       email: employee.email,
@@ -274,6 +283,31 @@ export default function Employees() {
                           <FormControl>
                             <Input {...field} data-testid="input-lastname" />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="gender"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Geschlecht *</FormLabel>
+                          <Select
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            value={field.value}
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-gender">
+                                <SelectValue placeholder="Auswählen" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="Mann">Mann</SelectItem>
+                              <SelectItem value="Frau">Frau</SelectItem>
+                            </SelectContent>
+                          </Select>
                           <FormMessage />
                         </FormItem>
                       )}
@@ -687,6 +721,7 @@ export default function Employees() {
                           <FormControl>
                             <Input
                               {...field}
+                              value={field.value || ""}
                               placeholder="z.B. 2 Kinder"
                               data-testid="input-childallowancenote"
                             />
@@ -758,6 +793,7 @@ export default function Employees() {
               <TableHeader>
                 <TableRow>
                   <TableHead>Name</TableHead>
+                  <TableHead>Geschlecht</TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>AHV-Nummer</TableHead>
                   <TableHead>Geburtsdatum / Alter</TableHead>
@@ -771,6 +807,11 @@ export default function Employees() {
                   <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
                     <TableCell className="font-medium">
                       {employee.firstName} {employee.lastName}
+                    </TableCell>
+                    <TableCell>
+                      <Badge variant="outline" data-testid={`badge-gender-${employee.id}`}>
+                        {employee.gender || "Mann"}
+                      </Badge>
                     </TableCell>
                     <TableCell>{employee.email}</TableCell>
                     <TableCell className="font-mono text-sm">

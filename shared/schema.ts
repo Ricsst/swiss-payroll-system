@@ -52,6 +52,7 @@ export const employees = pgTable("employees", {
   // Personal information
   firstName: text("first_name").notNull(),
   lastName: text("last_name").notNull(),
+  gender: text("gender").notNull().default("Mann"), // Mann or Frau
   birthDate: date("birth_date").notNull(),
   address: text("address").notNull(),
   email: text("email").notNull(),
