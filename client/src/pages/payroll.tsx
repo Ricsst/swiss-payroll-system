@@ -360,7 +360,7 @@ export default function Payroll() {
                       <SortIcon field="periodStart" />
                     </Button>
                   </TableHead>
-                  <TableHead>
+                  <TableHead className="w-32">
                     <Button 
                       variant="ghost" 
                       size="sm" 
