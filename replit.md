@@ -59,6 +59,27 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
+### Bearbeiten-Button in Lohnauszahlungs-Liste (Oktober 22, 2025)
+Die Lohnauszahlungs-Liste wurde um einen direkten Bearbeiten-Button erweitert:
+
+**Funktionalität:**
+- Bleistift-Icon (Pencil) in der Aktionen-Spalte
+- Nur für offene (nicht abgeschlossene) Lohnauszahlungen sichtbar
+- Direkter Zugriff auf das Bearbeitungsformular
+- Navigation zu `/payroll/{id}/edit` beim Klick
+
+**Button-Reihenfolge in Aktionen:**
+1. Abschließen/Entsperren (Lock/Unlock)
+2. **Bearbeiten (Pencil)** - NEU
+3. Anzeigen (Eye)
+4. Löschen (Trash)
+
+**Benutzerfreundlichkeit:**
+- Schneller Zugriff auf Bearbeitungsfunktion
+- Klare visuelle Trennung zwischen Anzeigen und Bearbeiten
+- Intuitives Bleistift-Symbol für Bearbeitungsfunktion
+- Nur für bearbeitbare (offene) Zahlungen verfügbar
+
 ### Mitarbeiter-Gesamttabelle mit Sortierung und Stundenlohn (Oktober 22, 2025)
 Eine erweiterte Tabellen-Ansicht auf der Mitarbeiter-Seite ermöglicht die gleichzeitige Bearbeitung von Lohndaten für alle Mitarbeiter:
 

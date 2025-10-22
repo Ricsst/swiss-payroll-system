@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -523,6 +523,18 @@ export default function Payroll() {
                           >
                             <Unlock className="h-4 w-4" />
                           </Button>
+                        )}
+                        {!payment.isLocked && (
+                          <Link href={`/payroll/${payment.id}/edit`}>
+                            <Button
+                              variant="ghost"
+                              size="icon"
+                              data-testid={`button-edit-${payment.id}`}
+                              title="Bearbeiten"
+                            >
+                              <Pencil className="h-4 w-4" />
+                            </Button>
+                          </Link>
                         )}
                         <Link href={`/payroll/${payment.id}`}>
                           <Button
