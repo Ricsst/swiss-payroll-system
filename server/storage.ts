@@ -151,6 +151,7 @@ export class DatabaseStorage implements IStorage {
         totalDeductions: payrollPayments.totalDeductions,
         netSalary: payrollPayments.netSalary,
         notes: payrollPayments.notes,
+        isLocked: payrollPayments.isLocked,
         employee: {
           id: employees.id,
           firstName: employees.firstName,
@@ -191,6 +192,8 @@ export class DatabaseStorage implements IStorage {
         totalDeductions: payrollPayments.totalDeductions,
         netSalary: payrollPayments.netSalary,
         notes: payrollPayments.notes,
+        isLocked: payrollPayments.isLocked,
+        employeeId: payrollPayments.employeeId,
         employee: {
           id: employees.id,
           firstName: employees.firstName,
@@ -269,6 +272,38 @@ export class DatabaseStorage implements IStorage {
     }
 
     return paymentRecord;
+  }
+
+  async lockPayrollPayment(id: string): Promise<PayrollPayment> {
+    const [payment] = await db
+      .update(payrollPayments)
+      .set({ isLocked: true, updatedAt: new Date() })
+      .where(eq(payrollPayments.id, id))
+      .returning();
+    return payment;
+  }
+
+  async unlockPayrollPayment(id: string): Promise<PayrollPayment> {
+    const [payment] = await db
+      .update(payrollPayments)
+      .set({ isLocked: false, updatedAt: new Date() })
+      .where(eq(payrollPayments.id, id))
+      .returning();
+    return payment;
+  }
+
+  async deletePayrollPayment(id: string): Promise<void> {
+    // Check if payment is locked
+    const [payment] = await db
+      .select({ isLocked: payrollPayments.isLocked })
+      .from(payrollPayments)
+      .where(eq(payrollPayments.id, id));
+    
+    if (payment?.isLocked) {
+      throw new Error("Abgeschlossene Lohnauszahlungen können nicht gelöscht werden");
+    }
+    
+    await db.delete(payrollPayments).where(eq(payrollPayments.id, id));
   }
 
   // ============================================================================

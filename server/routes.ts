@@ -197,6 +197,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/payroll/payments/:id/lock", async (req, res) => {
+    try {
+      const payment = await storage.lockPayrollPayment(req.params.id);
+      res.json(payment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/payroll/payments/:id/unlock", async (req, res) => {
+    try {
+      const payment = await storage.unlockPayrollPayment(req.params.id);
+      res.json(payment);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/payroll/payments/:id", async (req, res) => {
+    try {
+      await storage.deletePayrollPayment(req.params.id);
+      res.status(204).send();
+    } catch (error: any) {
+      if (error.message.includes("Abgeschlossene")) {
+        res.status(403).json({ error: error.message });
+      } else {
+        res.status(500).json({ error: error.message });
+      }
+    }
+  });
+
   // ============================================================================
   // REPORTS
   // ============================================================================
