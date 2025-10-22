@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { useQuery } from "@tanstack/react-query";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Checkbox } from "@/components/ui/checkbox";
@@ -12,10 +12,11 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download } from "lucide-react";
+import { Plus, Eye, Download, Lock, Unlock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
 
 interface PayrollPaymentWithEmployee {
   id: string;
@@ -27,6 +28,7 @@ interface PayrollPaymentWithEmployee {
   grossSalary: string;
   totalDeductions: string;
   netSalary: string;
+  isLocked: boolean;
   employee: {
     id: string;
     firstName: string;
@@ -50,6 +52,44 @@ export default function Payroll() {
 
   const { data: payments, isLoading } = useQuery<PayrollPaymentWithEmployee[]>({
     queryKey: [buildQueryKey()],
+  });
+
+  const lockMutation = useMutation({
+    mutationFn: (paymentId: string) => 
+      apiRequest(`/api/payroll/payments/${paymentId}/lock`, "POST", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      toast({
+        title: "Abgeschlossen",
+        description: "Die Lohnauszahlung wurde abgeschlossen",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fehler",
+        description: error.message || "Lohnauszahlung konnte nicht abgeschlossen werden",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const unlockMutation = useMutation({
+    mutationFn: (paymentId: string) => 
+      apiRequest(`/api/payroll/payments/${paymentId}/unlock`, "POST", {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      toast({
+        title: "Entsperrt",
+        description: "Die Lohnauszahlung kann wieder bearbeitet werden",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fehler",
+        description: error.message || "Lohnauszahlung konnte nicht entsperrt werden",
+        variant: "destructive",
+      });
+    },
   });
 
   // Reset selections when payments list changes (e.g., filter changes)
@@ -216,6 +256,7 @@ export default function Payroll() {
                   <TableHead className="text-right">Bruttolohn</TableHead>
                   <TableHead className="text-right">Abzüge</TableHead>
                   <TableHead className="text-right">Nettolohn</TableHead>
+                  <TableHead>Status</TableHead>
                   <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
@@ -258,16 +299,53 @@ export default function Payroll() {
                         maximumFractionDigits: 2,
                       })}
                     </TableCell>
+                    <TableCell>
+                      {payment.isLocked ? (
+                        <Badge variant="secondary" data-testid={`badge-locked-${payment.id}`}>
+                          <Lock className="h-3 w-3 mr-1" />
+                          Abgeschlossen
+                        </Badge>
+                      ) : (
+                        <Badge variant="outline" data-testid={`badge-unlocked-${payment.id}`}>
+                          Offen
+                        </Badge>
+                      )}
+                    </TableCell>
                     <TableCell className="text-right">
-                      <Link href={`/payroll/${payment.id}`}>
-                        <Button
-                          variant="ghost"
-                          size="icon"
-                          data-testid={`button-view-${payment.id}`}
-                        >
-                          <Eye className="h-4 w-4" />
-                        </Button>
-                      </Link>
+                      <div className="flex items-center justify-end gap-1">
+                        {payment.isLocked ? (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => unlockMutation.mutate(payment.id)}
+                            disabled={unlockMutation.isPending}
+                            data-testid={`button-unlock-${payment.id}`}
+                            title="Entsperren"
+                          >
+                            <Unlock className="h-4 w-4" />
+                          </Button>
+                        ) : (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => lockMutation.mutate(payment.id)}
+                            disabled={lockMutation.isPending}
+                            data-testid={`button-lock-${payment.id}`}
+                            title="Abschliessen"
+                          >
+                            <Lock className="h-4 w-4" />
+                          </Button>
+                        )}
+                        <Link href={`/payroll/${payment.id}`}>
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            data-testid={`button-view-${payment.id}`}
+                          >
+                            <Eye className="h-4 w-4" />
+                          </Button>
+                        </Link>
+                      </div>
                     </TableCell>
                   </TableRow>
                 ))}
