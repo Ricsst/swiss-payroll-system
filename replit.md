@@ -74,7 +74,35 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Features (October 2025)
 
-### Employee Payroll Overview Page (Latest - October 22, 2025)
+### Employee List Sorting (Latest - October 22, 2025)
+The employee list now supports sorting by last name and gender:
+
+**Sortable Columns:**
+- Name (sorts by last name)
+- Geschlecht (gender: Frau/Mann)
+
+**Sorting Behavior:**
+- Initial state: No sorting, list shows in database order
+- First click: Sort ascending (A-Z or Frau-Mann)
+- Second click: Sort descending (Z-A or Mann-Frau)
+- Click different column: Switch to new sorting field (ascending)
+
+**Visual Indicators:**
+- ArrowUpDown icon: Column not currently sorted
+- ArrowUp icon: Column sorted ascending
+- ArrowDown icon: Column sorted descending
+
+**User Experience:**
+- Clickable column headers with hover effect
+- Visual feedback shows current sort state
+- Smooth transitions between sort states
+
+**Technical Implementation:**
+- State management: sortField ('lastName' | 'gender' | null) and sortOrder ('asc' | 'desc')
+- Client-side sorting using localeCompare for proper alphabetical ordering
+- Icons from lucide-react for visual indicators
+
+### Employee Payroll Overview Page (October 22, 2025)
 A new page displays a comprehensive yearly payroll overview for individual employees:
 
 **Key Features:**

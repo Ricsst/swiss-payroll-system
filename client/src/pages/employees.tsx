@@ -37,7 +37,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
-import { Plus, Edit, Trash2, MoreVertical, FileText } from "lucide-react";
+import { Plus, Edit, Trash2, MoreVertical, FileText, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { insertEmployeeSchema, type InsertEmployee, type Employee } from "@shared/schema";
@@ -53,9 +53,14 @@ import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
+type SortField = 'lastName' | 'gender' | null;
+type SortOrder = 'asc' | 'desc';
+
 export default function Employees() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
+  const [sortField, setSortField] = useState<SortField>(null);
+  const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<Employee[]>({
@@ -227,6 +232,45 @@ export default function Employees() {
       age--;
     }
     return age;
+  };
+
+  const handleSort = (field: 'lastName' | 'gender') => {
+    if (sortField === field) {
+      setSortOrder(sortOrder === 'asc' ? 'desc' : 'asc');
+    } else {
+      setSortField(field);
+      setSortOrder('asc');
+    }
+  };
+
+  const getSortedEmployees = () => {
+    if (!employees) return [];
+    if (!sortField) return employees;
+    
+    return [...employees].sort((a, b) => {
+      let compareValue = 0;
+      
+      if (sortField === 'lastName') {
+        compareValue = a.lastName.localeCompare(b.lastName);
+      } else if (sortField === 'gender') {
+        const genderA = a.gender || 'Mann';
+        const genderB = b.gender || 'Mann';
+        compareValue = genderA.localeCompare(genderB);
+      }
+      
+      return sortOrder === 'asc' ? compareValue : -compareValue;
+    });
+  };
+
+  const sortedEmployees = getSortedEmployees();
+
+  const renderSortIcon = (field: 'lastName' | 'gender') => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
+    }
+    return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 inline" />
+      : <ArrowDown className="h-4 w-4 ml-1 inline" />;
   };
 
   return (
@@ -792,8 +836,20 @@ export default function Employees() {
             <Table>
               <TableHeader>
                 <TableRow>
-                  <TableHead>Name</TableHead>
-                  <TableHead>Geschlecht</TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover-elevate"
+                    onClick={() => handleSort('lastName')}
+                    data-testid="sort-lastname"
+                  >
+                    Name{renderSortIcon('lastName')}
+                  </TableHead>
+                  <TableHead 
+                    className="cursor-pointer hover-elevate"
+                    onClick={() => handleSort('gender')}
+                    data-testid="sort-gender"
+                  >
+                    Geschlecht{renderSortIcon('gender')}
+                  </TableHead>
                   <TableHead>Email</TableHead>
                   <TableHead>AHV-Nummer</TableHead>
                   <TableHead>Geburtsdatum / Alter</TableHead>
@@ -803,7 +859,7 @@ export default function Employees() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {employees.map((employee) => (
+                {sortedEmployees.map((employee) => (
                   <TableRow key={employee.id} data-testid={`row-employee-${employee.id}`}>
                     <TableCell className="font-medium">
                       {employee.firstName} {employee.lastName}
