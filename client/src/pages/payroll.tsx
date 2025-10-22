@@ -323,6 +323,7 @@ export default function Payroll() {
                         </Badge>
                       ) : (
                         <Badge variant="outline" data-testid={`badge-unlocked-${payment.id}`}>
+                          <Unlock className="h-3 w-3 mr-1" />
                           Offen
                         </Badge>
                       )}
