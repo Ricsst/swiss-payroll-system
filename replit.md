@@ -56,3 +56,33 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ### Fonts
 - **Google Fonts** (Inter, JetBrains Mono)
+
+## Recent Features (October 2025)
+
+### Mitarbeiter-Gesamttabelle mit Sortierung und Stundenlohn (Oktober 22, 2025)
+Eine erweiterte Tabellen-Ansicht auf der Mitarbeiter-Seite ermöglicht die gleichzeitige Bearbeitung von Lohndaten für alle Mitarbeiter:
+
+**Funktionalität:**
+- Tab-basierte Ansicht: "Mitarbeiterliste" und "Gesamttabelle"
+- Inline-Bearbeitung für alle Mitarbeiter gleichzeitig
+- Editierbare Felder: 100% Monatslohn, **Stundenlohn (neu)**, Beschäftigungsgrad (%), BVG Abzug (CHF)
+- **Sortierung nach Nachname** mit visuellen Auf-/Absteigend-Indikatoren
+- Batch-Update-Funktion mit einem Speichern-Button
+
+**Neue Features:**
+- Sortierbare Name-Spalte: Klick auf den Tabellenkopf sortiert alphabetisch auf- oder absteigend
+- Stundenlohn-Eingabefeld: Direkteingabe des Stundenlohns für jeden Mitarbeiter
+- Visuelle Sortierindikatoren: Pfeile zeigen die aktuelle Sortierrichtung an
+
+**Technische Umsetzung:**
+- Separate Sortierung für Gesamttabelle (`summarySortOrder` State)
+- Sortierung nach Nachname (alphabetisch)
+- Erweiterter `editableData` State um `hourlyRate`
+- Batch-Update speichert alle geänderten Felder inklusive Stundenlohn
+- Responsive Design für alle Spalten
+
+**Benutzerfreundlichkeit:**
+- Schnelle Sortierung durch Klick auf Name-Spalte
+- Direkteingabe von Stundenlöhnen ohne Einzelbearbeitung
+- Übersichtliche Darstellung aller relevanten Lohndaten
+- Konsistente Batch-Speicherung für alle Änderungen

@@ -62,7 +62,8 @@ export default function Employees() {
   const [editingEmployee, setEditingEmployee] = useState<Employee | null>(null);
   const [sortField, setSortField] = useState<SortField>(null);
   const [sortOrder, setSortOrder] = useState<SortOrder>('asc');
-  const [editableData, setEditableData] = useState<Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string }>>({});
+  const [summarySortOrder, setSummarySortOrder] = useState<SortOrder>('asc');
+  const [editableData, setEditableData] = useState<Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string; hourlyRate: string }>>({});
   const { toast } = useToast();
 
   const { data: employees, isLoading } = useQuery<Employee[]>({
@@ -182,12 +183,13 @@ export default function Employees() {
   // Initialize editable data when employees load
   useEffect(() => {
     if (employees) {
-      const initialData: Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string }> = {};
+      const initialData: Record<string, { monthlySalary: string; employmentLevel: string; bvgDeductionAmount: string; hourlyRate: string }> = {};
       employees.forEach(emp => {
         initialData[emp.id] = {
           monthlySalary: emp.monthlySalary || "",
           employmentLevel: emp.employmentLevel || "",
           bvgDeductionAmount: emp.bvgDeductionAmount || "",
+          hourlyRate: emp.hourlyRate || "",
         };
       });
       setEditableData(initialData);
@@ -253,7 +255,7 @@ export default function Employees() {
     }
   };
 
-  const handleFieldChange = (employeeId: string, field: 'monthlySalary' | 'employmentLevel' | 'bvgDeductionAmount', value: string) => {
+  const handleFieldChange = (employeeId: string, field: 'monthlySalary' | 'employmentLevel' | 'bvgDeductionAmount' | 'hourlyRate', value: string) => {
     setEditableData(prev => ({
       ...prev,
       [employeeId]: {
@@ -272,7 +274,8 @@ export default function Employees() {
         return data && (
           data.monthlySalary !== (emp.monthlySalary || "") ||
           data.employmentLevel !== (emp.employmentLevel || "") ||
-          data.bvgDeductionAmount !== (emp.bvgDeductionAmount || "")
+          data.bvgDeductionAmount !== (emp.bvgDeductionAmount || "") ||
+          data.hourlyRate !== (emp.hourlyRate || "")
         );
       })
       .map(emp => ({
@@ -282,6 +285,7 @@ export default function Employees() {
           monthlySalary: editableData[emp.id].monthlySalary || undefined,
           employmentLevel: editableData[emp.id].employmentLevel || undefined,
           bvgDeductionAmount: editableData[emp.id].bvgDeductionAmount || undefined,
+          hourlyRate: editableData[emp.id].hourlyRate || undefined,
         } as Partial<InsertEmployee>,
       }));
 
@@ -350,6 +354,27 @@ export default function Employees() {
       return <ArrowUpDown className="h-4 w-4 ml-1 inline" />;
     }
     return sortOrder === 'asc' 
+      ? <ArrowUp className="h-4 w-4 ml-1 inline" />
+      : <ArrowDown className="h-4 w-4 ml-1 inline" />;
+  };
+
+  const handleSummarySort = () => {
+    setSummarySortOrder(summarySortOrder === 'asc' ? 'desc' : 'asc');
+  };
+
+  const getSortedEmployeesForSummary = () => {
+    if (!employees) return [];
+    
+    return [...employees].sort((a, b) => {
+      const compareValue = a.lastName.localeCompare(b.lastName);
+      return summarySortOrder === 'asc' ? compareValue : -compareValue;
+    });
+  };
+
+  const sortedEmployeesForSummary = getSortedEmployeesForSummary();
+
+  const renderSummarySortIcon = () => {
+    return summarySortOrder === 'asc' 
       ? <ArrowUp className="h-4 w-4 ml-1 inline" />
       : <ArrowDown className="h-4 w-4 ml-1 inline" />;
   };
@@ -1071,16 +1096,23 @@ export default function Employees() {
                 <Table>
                   <TableHeader>
                     <TableRow>
-                      <TableHead>Name</TableHead>
+                      <TableHead 
+                        className="cursor-pointer hover-elevate"
+                        onClick={handleSummarySort}
+                        data-testid="sort-summary-lastname"
+                      >
+                        Name{renderSummarySortIcon()}
+                      </TableHead>
                       <TableHead>AHV-Nummer</TableHead>
                       <TableHead className="text-right">100% Monatslohn (CHF)</TableHead>
+                      <TableHead className="text-right">Stundenlohn (CHF)</TableHead>
                       <TableHead className="text-right">Beschäftigungsgrad (%)</TableHead>
                       <TableHead className="text-right">BVG Abzug (CHF)</TableHead>
                       <TableHead>Status</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
-                    {employees.map((employee) => (
+                    {sortedEmployeesForSummary.map((employee) => (
                       <TableRow key={employee.id}>
                         <TableCell className="font-medium">
                           {employee.firstName} {employee.lastName}
@@ -1097,6 +1129,17 @@ export default function Employees() {
                             placeholder="0.00"
                             className="h-8 text-right"
                             data-testid={`input-monthly-salary-${employee.id}`}
+                          />
+                        </TableCell>
+                        <TableCell>
+                          <Input
+                            type="number"
+                            step="0.01"
+                            value={editableData[employee.id]?.hourlyRate || ""}
+                            onChange={(e) => handleFieldChange(employee.id, 'hourlyRate', e.target.value)}
+                            placeholder="0.00"
+                            className="h-8 text-right"
+                            data-testid={`input-hourly-rate-${employee.id}`}
                           />
                         </TableCell>
                         <TableCell>
