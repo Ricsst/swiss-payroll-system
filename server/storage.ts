@@ -272,6 +272,7 @@ export class DatabaseStorage implements IStorage {
         grossSalary: payrollPayments.grossSalary,
         totalDeductions: payrollPayments.totalDeductions,
         netSalary: payrollPayments.netSalary,
+        paymentId: payrollPayments.id,
       })
       .from(payrollPayments)
       .innerJoin(employees, eq(payrollPayments.employeeId, employees.id))
@@ -280,6 +281,19 @@ export class DatabaseStorage implements IStorage {
           eq(payrollPayments.paymentYear, year),
           eq(payrollPayments.paymentMonth, month)
         )
+      );
+
+    // Get all deductions for this month
+    const allDeductions = await db
+      .select()
+      .from(deductions)
+      .where(
+        sql`${deductions.payrollPaymentId} IN (
+          SELECT ${payrollPayments.id} 
+          FROM ${payrollPayments} 
+          WHERE ${payrollPayments.paymentYear} = ${year} 
+          AND ${payrollPayments.paymentMonth} = ${month}
+        )`
       );
 
     // Group by employee
@@ -315,6 +329,7 @@ export class DatabaseStorage implements IStorage {
 
     const employeesList = Array.from(employeeMap.values());
 
+    // Calculate totals
     const totals = employeesList.reduce(
       (acc, emp) => ({
         grossSalary: (
@@ -333,11 +348,30 @@ export class DatabaseStorage implements IStorage {
       { grossSalary: "0", deductions: "0", netSalary: "0" }
     );
 
+    // Calculate deduction breakdowns by type
+    const deductionBreakdown: Record<string, number> = {};
+    for (const deduction of allDeductions) {
+      const type = deduction.type;
+      const amount = parseFloat(deduction.amount);
+      deductionBreakdown[type] = (deductionBreakdown[type] || 0) + amount;
+    }
+
+    // Convert to array and sort
+    const deductionSummary = Object.entries(deductionBreakdown)
+      .map(([type, amount]) => ({
+        type,
+        amount: amount.toFixed(2),
+      }))
+      .sort((a, b) => a.type.localeCompare(b.type));
+
     return {
       month,
       year,
       employees: employeesList,
       totals,
+      deductionSummary,
+      totalEmployees: employeesList.length,
+      totalPayments: payments.length,
     };
   }
 

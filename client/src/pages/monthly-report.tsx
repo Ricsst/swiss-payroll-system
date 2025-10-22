@@ -28,6 +28,7 @@ import {
   DropdownMenuSeparator,
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
+import { Separator } from "@/components/ui/separator";
 
 interface MonthlyReportData {
   month: number;
@@ -45,6 +46,12 @@ interface MonthlyReportData {
     deductions: string;
     netSalary: string;
   };
+  deductionSummary: Array<{
+    type: string;
+    amount: string;
+  }>;
+  totalEmployees: number;
+  totalPayments: number;
 }
 
 export default function MonthlyReport() {
@@ -55,7 +62,7 @@ export default function MonthlyReport() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   const { data: report, isLoading } = useQuery<MonthlyReportData>({
-    queryKey: ["/api/reports/monthly", selectedYear, selectedMonth],
+    queryKey: [`/api/reports/monthly?year=${selectedYear}&month=${selectedMonth}`],
   });
 
   const monthNames = [
@@ -152,95 +159,187 @@ export default function MonthlyReport() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>
-            Monatsabrechnung {monthNames[selectedMonth - 1]} {selectedYear}
-          </CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : report && report.employees.length > 0 ? (
-            <Table>
-              <TableHeader>
-                <TableRow>
-                  <TableHead>Mitarbeiter</TableHead>
-                  <TableHead className="text-center">Anzahl Auszahlungen</TableHead>
-                  <TableHead className="text-right">Bruttolohn</TableHead>
-                  <TableHead className="text-right">Abzüge</TableHead>
-                  <TableHead className="text-right">Nettolohn</TableHead>
-                </TableRow>
-              </TableHeader>
-              <TableBody>
-                {report.employees.map((employee) => (
-                  <TableRow key={employee.employeeId} data-testid={`row-employee-${employee.employeeId}`}>
-                    <TableCell className="font-medium">
-                      {employee.employeeName}
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : report && report.employees.length > 0 ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Mitarbeiter
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{report.totalEmployees}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Bruttolohn
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  CHF {Number(report.totals.grossSalary).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Abzüge
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  CHF {Number(report.totals.deductions).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Nettolohn
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">
+                  CHF {Number(report.totals.netSalary).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Deduction Summary */}
+          {report.deductionSummary && report.deductionSummary.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Abzüge Übersicht</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
+                  {report.deductionSummary.map((deduction) => (
+                    <div key={deduction.type} className="border rounded-lg p-3">
+                      <div className="text-sm font-medium text-muted-foreground mb-1">
+                        {deduction.type}
+                      </div>
+                      <div className="text-lg font-bold">
+                        CHF {Number(deduction.amount).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Employee Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>
+                Mitarbeiter Übersicht - {monthNames[selectedMonth - 1]} {selectedYear}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Mitarbeiter</TableHead>
+                    <TableHead className="text-center">Anzahl Auszahlungen</TableHead>
+                    <TableHead className="text-right">Bruttolohn</TableHead>
+                    <TableHead className="text-right">Abzüge</TableHead>
+                    <TableHead className="text-right">Nettolohn</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.employees.map((employee) => (
+                    <TableRow key={employee.employeeId} data-testid={`row-employee-${employee.employeeId}`}>
+                      <TableCell className="font-medium">
+                        {employee.employeeName}
+                      </TableCell>
+                      <TableCell className="text-center">
+                        {employee.paymentsCount}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(employee.totalGrossSalary).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(employee.totalDeductions).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        CHF {Number(employee.totalNetSalary).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  ))}
+                </TableBody>
+                <TableFooter>
+                  <TableRow>
+                    <TableCell colSpan={2} className="font-semibold">
+                      Total {monthNames[selectedMonth - 1]} {selectedYear}
                     </TableCell>
-                    <TableCell className="text-center">
-                      {employee.paymentsCount}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      CHF {Number(employee.totalGrossSalary).toLocaleString("de-CH", {
-                        minimumFractionDigits: 2,
-                        maximumFractionDigits: 2,
-                      })}
-                    </TableCell>
-                    <TableCell className="text-right font-mono">
-                      CHF {Number(employee.totalDeductions).toLocaleString("de-CH", {
+                    <TableCell className="text-right font-mono font-semibold">
+                      CHF {Number(report.totals.grossSalary).toLocaleString("de-CH", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
-                      CHF {Number(employee.totalNetSalary).toLocaleString("de-CH", {
+                      CHF {Number(report.totals.deductions).toLocaleString("de-CH", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                    <TableCell className="text-right font-mono font-semibold">
+                      CHF {Number(report.totals.netSalary).toLocaleString("de-CH", {
                         minimumFractionDigits: 2,
                         maximumFractionDigits: 2,
                       })}
                     </TableCell>
                   </TableRow>
-                ))}
-              </TableBody>
-              <TableFooter>
-                <TableRow>
-                  <TableCell colSpan={2} className="font-semibold">
-                    Gesamt
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
-                    CHF {Number(report.totals.grossSalary).toLocaleString("de-CH", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
-                    CHF {Number(report.totals.deductions).toLocaleString("de-CH", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                  <TableCell className="text-right font-mono font-semibold">
-                    CHF {Number(report.totals.netSalary).toLocaleString("de-CH", {
-                      minimumFractionDigits: 2,
-                      maximumFractionDigits: 2,
-                    })}
-                  </TableCell>
-                </TableRow>
-              </TableFooter>
-            </Table>
-          ) : (
-            <div className="text-center py-12">
+                </TableFooter>
+              </Table>
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
               <p className="text-muted-foreground">
                 Keine Auszahlungen für {monthNames[selectedMonth - 1]} {selectedYear}
               </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
