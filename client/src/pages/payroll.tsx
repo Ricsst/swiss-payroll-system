@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
+import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -113,6 +113,25 @@ export default function Payroll() {
     },
   });
 
+  const deleteMutation = useMutation({
+    mutationFn: (paymentId: string) => 
+      apiRequest("DELETE", `/api/payroll/payments/${paymentId}`, {}),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      toast({
+        title: "Gelöscht",
+        description: "Die Lohnauszahlung wurde erfolgreich gelöscht",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fehler",
+        description: error.message || "Lohnauszahlung konnte nicht gelöscht werden",
+        variant: "destructive",
+      });
+    },
+  });
+
   // Reset selections when payments list changes (e.g., filter changes)
   useEffect(() => {
     if (payments) {
@@ -170,6 +189,13 @@ export default function Payroll() {
       title: "PDF wird generiert",
       description: `${selectedPayments.length} Lohnabrechnung(en) werden exportiert`,
     });
+  };
+
+  // Handle delete with confirmation
+  const handleDelete = (paymentId: string, employeeName: string) => {
+    if (confirm(`Möchten Sie die Lohnauszahlung für ${employeeName} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
+      deleteMutation.mutate(paymentId);
+    }
   };
 
   // Handle sorting
@@ -503,10 +529,23 @@ export default function Payroll() {
                             variant="ghost"
                             size="icon"
                             data-testid={`button-view-${payment.id}`}
+                            title="Anzeigen"
                           >
                             <Eye className="h-4 w-4" />
                           </Button>
                         </Link>
+                        {!payment.isLocked && (
+                          <Button
+                            variant="ghost"
+                            size="icon"
+                            onClick={() => handleDelete(payment.id, `${payment.employee.firstName} ${payment.employee.lastName}`)}
+                            disabled={deleteMutation.isPending}
+                            data-testid={`button-delete-${payment.id}`}
+                            title="Löschen"
+                          >
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        )}
                       </div>
                     </TableCell>
                   </TableRow>
