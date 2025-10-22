@@ -52,7 +52,7 @@ export default function YearlyReport() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const { data: report, isLoading } = useQuery<YearlyReportData>({
-    queryKey: ["/api/reports/yearly", selectedYear],
+    queryKey: [`/api/reports/yearly?year=${selectedYear}`],
   });
 
   const availableYears = [2023, 2024, 2025, 2026];

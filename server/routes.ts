@@ -624,31 +624,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtitle: `${company.name} - ${year}`,
       });
 
-      if (report.monthlyBreakdown && report.monthlyBreakdown.length > 0) {
+      // Add monthly breakdown table
+      if (report.months && report.months.length > 0) {
         pdf.addSection("Monatsübersicht");
-        const monthNames = [
-          "Januar", "Februar", "März", "April", "Mai", "Juni",
-          "Juli", "August", "September", "Oktober", "November", "Dezember"
-        ];
-        const monthRows = report.monthlyBreakdown.map((m: any) => [
-          monthNames[m.month - 1],
-          m.paymentCount.toString(),
-          formatCurrency(m.totalGross),
-          formatCurrency(m.totalDeductions),
-          formatCurrency(m.totalNet),
+        
+        // Filter out months with no payments
+        const monthsWithPayments = report.months.filter((m: any) => m.paymentsCount > 0);
+        
+        const monthRows = monthsWithPayments.map((m: any) => [
+          m.monthName,
+          m.paymentsCount.toString(),
+          formatCurrency(parseFloat(m.grossSalary)),
+          formatCurrency(parseFloat(m.deductions)),
+          formatCurrency(parseFloat(m.netSalary)),
         ]);
+        
         pdf.addTable(
-          ["Monat", "Anzahl", "Brutto", "Abzüge", "Netto"],
+          ["Monat", "Anzahl", "Bruttolohn", "Abzüge", "Nettolohn"],
           monthRows
         );
       }
 
+      // Add totals section
       pdf.addSection("Jahresgesamtsummen");
-      pdf.addText("Anzahl Mitarbeiter", report.totalEmployees.toString());
-      pdf.addText("Anzahl Auszahlungen", report.totalPayments.toString());
-      pdf.addText("Gesamtbruttolohn", formatCurrency(report.totalGross));
-      pdf.addText("Gesamt Abzüge", formatCurrency(report.totalDeductions));
-      pdf.addText("Gesamtnettolohn", formatCurrency(report.totalNet));
+      pdf.addPayrollLine("Anzahl Auszahlungen", report.totals.paymentsCount.toString(), false, false);
+      pdf.addPayrollLine("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)), false, false);
+      pdf.addPayrollLine("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)), false, false);
+      pdf.addSeparatorLine();
+      pdf.addPayrollLine("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
 
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
@@ -980,36 +983,34 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const report = await storage.getYearlyReport(year);
       const company = await storage.getCompany();
 
-      const monthNames = [
-        "Januar", "Februar", "März", "April", "Mai", "Juni",
-        "Juli", "August", "September", "Oktober", "November", "Dezember"
-      ];
-
       const excel = new ExcelGenerator();
 
       const columns = [
         { header: "Monat", key: "month", width: 15 },
-        { header: "Anzahl Auszahlungen", key: "paymentCount", width: 20 },
-        { header: "Bruttolohn (CHF)", key: "totalGross", width: 18 },
-        { header: "Abzüge (CHF)", key: "totalDeductions", width: 18 },
-        { header: "Nettolohn (CHF)", key: "totalNet", width: 18 },
+        { header: "Anzahl Auszahlungen", key: "paymentsCount", width: 20 },
+        { header: "Bruttolohn (CHF)", key: "grossSalary", width: 18 },
+        { header: "Abzüge (CHF)", key: "deductions", width: 18 },
+        { header: "Nettolohn (CHF)", key: "netSalary", width: 18 },
       ];
 
-      const data = (report.monthlyBreakdown || []).map((m: any) => ({
-        month: monthNames[m.month - 1],
-        paymentCount: m.paymentCount,
-        totalGross: formatExcelCurrency(m.totalGross),
-        totalDeductions: formatExcelCurrency(m.totalDeductions),
-        totalNet: formatExcelCurrency(m.totalNet),
+      // Filter out months with no payments
+      const monthsWithPayments = (report.months || []).filter((m: any) => m.paymentsCount > 0);
+
+      const data = monthsWithPayments.map((m: any) => ({
+        month: m.monthName,
+        paymentsCount: m.paymentsCount,
+        grossSalary: formatExcelCurrency(parseFloat(m.grossSalary)),
+        deductions: formatExcelCurrency(parseFloat(m.deductions)),
+        netSalary: formatExcelCurrency(parseFloat(m.netSalary)),
       }));
 
       // Add totals row
       data.push({
         month: "TOTAL",
-        paymentCount: report.totalPayments,
-        totalGross: formatExcelCurrency(report.totalGross),
-        totalDeductions: formatExcelCurrency(report.totalDeductions),
-        totalNet: formatExcelCurrency(report.totalNet),
+        paymentsCount: report.totals.paymentsCount,
+        grossSalary: formatExcelCurrency(parseFloat(report.totals.grossSalary)),
+        deductions: formatExcelCurrency(parseFloat(report.totals.deductions)),
+        netSalary: formatExcelCurrency(parseFloat(report.totals.netSalary)),
       });
 
       excel.addWorksheet(`Jahresabrechnung ${year}`, columns, data);
