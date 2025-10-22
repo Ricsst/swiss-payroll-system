@@ -281,10 +281,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const monthName = monthNames[payment.paymentMonth - 1];
 
-        // Custom header for payroll slip
+        // Custom header for payroll slip with employee name
         pdf.addHeader({
-          title: `Lohnabrechnung     ${monthName} ${payment.paymentYear}`,
-          subtitle: `${employee.firstName} ${employee.lastName} - AHV: ${employee.ahvNumber}`,
+          title: "Lohnabrechnung",
+          subtitle: `${employee.firstName} ${employee.lastName}`,
+          details: `${monthName} ${payment.paymentYear} • AHV: ${employee.ahvNumber}`,
         });
 
         // Payroll items table
@@ -387,10 +388,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pdf = new PDFGenerator();
       
-      // Custom header for payroll slip
+      // Custom header for payroll slip with employee name
       pdf.addHeader({
-        title: `Lohnabrechnung     ${monthName} ${payment.paymentYear}`,
-        subtitle: `${employee.firstName} ${employee.lastName} - AHV: ${employee.ahvNumber}`,
+        title: "Lohnabrechnung",
+        subtitle: `${employee.firstName} ${employee.lastName}`,
+        details: `${monthName} ${payment.paymentYear} • AHV: ${employee.ahvNumber}`,
       });
 
       // Payroll items table

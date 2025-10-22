@@ -4,6 +4,7 @@ import autoTable from "jspdf-autotable";
 export interface PDFOptions {
   title: string;
   subtitle?: string;
+  details?: string;
   footer?: string;
 }
 
@@ -16,15 +17,22 @@ export class PDFGenerator {
   }
 
   addHeader(options: PDFOptions) {
-    this.doc.setFontSize(18);
+    this.doc.setFontSize(14);
     this.doc.setFont("helvetica", "bold");
     this.doc.text(options.title, 20, this.yPosition);
-    this.yPosition += 10;
+    this.yPosition += 8;
 
     if (options.subtitle) {
+      this.doc.setFontSize(16);
+      this.doc.setFont("helvetica", "bold");
+      this.doc.text(options.subtitle, 20, this.yPosition);
+      this.yPosition += 8;
+    }
+
+    if (options.details) {
       this.doc.setFontSize(10);
       this.doc.setFont("helvetica", "normal");
-      this.doc.text(options.subtitle, 20, this.yPosition);
+      this.doc.text(options.details, 20, this.yPosition);
       this.yPosition += 8;
     }
 
