@@ -43,6 +43,17 @@ export default function Payroll() {
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
 
   const buildQueryKey = () => {
+    const key: any[] = ['/api/payroll/payments'];
+    if (selectedYear || selectedMonth) {
+      const params: Record<string, any> = {};
+      if (selectedYear) params.year = selectedYear;
+      if (selectedMonth) params.month = selectedMonth;
+      key.push(params);
+    }
+    return key;
+  };
+
+  const buildQueryUrl = () => {
     const params = new URLSearchParams();
     if (selectedYear) params.append('year', selectedYear.toString());
     if (selectedMonth) params.append('month', selectedMonth.toString());
@@ -51,12 +62,17 @@ export default function Payroll() {
   };
 
   const { data: payments, isLoading } = useQuery<PayrollPaymentWithEmployee[]>({
-    queryKey: [buildQueryKey()],
+    queryKey: buildQueryKey(),
+    queryFn: async () => {
+      const res = await fetch(buildQueryUrl(), { credentials: "include" });
+      if (!res.ok) throw new Error(await res.text());
+      return res.json();
+    },
   });
 
   const lockMutation = useMutation({
     mutationFn: (paymentId: string) => 
-      apiRequest(`/api/payroll/payments/${paymentId}/lock`, "POST", {}),
+      apiRequest("POST", `/api/payroll/payments/${paymentId}/lock`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
       toast({
@@ -75,7 +91,7 @@ export default function Payroll() {
 
   const unlockMutation = useMutation({
     mutationFn: (paymentId: string) => 
-      apiRequest(`/api/payroll/payments/${paymentId}/unlock`, "POST", {}),
+      apiRequest("POST", `/api/payroll/payments/${paymentId}/unlock`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
       toast({
