@@ -1,7 +1,8 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
 import {
   Table,
   TableBody,
@@ -11,9 +12,10 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye } from "lucide-react";
+import { Plus, Eye, Download } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
+import { useToast } from "@/hooks/use-toast";
 
 interface PayrollPaymentWithEmployee {
   id: string;
@@ -33,8 +35,10 @@ interface PayrollPaymentWithEmployee {
 }
 
 export default function Payroll() {
+  const { toast } = useToast();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
+  const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
 
   const buildQueryKey = () => {
     const params = new URLSearchParams();
@@ -48,12 +52,64 @@ export default function Payroll() {
     queryKey: [buildQueryKey()],
   });
 
+  // Reset selections when payments list changes (e.g., filter changes)
+  useEffect(() => {
+    if (payments) {
+      const currentPaymentIds = payments.map(p => p.id);
+      // Keep only selections that are still in the current list
+      setSelectedPayments(prev => prev.filter(id => currentPaymentIds.includes(id)));
+    }
+  }, [payments]);
+
   const monthNames = [
     "Januar", "Februar", "März", "April", "Mai", "Juni",
     "Juli", "August", "September", "Oktober", "November", "Dezember"
   ];
 
   const availableYears = [2023, 2024, 2025, 2026];
+
+  // Handle select all
+  const handleSelectAll = (checked: boolean) => {
+    if (checked && payments) {
+      setSelectedPayments(payments.map(p => p.id));
+    } else {
+      setSelectedPayments([]);
+    }
+  };
+
+  // Handle individual selection
+  const handleSelectPayment = (paymentId: string, checked: boolean) => {
+    if (checked) {
+      setSelectedPayments([...selectedPayments, paymentId]);
+    } else {
+      setSelectedPayments(selectedPayments.filter(id => id !== paymentId));
+    }
+  };
+
+  // Check if all are selected
+  const allSelected = payments && payments.length > 0 && selectedPayments.length === payments.length;
+  const someSelected = selectedPayments.length > 0 && selectedPayments.length < (payments?.length || 0);
+
+  // Handle bulk PDF export
+  const handleBulkPdfExport = () => {
+    if (selectedPayments.length === 0) {
+      toast({
+        title: "Keine Auswahl",
+        description: "Bitte wählen Sie mindestens eine Auszahlung aus",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    // Open PDF export in new tab
+    const paymentIds = selectedPayments.join(',');
+    window.open(`/api/pdf/payroll/bulk?ids=${paymentIds}`, '_blank');
+    
+    toast({
+      title: "PDF wird generiert",
+      description: `${selectedPayments.length} Lohnabrechnung(en) werden exportiert`,
+    });
+  };
 
   return (
     <div className="space-y-6">
@@ -66,12 +122,24 @@ export default function Payroll() {
             Erfassen und verwalten Sie Lohnauszahlungen
           </p>
         </div>
-        <Link href="/payroll/new">
-          <Button data-testid="button-new-payment">
-            <Plus className="h-4 w-4 mr-2" />
-            Neue Auszahlung
-          </Button>
-        </Link>
+        <div className="flex gap-2">
+          {selectedPayments.length > 0 && (
+            <Button 
+              variant="outline"
+              onClick={handleBulkPdfExport}
+              data-testid="button-bulk-pdf-export"
+            >
+              <Download className="h-4 w-4 mr-2" />
+              {selectedPayments.length} als PDF
+            </Button>
+          )}
+          <Link href="/payroll/new">
+            <Button data-testid="button-new-payment">
+              <Plus className="h-4 w-4 mr-2" />
+              Neue Auszahlung
+            </Button>
+          </Link>
+        </div>
       </div>
 
       <Card>
@@ -134,6 +202,14 @@ export default function Payroll() {
             <Table>
               <TableHeader>
                 <TableRow>
+                  <TableHead className="w-12">
+                    <Checkbox
+                      checked={allSelected}
+                      onCheckedChange={handleSelectAll}
+                      aria-label="Alle auswählen"
+                      data-testid="checkbox-select-all"
+                    />
+                  </TableHead>
                   <TableHead>Mitarbeiter</TableHead>
                   <TableHead>Zeitraum</TableHead>
                   <TableHead>Auszahlungsdatum</TableHead>
@@ -146,6 +222,14 @@ export default function Payroll() {
               <TableBody>
                 {payments.map((payment) => (
                   <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
+                    <TableCell>
+                      <Checkbox
+                        checked={selectedPayments.includes(payment.id)}
+                        onCheckedChange={(checked) => handleSelectPayment(payment.id, checked as boolean)}
+                        aria-label={`Auswählen ${payment.employee.firstName} ${payment.employee.lastName}`}
+                        data-testid={`checkbox-payment-${payment.id}`}
+                      />
+                    </TableCell>
                     <TableCell className="font-medium">
                       {payment.employee.firstName} {payment.employee.lastName}
                     </TableCell>

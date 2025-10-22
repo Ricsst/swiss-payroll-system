@@ -67,6 +67,11 @@ export class PDFGenerator {
     this.doc.text(text, 20, pageHeight - 10);
   }
 
+  addPageBreak() {
+    this.doc.addPage();
+    this.yPosition = 20; // Reset y position for new page
+  }
+
   getBlob(): Blob {
     return this.doc.output("blob");
   }

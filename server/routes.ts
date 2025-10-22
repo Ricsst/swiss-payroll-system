@@ -234,6 +234,132 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // PDF EXPORTS
   // ============================================================================
+  // Bulk export must come BEFORE :id route to avoid route matching issues
+  app.get("/api/pdf/payroll/bulk", async (req, res) => {
+    try {
+      const idsParam = req.query.ids as string;
+      if (!idsParam) {
+        return res.status(400).json({ error: "No payment IDs provided" });
+      }
+
+      const paymentIds = idsParam.split(',').map(id => id.trim());
+      if (paymentIds.length === 0) {
+        return res.status(400).json({ error: "No valid payment IDs provided" });
+      }
+
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      // Month names in German
+      const monthNames = [
+        "Januar", "Februar", "März", "April", "Mai", "Juni",
+        "Juli", "August", "September", "Oktober", "November", "Dezember"
+      ];
+
+      const pdf = new PDFGenerator();
+      let isFirstPayment = true;
+
+      // Generate PDF for each payment
+      for (const paymentId of paymentIds) {
+        const payment = await storage.getPayrollPayment(paymentId);
+        if (!payment) {
+          continue; // Skip if payment not found
+        }
+
+        const employee = await storage.getEmployee(payment.employee.id);
+        if (!employee) {
+          continue; // Skip if employee not found
+        }
+
+        // Add page break for subsequent payments
+        if (!isFirstPayment) {
+          pdf.addPageBreak();
+        }
+        isFirstPayment = false;
+
+        const monthName = monthNames[payment.paymentMonth - 1];
+
+        // Custom header for payroll slip
+        pdf.addHeader({
+          title: `Lohnabrechnung     ${monthName} ${payment.paymentYear}`,
+          subtitle: `${employee.firstName} ${employee.lastName} - AHV: ${employee.ahvNumber}`,
+        });
+
+        // Payroll items table
+        const itemRows: any[] = [];
+        if (payment.payrollItems && payment.payrollItems.length > 0) {
+          payment.payrollItems.forEach((item: any) => {
+            const quantity = item.hours || "";
+            const rate = item.hourlyRate || "";
+            
+            itemRows.push([
+              item.type,
+              "",  // % column (empty for payroll items)
+              quantity,
+              rate ? formatCurrency(parseFloat(rate)) : "",
+              formatCurrency(parseFloat(item.amount)) + " +"
+            ]);
+          });
+        }
+
+        pdf.addTable(
+          ["Legende", "%", "Menge", "Ansatz", "Betrag"],
+          itemRows
+        );
+
+        // Gross salary
+        pdf.addSection("BRUTTOLOHN");
+        pdf.addText("Total", formatCurrency(parseFloat(payment.grossSalary)));
+
+        // Deductions table
+        const deductionRows: any[] = [];
+        if (payment.deductions && payment.deductions.length > 0) {
+          payment.deductions.forEach((d: any) => {
+            const percentage = d.percentage ? formatPercentage(parseFloat(d.percentage)) : "";
+            const baseAmount = d.baseAmount ? formatCurrency(parseFloat(d.baseAmount)) : "";
+            
+            deductionRows.push([
+              `${d.type} - ${d.description || "Abzug"}`,
+              percentage,
+              "",  // Menge (empty for deductions)
+              baseAmount,
+              formatCurrency(parseFloat(d.amount)) + " -"
+            ]);
+          });
+        }
+
+        if (deductionRows.length > 0) {
+          pdf.addTable(
+            ["Legende", "%", "Menge", "Ansatz", "Betrag"],
+            deductionRows
+          );
+        }
+
+        // Total deductions
+        pdf.addSection("TOTAL ABZÜGE");
+        pdf.addText("Total", formatCurrency(parseFloat(payment.totalDeductions)));
+
+        // Net salary
+        pdf.addSection("NETTOLOHN");
+        pdf.addText("Total", formatCurrency(parseFloat(payment.netSalary)));
+
+        pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+      }
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Lohnabrechnungen_${formatDate(new Date())}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Bulk PDF Generation Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/pdf/payroll/:id", async (req, res) => {
     try {
       const payment = await storage.getPayrollPayment(req.params.id);
