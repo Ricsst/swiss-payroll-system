@@ -19,14 +19,19 @@ const menuItems = [
     icon: LayoutDashboard,
   },
   {
-    title: "Mitarbeiter",
-    url: "/employees",
-    icon: Users,
+    title: "Lohnarten",
+    url: "/payroll-item-types",
+    icon: Tags,
   },
   {
     title: "Firma",
     url: "/company",
     icon: Building2,
+  },
+  {
+    title: "Mitarbeiter",
+    url: "/employees",
+    icon: Users,
   },
   {
     title: "Lohnerfassung",
@@ -39,16 +44,6 @@ const menuItems = [
     icon: Wallet,
   },
   {
-    title: "Lohnarten",
-    url: "/payroll-item-types",
-    icon: Tags,
-  },
-  {
-    title: "Lohnvorlagen",
-    url: "/templates",
-    icon: FileCheck,
-  },
-  {
     title: "Monatsabrechnung",
     url: "/monthly-report",
     icon: Calendar,
@@ -57,6 +52,11 @@ const menuItems = [
     title: "Jahresabrechnung",
     url: "/yearly-report",
     icon: FileText,
+  },
+  {
+    title: "Lohnvorlagen",
+    url: "/templates",
+    icon: FileCheck,
   },
 ];
 
