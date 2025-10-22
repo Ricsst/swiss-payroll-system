@@ -337,7 +337,7 @@ export default function Payroll() {
                             data-testid={`button-unlock-${payment.id}`}
                             title="Entsperren"
                           >
-                            <Unlock className="h-4 w-4" />
+                            <Lock className="h-4 w-4" />
                           </Button>
                         ) : (
                           <Button
@@ -348,7 +348,7 @@ export default function Payroll() {
                             data-testid={`button-lock-${payment.id}`}
                             title="Abschliessen"
                           >
-                            <Lock className="h-4 w-4" />
+                            <Unlock className="h-4 w-4" />
                           </Button>
                         )}
                         <Link href={`/payroll/${payment.id}`}>
