@@ -102,6 +102,10 @@ The employee list now supports sorting by last name and gender:
 - Client-side sorting using localeCompare for proper alphabetical ordering
 - Icons from lucide-react for visual indicators
 
+**Additional Sorting:**
+- Lohnerfassung (Payroll Entry) page: Employee dropdown sorted by last name descending (Z-A)
+- Employee navigation buttons follow the same Z-A order for consistent user experience
+
 ### Employee Payroll Overview Page (October 22, 2025)
 A new page displays a comprehensive yearly payroll overview for individual employees:
 

@@ -159,8 +159,10 @@ export default function EmployeePayroll() {
     },
   });
 
-  // Get active employees
-  const activeEmployees = employees.filter(e => e.isActive);
+  // Get active employees sorted by last name descending (Z-A)
+  const activeEmployees = employees
+    .filter(e => e.isActive)
+    .sort((a, b) => b.lastName.localeCompare(a.lastName));
   const currentEmployeeIndex = activeEmployees.findIndex(e => e.id === selectedEmployeeId);
   const canNavigatePrevious = currentEmployeeIndex > 0;
   const canNavigateNext = currentEmployeeIndex >= 0 && currentEmployeeIndex < activeEmployees.length - 1;
