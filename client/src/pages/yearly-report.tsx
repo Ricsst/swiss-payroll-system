@@ -123,19 +123,80 @@ export default function YearlyReport() {
         </CardContent>
       </Card>
 
-      <Card>
-        <CardHeader>
-          <CardTitle>Jahresabrechnung {selectedYear}</CardTitle>
-        </CardHeader>
-        <CardContent>
-          {isLoading ? (
-            <div className="space-y-2">
-              {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12].map((i) => (
-                <Skeleton key={i} className="h-12 w-full" />
-              ))}
-            </div>
-          ) : report && report.months.length > 0 ? (
-            <Table>
+      {isLoading ? (
+        <div className="space-y-2">
+          {[1, 2, 3].map((i) => (
+            <Skeleton key={i} className="h-12 w-full" />
+          ))}
+        </div>
+      ) : report && report.totals && report.totals.paymentsCount > 0 ? (
+        <>
+          {/* Summary Cards */}
+          <div className="grid grid-cols-1 md:grid-cols-4 gap-4">
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Auszahlungen
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">{report.totals.paymentsCount}</div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Bruttolohn
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  CHF {Number(report.totals.grossSalary).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Total Abzüge
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold">
+                  CHF {Number(report.totals.deductions).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+            <Card>
+              <CardHeader className="pb-2">
+                <CardTitle className="text-sm font-medium text-muted-foreground">
+                  Nettolohn
+                </CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-2xl font-bold text-primary">
+                  CHF {Number(report.totals.netSalary).toLocaleString("de-CH", {
+                    minimumFractionDigits: 2,
+                    maximumFractionDigits: 2,
+                  })}
+                </div>
+              </CardContent>
+            </Card>
+          </div>
+
+          {/* Monthly Breakdown Table */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Monatsübersicht - {selectedYear}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
               <TableHeader>
                 <TableRow>
                   <TableHead>Monat</TableHead>
@@ -200,15 +261,20 @@ export default function YearlyReport() {
                 </TableRow>
               </TableFooter>
             </Table>
-          ) : (
-            <div className="text-center py-12">
+            </CardContent>
+          </Card>
+        </>
+      ) : (
+        <Card>
+          <CardContent className="py-12">
+            <div className="text-center">
               <p className="text-muted-foreground">
                 Keine Auszahlungen für {selectedYear}
               </p>
             </div>
-          )}
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
