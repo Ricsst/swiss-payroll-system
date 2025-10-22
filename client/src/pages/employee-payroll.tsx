@@ -92,10 +92,15 @@ export default function EmployeePayroll() {
             updated["02"].hourlyRate = employee.hourlyRate;
           }
           
-          // Set Kinderzulagen default value (code "09")
-          if (employee.childAllowanceAmount && updated["09"]) {
-            updated["09"].amount = employee.childAllowanceAmount;
-            updated["09"].description = employee.childAllowanceNote || "";
+          // Set Kinderzulagen default value - find by name instead of hardcoded code
+          if (employee.childAllowanceAmount) {
+            const kinderzulagenType = payrollItemTypes.find(
+              t => t.name.toLowerCase().includes("kinderzulagen")
+            );
+            if (kinderzulagenType && updated[kinderzulagenType.code]) {
+              updated[kinderzulagenType.code].amount = employee.childAllowanceAmount;
+              updated[kinderzulagenType.code].description = employee.childAllowanceNote || "";
+            }
           }
           
           return updated;

@@ -71,3 +71,25 @@ Preferred communication style: Simple, everyday language.
 
 ### Fonts
 - **Google Fonts** (Inter, JetBrains Mono)
+
+## Recent Features (October 2025)
+
+### Dynamic Wage Type Mapping for Child Allowances (Latest)
+Child allowances now automatically appear under the correct wage type "Kinderzulagen" instead of generic "Zulagen":
+
+**How It Works:**
+- The system dynamically searches for a wage type with "Kinderzulagen" in the name (case-insensitive)
+- No hardcoded wage type codes - users can create "Kinderzulagen" with any code they prefer
+- When an employee with child allowance data is selected in payroll entry, the amount and note auto-fill under "Kinderzulagen"
+- Flexible and adaptable to different company configurations
+
+**Benefits:**
+- Accurate categorization of child allowances as separate wage type
+- Better reporting and deduction calculations
+- Users can configure "Kinderzulagen" as not subject to social insurance deductions
+- Clear separation from generic "Zulagen" (allowances)
+
+**Implementation:**
+- Database: "Kinderzulagen" wage type (code 15) created, not subject to AHV/ALV/NBU/BVG/QST
+- Frontend: Auto-fill logic searches dynamically by wage type name in `client/src/pages/employee-payroll.tsx`
+- Tested successfully with employee defaults auto-filling correctly
