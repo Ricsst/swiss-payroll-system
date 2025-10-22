@@ -40,6 +40,7 @@ interface YearlyReportData {
     paymentsCount: number;
   }>;
   payrollItemSummary: Array<{
+    code: string;
     type: string;
     quantity: string;
     amount: string;
@@ -224,6 +225,7 @@ export default function YearlyReport() {
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead>Nr</TableHead>
                     <TableHead>Legende</TableHead>
                     <TableHead className="text-right">Menge</TableHead>
                     <TableHead className="text-right">Betrag</TableHead>
@@ -233,6 +235,7 @@ export default function YearlyReport() {
                   {report.payrollItemSummary && report.payrollItemSummary.length > 0 ? (
                     report.payrollItemSummary.map((item, idx) => (
                       <TableRow key={idx}>
+                        <TableCell className="font-mono text-sm">{item.code}</TableCell>
                         <TableCell className="font-medium">{item.type}</TableCell>
                         <TableCell className="text-right font-mono">{item.quantity}</TableCell>
                         <TableCell className="text-right font-mono">
@@ -245,12 +248,13 @@ export default function YearlyReport() {
                     ))
                   ) : (
                     <TableRow>
-                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                      <TableCell colSpan={4} className="text-center text-muted-foreground">
                         Keine Lohnarten verfügbar
                       </TableCell>
                     </TableRow>
                   )}
                   <TableRow className="font-semibold border-t-2">
+                    <TableCell></TableCell>
                     <TableCell>BRUTTOLOHN</TableCell>
                     <TableCell></TableCell>
                     <TableCell className="text-right font-mono">

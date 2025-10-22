@@ -479,6 +479,13 @@ export class DatabaseStorage implements IStorage {
       .from(payrollPayments)
       .where(eq(payrollPayments.paymentYear, year));
 
+    // Get all payroll item types to map names to codes
+    const allPayrollItemTypes = await db.select().from(payrollItemTypes);
+    const typeMap = new Map<string, { code: string; name: string }>();
+    for (const type of allPayrollItemTypes) {
+      typeMap.set(type.name, { code: type.code, name: type.name });
+    }
+
     // Get all payroll items for the year
     const paymentIds = allPayments.map(p => p.id);
     const allPayrollItems = paymentIds.length > 0 
@@ -496,27 +503,32 @@ export class DatabaseStorage implements IStorage {
           .where(sql`${deductions.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
       : [];
 
-    // Aggregate payroll items by type
-    const payrollItemBreakdown: Record<string, { quantity: number; amount: number }> = {};
+    // Aggregate payroll items by type with codes
+    const payrollItemBreakdown: Record<string, { code: string; name: string; quantity: number; amount: number }> = {};
     for (const item of allPayrollItems) {
       const typeName = item.type;
       const hours = item.hours ? parseFloat(item.hours) : 0;
       const amount = parseFloat(item.amount);
+      
+      const typeInfo = typeMap.get(typeName);
+      const code = typeInfo?.code || typeName;
+      const name = typeInfo?.name || typeName;
 
-      if (!payrollItemBreakdown[typeName]) {
-        payrollItemBreakdown[typeName] = { quantity: 0, amount: 0 };
+      if (!payrollItemBreakdown[code]) {
+        payrollItemBreakdown[code] = { code, name, quantity: 0, amount: 0 };
       }
-      payrollItemBreakdown[typeName].quantity += hours || 1; // Use hours if available, otherwise count as 1
-      payrollItemBreakdown[typeName].amount += amount;
+      payrollItemBreakdown[code].quantity += hours || 1;
+      payrollItemBreakdown[code].amount += amount;
     }
 
     const payrollItemSummary = Object.entries(payrollItemBreakdown)
-      .map(([type, data]) => ({
-        type,
+      .map(([_, data]) => ({
+        code: data.code,
+        type: data.name,
         quantity: data.quantity.toFixed(2),
         amount: data.amount.toFixed(2),
       }))
-      .sort((a, b) => a.type.localeCompare(b.type));
+      .sort((a, b) => a.code.localeCompare(b.code));
 
     // Aggregate deductions by type
     const deductionBreakdown: Record<string, number> = {};
