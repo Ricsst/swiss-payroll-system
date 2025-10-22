@@ -527,45 +527,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // ========== PAGE 2: Lohnarten- und Abzugstotale ==========
       pdf.addPageBreak();
 
-      pdf.addHeader({
-        title: "Lohnarten- und Abzugstotale",
-        subtitle: `${company.name} - ${monthNames[month - 1]} ${year}`,
-      });
+      pdf.addPayrollTitle("Lohnarten- und Abzugstotale", `${company.name} - ${monthNames[month - 1]} ${year}`);
 
       // Payroll Items Summary (Lohnarten)
       if (report.payrollItemSummary && report.payrollItemSummary.length > 0) {
         pdf.addSection("LOHNARTEN");
-        const payrollItemRows = report.payrollItemSummary.map((item: any) => [
-          item.type,
-          formatCurrency(parseFloat(item.amount)),
-        ]);
-        pdf.addTable(
-          ["Lohnart", "Betrag"],
-          payrollItemRows
-        );
+        
+        // Add each payroll item as a line
+        report.payrollItemSummary.forEach((item: any) => {
+          pdf.addPayrollLine(item.type, formatCurrency(parseFloat(item.amount)), false, false);
+        });
 
-        pdf.addSection("TOTAL BRUTTOLOHN");
-        pdf.addText("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)));
+        pdf.addSeparatorLine();
+        pdf.addPayrollLine("TOTAL BRUTTOLOHN", formatCurrency(parseFloat(report.totals.grossSalary)), true, false);
+        pdf.addSeparatorLine();
       }
 
       // Deduction Summary
       if (report.deductionSummary && report.deductionSummary.length > 0) {
         pdf.addSection("ABZÜGE");
-        const deductionRows = report.deductionSummary.map((ded: any) => [
-          ded.type,
-          formatCurrency(parseFloat(ded.amount)),
-        ]);
-        pdf.addTable(
-          ["Abzugsart", "Betrag"],
-          deductionRows
-        );
+        
+        // Add each deduction as a line
+        report.deductionSummary.forEach((ded: any) => {
+          pdf.addPayrollLine(ded.type, formatCurrency(parseFloat(ded.amount)), false, true);
+        });
 
-        pdf.addSection("TOTAL ABZÜGE");
-        pdf.addText("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)));
+        pdf.addSeparatorLine();
+        pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(report.totals.deductions)), true, true);
+        pdf.addSeparatorLine();
       }
 
-      pdf.addSection("NETTOLOHN");
-      pdf.addText("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)));
+      pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
 
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 

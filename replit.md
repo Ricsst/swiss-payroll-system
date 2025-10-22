@@ -74,7 +74,26 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Features (October 2025)
 
-### Dynamic Wage Type Mapping for Child Allowances (Latest)
+### Improved Monthly Report Layout (Latest)
+The monthly report PDF has been redesigned for better clarity and readability:
+
+**Lohnarten Names Instead of Codes:**
+- Payroll item types now display full names (e.g., "Monatslohn", "Kinderzulagen") instead of codes (e.g., "01", "15")
+- Makes reports easier to read and understand
+- Automatically maps codes to names from the payroll item types configuration
+
+**Single-Column Layout for Totals:**
+- All totals displayed in a vertical, single-column format (like payroll slips)
+- Clear structure: Lohnarten → TOTAL BRUTTOLOHN → Abzüge → TOTAL ABZÜGE → NETTOLOHN
+- Separator lines between sections for improved visual clarity
+- Right-aligned amounts with consistent formatting
+
+**Benefits:**
+- Professional, easy-to-read layout
+- Consistent design across payroll slips and reports
+- Better suited for printing and archival
+
+### Dynamic Wage Type Mapping for Child Allowances
 Child allowances now automatically appear under the correct wage type "Kinderzulagen" instead of generic "Zulagen":
 
 **How It Works:**

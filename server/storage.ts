@@ -319,6 +319,11 @@ export class DatabaseStorage implements IStorage {
         )`
       );
 
+    // Get payroll item types for name mapping
+    const allPayrollItemTypes = await db
+      .select()
+      .from(payrollItemTypes);
+
     // Group by employee
     const employeeMap = new Map<string, any>();
     
@@ -388,20 +393,29 @@ export class DatabaseStorage implements IStorage {
       .sort((a, b) => a.type.localeCompare(b.type));
 
     // Calculate payroll item breakdowns by type
-    const payrollItemBreakdown: Record<string, number> = {};
+    const payrollItemBreakdown: Record<string, { name: string; amount: number }> = {};
     for (const item of allPayrollItems) {
-      const type = item.type;
+      const typeCode = item.type;
       const amount = parseFloat(item.amount);
-      payrollItemBreakdown[type] = (payrollItemBreakdown[type] || 0) + amount;
+      
+      // Find the name of this payroll item type
+      const itemType = allPayrollItemTypes.find(t => t.code === typeCode);
+      const typeName = itemType ? itemType.name : typeCode;
+      
+      if (!payrollItemBreakdown[typeCode]) {
+        payrollItemBreakdown[typeCode] = { name: typeName, amount: 0 };
+      }
+      payrollItemBreakdown[typeCode].amount += amount;
     }
 
-    // Convert to array and sort
+    // Convert to array and sort by code
     const payrollItemSummary = Object.entries(payrollItemBreakdown)
-      .map(([type, amount]) => ({
-        type,
-        amount: amount.toFixed(2),
+      .map(([code, data]) => ({
+        code,
+        type: data.name,
+        amount: data.amount.toFixed(2),
       }))
-      .sort((a, b) => a.type.localeCompare(b.type));
+      .sort((a, b) => a.code.localeCompare(b.code));
 
     return {
       month,
