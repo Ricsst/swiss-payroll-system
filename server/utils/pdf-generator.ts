@@ -87,6 +87,60 @@ export class PDFGenerator {
   save(filename: string) {
     this.doc.save(filename);
   }
+
+  // Method for payroll slip with window envelope layout (right window)
+  addWindowEnvelopeAddress(name: string, address: string) {
+    // Position for right window envelope (C5/C6)
+    // Typically 125mm from left, 45mm from top
+    const xPos = 125; // mm from left edge
+    const yPos = 45;  // mm from top edge
+    
+    this.doc.setFontSize(11);
+    this.doc.setFont("helvetica", "normal");
+    
+    const addressLines = [name, ...address.split('\n')];
+    addressLines.forEach((line, index) => {
+      this.doc.text(line, xPos, yPos + (index * 5));
+    });
+  }
+
+  addPayrollTitle(title: string, period: string) {
+    this.doc.setFontSize(16);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(title, 20, 20);
+    
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text(period, 20, 28);
+    
+    this.yPosition = 80; // Start content below address window
+  }
+
+  addPayrollLine(label: string, amount: string, isTotal: boolean = false, isNegative: boolean = false) {
+    const fontSize = isTotal ? 11 : 10;
+    const fontStyle = isTotal ? "bold" : "normal";
+    
+    this.doc.setFontSize(fontSize);
+    this.doc.setFont("helvetica", fontStyle);
+    
+    // Label on the left
+    this.doc.text(label, 20, this.yPosition);
+    
+    // Amount on the right (right-aligned)
+    const amountText = isNegative ? `- ${amount}` : amount;
+    const pageWidth = this.doc.internal.pageSize.width;
+    const textWidth = this.doc.getTextWidth(amountText);
+    this.doc.text(amountText, pageWidth - 20 - textWidth, this.yPosition);
+    
+    this.yPosition += isTotal ? 8 : 6;
+  }
+
+  addSeparatorLine() {
+    const pageWidth = this.doc.internal.pageSize.width;
+    this.doc.setDrawColor(200, 200, 200);
+    this.doc.line(20, this.yPosition, pageWidth - 20, this.yPosition);
+    this.yPosition += 5;
+  }
 }
 
 export function formatCurrency(amount: number | string): string {
