@@ -115,11 +115,14 @@ Employees can now have pre-configured default payroll values that automatically 
 - **hourlyRate** (numeric): Default hourly wage rate in CHF
 - **bvgDeductionAmount** (numeric): BVG deduction as fixed CHF amount
 - **bvgDeductionPercentage** (numeric): BVG deduction as percentage of BVG-subject salary
+- **childAllowanceAmount** (numeric): Default child allowance amount in CHF
+- **childAllowanceNote** (text): Note/description for child allowances (e.g., "2 Kinder")
 
 **Key Features:**
 - Default values configured in employee profile under "Lohnvorgaben" section
 - Values auto-populate in payroll entry when employee is selected
 - Monthly salary (code "01") and hourly rate (code "02") pre-fill automatically
+- Child allowances (code "09") pre-fill with amount and note from employee settings
 - BVG deduction uses employee-specific rate if configured:
   - Fixed CHF amount takes priority
   - Percentage rate as fallback
@@ -170,6 +173,7 @@ A streamlined interface for efficient payroll processing with the following capa
 **Employee Default Values Auto-Fill**
 - Loads employee-specific defaults when employee is selected
 - Pre-fills monthly salary and hourly rate from employee profile
+- Pre-fills child allowances with amount and note from employee settings
 - BVG deduction respects employee-specific settings (CHF or %)
 - All defaults can be overridden manually during entry
 

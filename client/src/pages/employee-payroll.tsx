@@ -92,6 +92,12 @@ export default function EmployeePayroll() {
             updated["02"].hourlyRate = employee.hourlyRate;
           }
           
+          // Set Kinderzulagen default value (code "09")
+          if (employee.childAllowanceAmount && updated["09"]) {
+            updated["09"].amount = employee.childAllowanceAmount;
+            updated["09"].description = employee.childAllowanceNote || "";
+          }
+          
           return updated;
         });
       }

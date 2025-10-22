@@ -83,6 +83,8 @@ export default function Employees() {
       hourlyRate: undefined,
       bvgDeductionAmount: undefined,
       bvgDeductionPercentage: undefined,
+      childAllowanceAmount: undefined,
+      childAllowanceNote: "",
       isActive: true,
       companyId: "",
     },
@@ -185,6 +187,8 @@ export default function Employees() {
       hourlyRate: employee.hourlyRate || undefined,
       bvgDeductionAmount: employee.bvgDeductionAmount || undefined,
       bvgDeductionPercentage: employee.bvgDeductionPercentage || undefined,
+      childAllowanceAmount: employee.childAllowanceAmount || undefined,
+      childAllowanceNote: employee.childAllowanceNote || "",
       isActive: employee.isActive,
       companyId: employee.companyId,
     });
@@ -652,6 +656,46 @@ export default function Employees() {
                   <p className="text-xs text-muted-foreground">
                     Hinweis: BVG-Abzug kann entweder in CHF oder in % angegeben werden (nur eine Eingabe möglich)
                   </p>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="childAllowanceAmount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Kinderzulagen (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
+                              placeholder="0.00"
+                              data-testid="input-childallowanceamount"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="childAllowanceNote"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Bemerkung zu Kinderzulagen</FormLabel>
+                          <FormControl>
+                            <Input
+                              {...field}
+                              placeholder="z.B. 2 Kinder"
+                              data-testid="input-childallowancenote"
+                            />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <FormField

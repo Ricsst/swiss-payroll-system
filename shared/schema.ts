@@ -81,6 +81,8 @@ export const employees = pgTable("employees", {
   hourlyRate: numeric("hourly_rate", { precision: 10, scale: 2 }), // Stundenlohn (default)
   bvgDeductionAmount: numeric("bvg_deduction_amount", { precision: 10, scale: 2 }), // BVG-Abzug in CHF (either this OR percentage)
   bvgDeductionPercentage: numeric("bvg_deduction_percentage", { precision: 5, scale: 2 }), // BVG-Abzug in % (either this OR amount)
+  childAllowanceAmount: numeric("child_allowance_amount", { precision: 10, scale: 2 }), // Kinderzulagen in CHF
+  childAllowanceNote: text("child_allowance_note"), // Bemerkung für Kinderzulagen
   
   // Status
   isActive: boolean("is_active").notNull().default(true),
