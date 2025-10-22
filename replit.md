@@ -80,9 +80,10 @@ Preferred communication style: Simple, everyday language.
 
 **Core Tables**
 - `companies`: Single company configuration with Swiss insurance rates (AHV, ALV, SUVA)
-- `employees`: Employee master data with Swiss-specific fields (AHV number, banking info)
+- `employees`: Employee master data with Swiss-specific fields (AHV number, banking info, NBU insurance status, Rentner status)
+- `payroll_item_types`: Configurable wage types with deduction applicability flags (AHV, ALV, NBU, BVG, QST)
 - `payroll_payments`: Payment header with period dates and totals
-- `payroll_items`: Line items per payment supporting multiple simultaneous salary types (Monatslohn, Stundenlohn, Zulagen, Provision, etc.)
+- `payroll_items`: Line items per payment referencing payroll_item_types by code
 - `deductions`: Deductions per payment (AHV, ALV, SUVA, BVG, taxes, etc.)
 - `payroll_templates`: Reusable templates with predefined items and deductions in JSON format
 
@@ -95,21 +96,51 @@ Preferred communication style: Simple, everyday language.
 - Separate validation schemas for creation vs update (e.g., `insertPayrollItemWithoutPaymentIdSchema` for client-to-server communication)
 
 **Swiss-Specific Calculations**
-- AHV (old-age insurance): Employee and employer rates (5.3%), rentner allowance
+- AHV (old-age insurance): Employee and employer rates (5.3%), rentner allowance (CHF 1400)
 - ALV (unemployment insurance): Two-tier system (1.1%) based on income thresholds
-- SUVA/NBU (accident insurance): Gender-specific rates (1.168%) with income caps
-- BVG (pension fund): Approximately 3.5% of gross salary
+- SUVA/NBU (accident insurance): Gender-specific rates (1.168%) with income caps, only for NBU-insured employees
+- BVG (pension fund): Approximately 3.5% of BVG-subject salary
 - All rates configurable per company for flexibility
-- Automatic calculation in employee payroll entry form
+- **Smart base amount calculation**: Each deduction type sums only applicable wage types based on payroll_item_types flags
+- Automatic calculation in employee payroll entry form with real-time preview
 
 ## Recent Features (October 2025)
+
+### Configurable Payroll Item Types (Lohnarten) System
+A flexible wage type configuration system allowing administrators to define which deductions apply to each salary component:
+
+**Payroll Item Types Management Page (`/payroll-item-types`)**
+- Create, edit, and deactivate custom payroll item types (Lohnarten)
+- Configure deduction applicability per wage type: AHV, ALV, NBU, BVG, QST
+- Pre-populated with 11 standard Swiss wage types
+- Only active wage types appear in payroll entry interface
+- Sortable order for consistent display
+
+**Smart Deduction Calculation Engine**
+- Deductions calculated intelligently based on wage type configuration
+- Example: Spesen (expense reimbursements) excluded from all social insurance deductions
+- Each deduction type (AHV, ALV, NBU, BVG, QST) sums only applicable wage types
+- Supports mixed scenarios: e.g., CHF 5000 Monatslohn + CHF 500 Spesen = CHF 5500 gross, but deductions only on CHF 5000
+
+**Standard Swiss Wage Types (Pre-configured)**
+1. Monatslohn (01) - All deductions apply
+2. Stundenlohn (02) - All deductions apply
+3. Überstundenzuschlag (03) - All deductions apply
+4. 13. Monatslohn (04) - All deductions apply
+5. Bonus (05) - All deductions apply
+6. Provision (06) - All deductions apply
+7. Kommission (07) - All deductions apply
+8. Naturallohn (08) - All deductions apply
+9. Zulagen (09) - All deductions apply
+10. Feiertagsentschädigung (10) - AHV, ALV, NBU, BVG (no QST)
+11. Spesen (11) - NO deductions (expense reimbursement)
 
 ### Employee Payroll Entry Page (`/employee-payroll`)
 A streamlined interface for efficient payroll processing with the following capabilities:
 
-**Multiple Simultaneous Salary Types**
-- Add unlimited payroll items in a single payment
-- Support for all Swiss salary types: Monatslohn, Stundenlohn, Zulagen, Provision, Kommission, Bonus, 13. Monatslohn, Spesen, Naturallohn, Feiertagsentschädigung, Überstundenzuschlag
+**Dynamic Wage Type Loading**
+- Automatically loads active payroll item types from database
+- Supports unlimited payroll items in a single payment
 - Automatic calculation for hourly wages (hours × hourly rate = amount)
 
 **Employee Navigation**
@@ -131,6 +162,12 @@ A streamlined interface for efficient payroll processing with the following capa
   - BVG: ~3.5% of gross
 - Net salary calculation (gross - total deductions)
 - Live preview of all calculations before saving
+
+**Intelligent Deduction Preview**
+- Real-time calculation of deductions based on wage type configuration
+- Separate base amounts per deduction type (AHV, ALV, NBU, BVG)
+- Respects employee-specific rules (NBU insurance status, Rentner allowance)
+- Live preview of net salary before saving
 
 **Data Validation**
 - Uses `insertPayrollItemWithoutPaymentIdSchema` for payroll items (omits `payrollPaymentId` during creation)

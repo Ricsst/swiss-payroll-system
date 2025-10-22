@@ -100,6 +100,40 @@ export type InsertEmployee = z.infer<typeof insertEmployeeSchema>;
 export type Employee = typeof employees.$inferSelect;
 
 // ============================================================================
+// PAYROLL ITEM TYPES (Lohnarten)
+// Configuration for different types of salary items
+// ============================================================================
+export const payrollItemTypes = pgTable("payroll_item_types", {
+  id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
+  companyId: varchar("company_id").notNull().references(() => companies.id, { onDelete: 'cascade' }),
+  
+  code: text("code").notNull(), // e.g., "01", "02", "03"
+  name: text("name").notNull(), // e.g., "Monatslohn", "Stundenlohn"
+  
+  // Which deductions apply to this payroll item type
+  subjectToAhv: boolean("subject_to_ahv").notNull().default(true), // J/N for AHV
+  subjectToAlv: boolean("subject_to_alv").notNull().default(true), // J/N for ALV
+  subjectToNbu: boolean("subject_to_nbu").notNull().default(true), // J/N for NBU
+  subjectToBvg: boolean("subject_to_bvg").notNull().default(true), // J/N for BVG
+  subjectToQst: boolean("subject_to_qst").notNull().default(true), // J/N for QST (Quellensteuer)
+  
+  isActive: boolean("is_active").notNull().default(true),
+  sortOrder: integer("sort_order").notNull().default(0),
+  
+  createdAt: timestamp("created_at").defaultNow().notNull(),
+  updatedAt: timestamp("updated_at").defaultNow().notNull(),
+});
+
+export const insertPayrollItemTypeSchema = createInsertSchema(payrollItemTypes).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+
+export type InsertPayrollItemType = z.infer<typeof insertPayrollItemTypeSchema>;
+export type PayrollItemType = typeof payrollItemTypes.$inferSelect;
+
+// ============================================================================
 // PAYROLL PAYMENTS (Lohnauszahlungen)
 // Multiple payments can be made per month (e.g., weekly)
 // ============================================================================

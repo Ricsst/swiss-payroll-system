@@ -3,6 +3,7 @@ import {
   employees,
   payrollPayments,
   payrollItems,
+  payrollItemTypes,
   deductions,
   payrollTemplates,
   type Company,
@@ -13,6 +14,8 @@ import {
   type InsertPayrollPayment,
   type PayrollItem,
   type InsertPayrollItem,
+  type PayrollItemType,
+  type InsertPayrollItemType,
   type Deduction,
   type InsertDeduction,
   type PayrollTemplate,
@@ -42,6 +45,13 @@ export interface IStorage {
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment>;
+  
+  // Payroll Item Types (Lohnarten)
+  getPayrollItemTypes(): Promise<PayrollItemType[]>;
+  getPayrollItemType(id: string): Promise<PayrollItemType | undefined>;
+  createPayrollItemType(itemType: InsertPayrollItemType): Promise<PayrollItemType>;
+  updatePayrollItemType(id: string, itemType: InsertPayrollItemType): Promise<PayrollItemType>;
+  deletePayrollItemType(id: string): Promise<void>;
   
   // Payroll Templates
   getPayrollTemplates(): Promise<PayrollTemplate[]>;
@@ -512,6 +522,45 @@ export class DatabaseStorage implements IStorage {
       paymentsThisMonth: currentMonthPayments.length,
       totalPayrollThisMonth: totalPayrollThisMonth.toFixed(2),
     };
+  }
+
+  // ============================================================================
+  // PAYROLL ITEM TYPES (Lohnarten)
+  // ============================================================================
+  async getPayrollItemTypes(): Promise<PayrollItemType[]> {
+    return db.select().from(payrollItemTypes).orderBy(payrollItemTypes.sortOrder, payrollItemTypes.code);
+  }
+
+  async getPayrollItemType(id: string): Promise<PayrollItemType | undefined> {
+    const [itemType] = await db
+      .select()
+      .from(payrollItemTypes)
+      .where(eq(payrollItemTypes.id, id));
+    return itemType || undefined;
+  }
+
+  async createPayrollItemType(insertItemType: InsertPayrollItemType): Promise<PayrollItemType> {
+    const [itemType] = await db
+      .insert(payrollItemTypes)
+      .values(insertItemType)
+      .returning();
+    return itemType;
+  }
+
+  async updatePayrollItemType(
+    id: string,
+    insertItemType: InsertPayrollItemType
+  ): Promise<PayrollItemType> {
+    const [itemType] = await db
+      .update(payrollItemTypes)
+      .set({ ...insertItemType, updatedAt: new Date() })
+      .where(eq(payrollItemTypes.id, id))
+      .returning();
+    return itemType;
+  }
+
+  async deletePayrollItemType(id: string): Promise<void> {
+    await db.delete(payrollItemTypes).where(eq(payrollItemTypes.id, id));
   }
 
   // ============================================================================

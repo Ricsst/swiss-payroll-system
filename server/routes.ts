@@ -1,7 +1,7 @@
 import type { Express } from "express";
 import { createServer, type Server } from "http";
 import { storage } from "./storage";
-import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertDeductionSchema, insertPayrollTemplateSchema, insertPayrollItemWithoutPaymentIdSchema, insertDeductionWithoutPaymentIdSchema } from "@shared/schema";
+import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertPayrollItemTypeSchema, insertDeductionSchema, insertPayrollTemplateSchema, insertPayrollItemWithoutPaymentIdSchema, insertDeductionWithoutPaymentIdSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
 import { PDFGenerator, formatCurrency, formatDate, formatPercentage } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
@@ -751,6 +751,67 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=Lohnausweis_${year}_${employee.lastName}_${employee.firstName}.pdf`);
       res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // PAYROLL ITEM TYPES (Lohnarten)
+  // ============================================================================
+  app.get("/api/payroll-item-types", async (req, res) => {
+    try {
+      const itemTypes = await storage.getPayrollItemTypes();
+      res.json(itemTypes);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.get("/api/payroll-item-types/:id", async (req, res) => {
+    try {
+      const itemType = await storage.getPayrollItemType(req.params.id);
+      if (!itemType) {
+        return res.status(404).json({ error: "Payroll item type not found" });
+      }
+      res.json(itemType);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.post("/api/payroll-item-types", async (req, res) => {
+    try {
+      const validatedData = insertPayrollItemTypeSchema.parse(req.body);
+      const itemType = await storage.createPayrollItemType(validatedData);
+      res.status(201).json(itemType);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        const validationError = fromError(error);
+        return res.status(400).json({ error: validationError.toString() });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.patch("/api/payroll-item-types/:id", async (req, res) => {
+    try {
+      const validatedData = insertPayrollItemTypeSchema.parse(req.body);
+      const itemType = await storage.updatePayrollItemType(req.params.id, validatedData);
+      res.json(itemType);
+    } catch (error: any) {
+      if (error.name === "ZodError") {
+        const validationError = fromError(error);
+        return res.status(400).json({ error: validationError.toString() });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  app.delete("/api/payroll-item-types/:id", async (req, res) => {
+    try {
+      await storage.deletePayrollItemType(req.params.id);
+      res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

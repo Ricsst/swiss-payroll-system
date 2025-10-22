@@ -23,8 +23,7 @@ import {
 import { Separator } from "@/components/ui/separator";
 import { Save, Calculator, ChevronLeft, ChevronRight } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import type { Employee, Company } from "@shared/schema";
-import { PAYROLL_ITEM_TYPES } from "@shared/schema";
+import type { Employee, Company, PayrollItemType } from "@shared/schema";
 
 interface PayrollItemRow {
   type: string;
@@ -42,21 +41,7 @@ export default function EmployeePayroll() {
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
   const [notes, setNotes] = useState("");
-  
-  // Initialize all payroll item types as rows
-  const [payrollRows, setPayrollRows] = useState<Record<string, PayrollItemRow>>(() => {
-    const rows: Record<string, PayrollItemRow> = {};
-    PAYROLL_ITEM_TYPES.forEach(type => {
-      rows[type] = {
-        type,
-        description: "",
-        amount: "",
-        hours: "",
-        hourlyRate: "",
-      };
-    });
-    return rows;
-  });
+  const [payrollRows, setPayrollRows] = useState<Record<string, PayrollItemRow>>({});
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -65,6 +50,29 @@ export default function EmployeePayroll() {
   const { data: company } = useQuery<Company>({
     queryKey: ["/api/company"],
   });
+
+  const { data: payrollItemTypes = [] } = useQuery<PayrollItemType[]>({
+    queryKey: ["/api/payroll-item-types"],
+  });
+
+  // Initialize payroll rows when item types are loaded
+  useEffect(() => {
+    if (payrollItemTypes.length > 0) {
+      const rows: Record<string, PayrollItemRow> = {};
+      payrollItemTypes
+        .filter(type => type.isActive)
+        .forEach(type => {
+          rows[type.code] = {
+            type: type.code,
+            description: "",
+            amount: "",
+            hours: "",
+            hourlyRate: "",
+          };
+        });
+      setPayrollRows(rows);
+    }
+  }, [payrollItemTypes]);
 
   const createPaymentMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -87,15 +95,17 @@ export default function EmployeePayroll() {
       });
       // Reset form
       const resetRows: Record<string, PayrollItemRow> = {};
-      PAYROLL_ITEM_TYPES.forEach(type => {
-        resetRows[type] = {
-          type,
-          description: "",
-          amount: "",
-          hours: "",
-          hourlyRate: "",
-        };
-      });
+      payrollItemTypes
+        .filter(type => type.isActive)
+        .forEach(type => {
+          resetRows[type.code] = {
+            type: type.code,
+            description: "",
+            amount: "",
+            hours: "",
+            hourlyRate: "",
+          };
+        });
       setPayrollRows(resetRows);
       setNotes("");
       // Move to next employee
@@ -185,66 +195,90 @@ export default function EmployeePayroll() {
   };
 
   const calculateDeductions = (grossSalary: number) => {
-    if (!company) return [];
+    if (!company || payrollItemTypes.length === 0) return [];
 
     const deductions: any[] = [];
     
     // Get current employee for NBU and Rentner status
     const currentEmployee = employees?.find(e => e.id === selectedEmployeeId);
     
+    // Calculate base amounts for each deduction type based on payroll item type flags
+    const calculateBaseAmount = (deductionFlag: keyof Pick<PayrollItemType, 'subjectToAhv' | 'subjectToAlv' | 'subjectToNbu' | 'subjectToBvg' | 'subjectToQst'>) => {
+      return Object.values(payrollRows).reduce((sum, row) => {
+        const amount = parseFloat(row.amount) || 0;
+        if (amount <= 0) return sum;
+        
+        const itemType = payrollItemTypes.find(t => t.code === row.type);
+        if (!itemType || !itemType[deductionFlag]) return sum;
+        
+        return sum + amount;
+      }, 0);
+    };
+    
     // AHV (5.3%) - with Rentner allowance if applicable
     const ahvRate = parseFloat(company.ahvEmployeeRate) || 5.3;
-    let ahvBaseAmount = grossSalary;
+    let ahvBaseAmount = calculateBaseAmount('subjectToAhv');
     
     // Apply Rentner allowance if employee is Rentner
-    if (currentEmployee?.isRentner) {
+    if (currentEmployee?.isRentner && ahvBaseAmount > 0) {
       const rentnerAllowance = parseFloat(company.ahvRentnerAllowance) || 1400;
-      ahvBaseAmount = Math.max(0, grossSalary - rentnerAllowance);
+      ahvBaseAmount = Math.max(0, ahvBaseAmount - rentnerAllowance);
     }
     
-    deductions.push({
-      type: "AHV",
-      description: currentEmployee?.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
-      percentage: ahvRate.toString(),
-      baseAmount: ahvBaseAmount.toFixed(2),
-      amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
-      isAutoCalculated: true,
-    });
-
-    // ALV (1.1%)
-    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
-    deductions.push({
-      type: "ALV",
-      description: "ALV Abzug",
-      percentage: alvRate.toString(),
-      baseAmount: grossSalary.toFixed(2),
-      amount: (grossSalary * (alvRate / 100)).toFixed(2),
-      isAutoCalculated: true,
-    });
-
-    // NBU/SUVA (1.168%) - only if employee is NBU insured
-    if (currentEmployee?.isNbuInsured) {
-      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+    if (ahvBaseAmount > 0) {
       deductions.push({
-        type: "NBU",
-        description: "NBU/SUVA Abzug",
-        percentage: suvaRate.toString(),
-        baseAmount: grossSalary.toFixed(2),
-        amount: (grossSalary * (suvaRate / 100)).toFixed(2),
+        type: "AHV",
+        description: currentEmployee?.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
+        percentage: ahvRate.toString(),
+        baseAmount: ahvBaseAmount.toFixed(2),
+        amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
         isAutoCalculated: true,
       });
     }
 
-    // BVG - approximately 3.5% of gross salary
-    const bvgAmount = grossSalary * 0.035;
-    deductions.push({
-      type: "BVG",
-      description: "Pensionskasse",
-      percentage: null,
-      baseAmount: null,
-      amount: bvgAmount.toFixed(2),
-      isAutoCalculated: false,
-    });
+    // ALV (1.1%)
+    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
+    const alvBaseAmount = calculateBaseAmount('subjectToAlv');
+    if (alvBaseAmount > 0) {
+      deductions.push({
+        type: "ALV",
+        description: "ALV Abzug",
+        percentage: alvRate.toString(),
+        baseAmount: alvBaseAmount.toFixed(2),
+        amount: (alvBaseAmount * (alvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // NBU/SUVA (1.168%) - only if employee is NBU insured
+    if (currentEmployee?.isNbuInsured) {
+      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+      const nbuBaseAmount = calculateBaseAmount('subjectToNbu');
+      if (nbuBaseAmount > 0) {
+        deductions.push({
+          type: "NBU",
+          description: "NBU/SUVA Abzug",
+          percentage: suvaRate.toString(),
+          baseAmount: nbuBaseAmount.toFixed(2),
+          amount: (nbuBaseAmount * (suvaRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    // BVG - approximately 3.5% of BVG-subject salary
+    const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
+    if (bvgBaseAmount > 0) {
+      const bvgAmount = bvgBaseAmount * 0.035;
+      deductions.push({
+        type: "BVG",
+        description: "Pensionskasse",
+        percentage: null,
+        baseAmount: null,
+        amount: bvgAmount.toFixed(2),
+        isAutoCalculated: false,
+      });
+    }
 
     return deductions;
   };
@@ -434,66 +468,70 @@ export default function EmployeePayroll() {
                   </TableRow>
                 </TableHeader>
                 <TableBody>
-                  {PAYROLL_ITEM_TYPES.map((type) => {
-                    const row = payrollRows[type];
-                    const isStundenlohn = type === "Stundenlohn";
-                    
-                    return (
-                      <TableRow key={type} className="h-8">
-                        <TableCell className="py-1 text-xs font-medium">{type}</TableCell>
-                        <TableCell className="py-1">
-                          <Input
-                            value={row.description}
-                            onChange={(e) => updatePayrollRow(type, "description", e.target.value)}
-                            placeholder="Optional"
-                            className="h-7 text-xs"
-                            data-testid={`input-description-${type}`}
-                          />
-                        </TableCell>
-                        <TableCell className="py-1">
-                          {isStundenlohn ? (
+                  {payrollItemTypes
+                    .filter(itemType => itemType.isActive)
+                    .map((itemType) => {
+                      const row = payrollRows[itemType.code];
+                      if (!row) return null;
+                      
+                      const isStundenlohn = itemType.code === "02" || itemType.name.toLowerCase().includes("stundenlohn");
+                      
+                      return (
+                        <TableRow key={itemType.code} className="h-8">
+                          <TableCell className="py-1 text-xs font-medium">{itemType.name}</TableCell>
+                          <TableCell className="py-1">
+                            <Input
+                              value={row.description}
+                              onChange={(e) => updatePayrollRow(itemType.code, "description", e.target.value)}
+                              placeholder="Optional"
+                              className="h-7 text-xs"
+                              data-testid={`input-description-${itemType.code}`}
+                            />
+                          </TableCell>
+                          <TableCell className="py-1">
+                            {isStundenlohn ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={row.hours}
+                                onChange={(e) => updatePayrollRow(itemType.code, "hours", e.target.value)}
+                                placeholder="0.00"
+                                className="h-7 text-xs text-right"
+                                data-testid={`input-hours-${itemType.code}`}
+                              />
+                            ) : (
+                              <div className="h-7" />
+                            )}
+                          </TableCell>
+                          <TableCell className="py-1">
+                            {isStundenlohn ? (
+                              <Input
+                                type="number"
+                                step="0.01"
+                                value={row.hourlyRate}
+                                onChange={(e) => updatePayrollRow(itemType.code, "hourlyRate", e.target.value)}
+                                placeholder="0.00"
+                                className="h-7 text-xs text-right"
+                                data-testid={`input-hourly-rate-${itemType.code}`}
+                              />
+                            ) : (
+                              <div className="h-7" />
+                            )}
+                          </TableCell>
+                          <TableCell className="py-1">
                             <Input
                               type="number"
                               step="0.01"
-                              value={row.hours}
-                              onChange={(e) => updatePayrollRow(type, "hours", e.target.value)}
+                              value={row.amount}
+                              onChange={(e) => updatePayrollRow(itemType.code, "amount", e.target.value)}
                               placeholder="0.00"
-                              className="h-7 text-xs text-right"
-                              data-testid={`input-hours-${type}`}
+                              className="h-7 text-xs text-right font-medium"
+                              data-testid={`input-amount-${itemType.code}`}
                             />
-                          ) : (
-                            <div className="h-7" />
-                          )}
-                        </TableCell>
-                        <TableCell className="py-1">
-                          {isStundenlohn ? (
-                            <Input
-                              type="number"
-                              step="0.01"
-                              value={row.hourlyRate}
-                              onChange={(e) => updatePayrollRow(type, "hourlyRate", e.target.value)}
-                              placeholder="0.00"
-                              className="h-7 text-xs text-right"
-                              data-testid={`input-hourly-rate-${type}`}
-                            />
-                          ) : (
-                            <div className="h-7" />
-                          )}
-                        </TableCell>
-                        <TableCell className="py-1">
-                          <Input
-                            type="number"
-                            step="0.01"
-                            value={row.amount}
-                            onChange={(e) => updatePayrollRow(type, "amount", e.target.value)}
-                            placeholder="0.00"
-                            className="h-7 text-xs text-right font-medium"
-                            data-testid={`input-amount-${type}`}
-                          />
-                        </TableCell>
-                      </TableRow>
-                    );
-                  })}
+                          </TableCell>
+                        </TableRow>
+                      );
+                    })}
                 </TableBody>
               </Table>
             </div>

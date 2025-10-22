@@ -500,6 +500,7 @@ export default function Employees() {
                           <FormControl>
                             <Input
                               {...field}
+                              value={field.value || ""}
                               placeholder="UBSWCHZH80A"
                               className="font-mono"
                               data-testid="input-bankbic"
