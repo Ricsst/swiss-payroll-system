@@ -479,11 +479,11 @@ export class DatabaseStorage implements IStorage {
       .from(payrollPayments)
       .where(eq(payrollPayments.paymentYear, year));
 
-    // Get all payroll item types to map names to codes
+    // Get all payroll item types to map codes to names
     const allPayrollItemTypes = await db.select().from(payrollItemTypes);
     const typeMap = new Map<string, { code: string; name: string }>();
     for (const type of allPayrollItemTypes) {
-      typeMap.set(type.name, { code: type.code, name: type.name });
+      typeMap.set(type.code, { code: type.code, name: type.name });
     }
 
     // Get all payroll items for the year
@@ -506,13 +506,13 @@ export class DatabaseStorage implements IStorage {
     // Aggregate payroll items by type with codes
     const payrollItemBreakdown: Record<string, { code: string; name: string; quantity: number; amount: number }> = {};
     for (const item of allPayrollItems) {
-      const typeName = item.type;
+      const typeCode = item.type; // This is the code (e.g., "01")
       const hours = item.hours ? parseFloat(item.hours) : 0;
       const amount = parseFloat(item.amount);
       
-      const typeInfo = typeMap.get(typeName);
-      const code = typeInfo?.code || typeName;
-      const name = typeInfo?.name || typeName;
+      const typeInfo = typeMap.get(typeCode);
+      const code = typeInfo?.code || typeCode;
+      const name = typeInfo?.name || typeCode;
 
       if (!payrollItemBreakdown[code]) {
         payrollItemBreakdown[code] = { code, name, quantity: 0, amount: 0 };
