@@ -492,14 +492,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         subtitle: `${company.name} - ${monthNames[month - 1]} ${year}`,
       });
 
-      if (report.employeeReports && report.employeeReports.length > 0) {
+      if (report.employees && report.employees.length > 0) {
         pdf.addSection("Mitarbeiter Übersicht");
-        const employeeRows = report.employeeReports.map((emp: any) => [
+        const employeeRows = report.employees.map((emp: any) => [
           emp.employeeName,
-          emp.paymentCount.toString(),
-          formatCurrency(emp.totalGross),
-          formatCurrency(emp.totalDeductions),
-          formatCurrency(emp.totalNet),
+          emp.paymentsCount.toString(),
+          formatCurrency(parseFloat(emp.totalGrossSalary)),
+          formatCurrency(parseFloat(emp.totalDeductions)),
+          formatCurrency(parseFloat(emp.totalNetSalary)),
         ]);
         pdf.addTable(
           ["Mitarbeiter", "Anzahl", "Brutto", "Abzüge", "Netto"],
@@ -507,12 +507,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         );
       }
 
+      // Deduction breakdown
+      if (report.deductionSummary && report.deductionSummary.length > 0) {
+        pdf.addSection("Abzüge Aufschlüsselung");
+        const deductionRows = report.deductionSummary.map((ded: any) => [
+          ded.type,
+          formatCurrency(parseFloat(ded.amount)),
+        ]);
+        pdf.addTable(
+          ["Abzugsart", "Betrag"],
+          deductionRows
+        );
+      }
+
       pdf.addSection("Gesamtsummen");
       pdf.addText("Anzahl Mitarbeiter", report.totalEmployees.toString());
       pdf.addText("Anzahl Auszahlungen", report.totalPayments.toString());
-      pdf.addText("Gesamtbruttolohn", formatCurrency(report.totalGross));
-      pdf.addText("Gesamt Abzüge", formatCurrency(report.totalDeductions));
-      pdf.addText("Gesamtnettolohn", formatCurrency(report.totalNet));
+      pdf.addText("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)));
+      pdf.addText("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)));
+      pdf.addText("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)));
 
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
@@ -784,27 +797,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const columns = [
         { header: "Mitarbeiter", key: "employeeName", width: 25 },
-        { header: "Anzahl Auszahlungen", key: "paymentCount", width: 20 },
-        { header: "Bruttolohn (CHF)", key: "totalGross", width: 18 },
+        { header: "Anzahl Auszahlungen", key: "paymentsCount", width: 20 },
+        { header: "Bruttolohn (CHF)", key: "totalGrossSalary", width: 18 },
         { header: "Abzüge (CHF)", key: "totalDeductions", width: 18 },
-        { header: "Nettolohn (CHF)", key: "totalNet", width: 18 },
+        { header: "Nettolohn (CHF)", key: "totalNetSalary", width: 18 },
       ];
 
-      const data = (report.employeeReports || []).map((emp: any) => ({
+      const data = (report.employees || []).map((emp: any) => ({
         employeeName: emp.employeeName,
-        paymentCount: emp.paymentCount,
-        totalGross: formatExcelCurrency(emp.totalGross),
-        totalDeductions: formatExcelCurrency(emp.totalDeductions),
-        totalNet: formatExcelCurrency(emp.totalNet),
+        paymentsCount: emp.paymentsCount,
+        totalGrossSalary: formatExcelCurrency(parseFloat(emp.totalGrossSalary)),
+        totalDeductions: formatExcelCurrency(parseFloat(emp.totalDeductions)),
+        totalNetSalary: formatExcelCurrency(parseFloat(emp.totalNetSalary)),
       }));
 
       // Add totals row
       data.push({
         employeeName: "TOTAL",
-        paymentCount: report.totalPayments,
-        totalGross: formatExcelCurrency(report.totalGross),
-        totalDeductions: formatExcelCurrency(report.totalDeductions),
-        totalNet: formatExcelCurrency(report.totalNet),
+        paymentsCount: report.totalPayments,
+        totalGrossSalary: formatExcelCurrency(parseFloat(report.totals.grossSalary)),
+        totalDeductions: formatExcelCurrency(parseFloat(report.totals.deductions)),
+        totalNetSalary: formatExcelCurrency(parseFloat(report.totals.netSalary)),
       });
 
       excel.addWorksheet(`${monthNames[month - 1]} ${year}`, columns, data);
