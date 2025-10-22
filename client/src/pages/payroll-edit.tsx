@@ -383,33 +383,17 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
 
   return (
     <div className="space-y-3 py-3">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Link href={`/payroll/${params.id}`}>
-            <Button variant="ghost" size="icon" data-testid="button-back">
-              <ArrowLeft className="h-4 w-4" />
-            </Button>
-          </Link>
-          <div>
-            <h1 className="text-xl font-semibold">Lohnauszahlung bearbeiten</h1>
-            <p className="text-sm text-muted-foreground">
-              {payment.employee.firstName} {payment.employee.lastName} - AHV: {payment.employee.ahvNumber}
-            </p>
-          </div>
-        </div>
-        <Button onClick={handleSubmit} disabled={updatePaymentMutation.isPending} data-testid="button-save">
-          <Save className="h-4 w-4 mr-2" />
-          {updatePaymentMutation.isPending ? "Speichern..." : "Speichern"}
-        </Button>
+      <div>
+        <h1 className="text-xl font-semibold">Lohnauszahlung bearbeiten</h1>
+        <p className="text-xs text-muted-foreground">
+          {payment.employee.firstName} {payment.employee.lastName} - AHV: {payment.employee.ahvNumber}
+        </p>
       </div>
 
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Auszahlungsdetails</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <div className="grid grid-cols-4 gap-3">
-            <div>
+      <Card className="py-3">
+        <CardContent className="space-y-3 py-0">
+          <div className="grid grid-cols-12 gap-2 items-end">
+            <div className="col-span-2">
               <Label className="text-xs">Auszahlungsdatum *</Label>
               <Input
                 type="date"
@@ -419,8 +403,8 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 data-testid="input-payment-date"
               />
             </div>
-            <div>
-              <Label className="text-xs">Periode Start *</Label>
+            <div className="col-span-2">
+              <Label className="text-xs">von *</Label>
               <Input
                 type="date"
                 value={periodStart}
@@ -429,8 +413,8 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 data-testid="input-period-start"
               />
             </div>
-            <div>
-              <Label className="text-xs">Periode Ende *</Label>
+            <div className="col-span-2">
+              <Label className="text-xs">bis *</Label>
               <Input
                 type="date"
                 value={periodEnd}
@@ -439,7 +423,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 data-testid="input-period-end"
               />
             </div>
-            <div>
+            <div className="col-span-4">
               <Label className="text-xs">Bemerkung</Label>
               <Input
                 value={notes}
@@ -449,91 +433,120 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 data-testid="input-notes"
               />
             </div>
-          </div>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Lohnbestandteile</CardTitle>
-        </CardHeader>
-        <CardContent>
-          <Table>
-            <TableHeader>
-              <TableRow className="text-xs">
-                <TableHead className="w-16">Code</TableHead>
-                <TableHead className="w-48">Bezeichnung</TableHead>
-                <TableHead className="w-32">Std/Anz</TableHead>
-                <TableHead className="w-32">Ansatz</TableHead>
-                <TableHead className="w-32">Betrag (CHF)</TableHead>
-              </TableRow>
-            </TableHeader>
-            <TableBody>
-              {payrollItemTypes
-                .filter(t => t.isActive)
-                .sort((a, b) => a.code.localeCompare(b.code))
-                .map((type) => (
-                  <TableRow key={type.code}>
-                    <TableCell className="text-xs font-mono">{type.code}</TableCell>
-                    <TableCell className="text-xs">{type.name}</TableCell>
-                    <TableCell>
-                      <Input
-                        type="text"
-                        value={payrollRows[type.code]?.hours || ""}
-                        onChange={(e) => handleInputChange(type.code, 'hours', e.target.value)}
-                        className="h-7 text-xs"
-                        placeholder="0"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="text"
-                        value={payrollRows[type.code]?.hourlyRate || ""}
-                        onChange={(e) => handleInputChange(type.code, 'hourlyRate', e.target.value)}
-                        className="h-7 text-xs"
-                        placeholder="0.00"
-                      />
-                    </TableCell>
-                    <TableCell>
-                      <Input
-                        type="text"
-                        value={payrollRows[type.code]?.amount || ""}
-                        onChange={(e) => handleInputChange(type.code, 'amount', e.target.value)}
-                        className="h-7 text-xs font-mono"
-                        placeholder="0.00"
-                      />
-                    </TableCell>
-                  </TableRow>
-                ))}
-            </TableBody>
-          </Table>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle className="text-base">Übersicht</CardTitle>
-        </CardHeader>
-        <CardContent className="space-y-2">
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Bruttolohn:</span>
-            <span className="font-mono">CHF {grossSalary.toFixed(2)}</span>
-          </div>
-          <Separator />
-          {deductions.map((d, index) => (
-            <div key={index} className="flex justify-between text-xs text-muted-foreground">
-              <span>{d.description || d.type}</span>
-              <span className="font-mono">CHF {d.amount}</span>
+            <div className="col-span-2 flex gap-2">
+              <Link href={`/payroll/${params.id}`} className="flex-1">
+                <Button variant="outline" className="h-8 w-full text-xs" data-testid="button-back">
+                  <ArrowLeft className="h-3 w-3 mr-1" />
+                  Zurück
+                </Button>
+              </Link>
+              <Button 
+                onClick={handleSubmit} 
+                disabled={updatePaymentMutation.isPending} 
+                className="h-8 flex-1 text-xs"
+                data-testid="button-save"
+              >
+                <Save className="h-3 w-3 mr-1" />
+                Speichern
+              </Button>
             </div>
-          ))}
-          <div className="flex justify-between text-sm">
-            <span className="font-medium">Total Abzüge:</span>
-            <span className="font-mono">CHF {totalDeductions.toFixed(2)}</span>
           </div>
-          <Separator />
-          <div className="flex justify-between text-base font-semibold">
-            <span>Nettolohn:</span>
-            <span className="font-mono">CHF {netSalary.toFixed(2)}</span>
+        </CardContent>
+      </Card>
+
+      <Card className="py-3">
+        <CardContent className="py-0">
+          <div className="border rounded-md overflow-hidden">
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="h-8 text-xs w-[140px]">Lohnart</TableHead>
+                  <TableHead className="h-8 text-xs w-[140px]">Beschreibung</TableHead>
+                  <TableHead className="h-8 text-xs w-[80px] text-right">Std.</TableHead>
+                  <TableHead className="h-8 text-xs w-[80px] text-right">Ansatz</TableHead>
+                  <TableHead className="h-8 text-xs w-[100px] text-right">Betrag (CHF)</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                {payrollItemTypes
+                  .filter(t => t.isActive)
+                  .sort((a, b) => a.code.localeCompare(b.code))
+                  .map((type) => (
+                    <TableRow key={type.code} className="h-8">
+                      <TableCell className="py-1 text-xs font-medium">{type.name}</TableCell>
+                      <TableCell className="py-1">
+                        <Input
+                          value={payrollRows[type.code]?.description || ""}
+                          onChange={(e) => handleInputChange(type.code, 'description', e.target.value)}
+                          placeholder="Optional"
+                          className="h-7 text-xs"
+                          data-testid={`input-description-${type.code}`}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={payrollRows[type.code]?.hours || ""}
+                          onChange={(e) => handleInputChange(type.code, 'hours', e.target.value)}
+                          placeholder="0"
+                          className="h-7 text-xs text-right"
+                          data-testid={`input-hours-${type.code}`}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={payrollRows[type.code]?.hourlyRate || ""}
+                          onChange={(e) => handleInputChange(type.code, 'hourlyRate', e.target.value)}
+                          placeholder="0.00"
+                          className="h-7 text-xs text-right"
+                          data-testid={`input-rate-${type.code}`}
+                        />
+                      </TableCell>
+                      <TableCell className="py-1">
+                        <Input
+                          type="number"
+                          step="0.01"
+                          value={payrollRows[type.code]?.amount || ""}
+                          onChange={(e) => handleInputChange(type.code, 'amount', e.target.value)}
+                          placeholder="0.00"
+                          className="h-7 text-xs font-mono text-right"
+                          data-testid={`input-amount-${type.code}`}
+                        />
+                      </TableCell>
+                    </TableRow>
+                  ))}
+              </TableBody>
+            </Table>
+          </div>
+        </CardContent>
+      </Card>
+
+      <Card className="py-3">
+        <CardContent className="py-0">
+          <div className="space-y-1.5">
+            <div className="flex justify-between text-xs">
+              <span className="font-medium">Bruttolohn:</span>
+              <span className="font-mono">CHF {grossSalary.toFixed(2)}</span>
+            </div>
+            <Separator />
+            {deductions.map((d, index) => (
+              <div key={index} className="flex justify-between text-xs text-muted-foreground">
+                <span>{d.description || d.type}</span>
+                <span className="font-mono">CHF {d.amount}</span>
+              </div>
+            ))}
+            <div className="flex justify-between text-xs">
+              <span className="font-medium">Total Abzüge:</span>
+              <span className="font-mono">CHF {totalDeductions.toFixed(2)}</span>
+            </div>
+            <Separator />
+            <div className="flex justify-between text-sm font-semibold">
+              <span>Nettolohn:</span>
+              <span className="font-mono">CHF {netSalary.toFixed(2)}</span>
+            </div>
           </div>
         </CardContent>
       </Card>

@@ -74,11 +74,19 @@ Die Lohnauszahlungs-Liste wurde um einen direkten Bearbeiten-Button erweitert:
 3. Anzeigen (Eye)
 4. Löschen (Trash)
 
+**Kompaktes Bearbeitungs-Layout:**
+- Identisches enges Raster-Layout wie die Lohnerfassungsseite
+- Alle Formularfelder in einer Zeile: Auszahlungsdatum, von, bis, Bemerkung, Zurück & Speichern
+- Kompakte Tabelle mit h-7 Inputs und text-xs Schrift
+- Spalten: Lohnart, Beschreibung, Std., Ansatz, Betrag (CHF)
+- Platzsparendes Design für schnelle Bearbeitung
+
 **Benutzerfreundlichkeit:**
 - Schneller Zugriff auf Bearbeitungsfunktion
 - Klare visuelle Trennung zwischen Anzeigen und Bearbeiten
 - Intuitives Bleistift-Symbol für Bearbeitungsfunktion
 - Nur für bearbeitbare (offene) Zahlungen verfügbar
+- Kompaktes Layout ermöglicht schnelle Änderungen
 
 ### Mitarbeiter-Gesamttabelle mit Sortierung und Stundenlohn (Oktober 22, 2025)
 Eine erweiterte Tabellen-Ansicht auf der Mitarbeiter-Seite ermöglicht die gleichzeitige Bearbeitung von Lohndaten für alle Mitarbeiter:
