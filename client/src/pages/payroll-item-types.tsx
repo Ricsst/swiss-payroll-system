@@ -412,7 +412,7 @@ export default function PayrollItemTypes() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {itemTypes.map((itemType) => (
+                {[...itemTypes].sort((a, b) => a.code.localeCompare(b.code)).map((itemType) => (
                   <TableRow key={itemType.id} data-testid={`row-item-type-${itemType.id}`}>
                     <TableCell className="font-mono font-medium">
                       {itemType.code}
