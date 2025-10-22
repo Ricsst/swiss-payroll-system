@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Lock, Unlock } from "lucide-react";
+import { Plus, Eye, Download, Lock, Unlock, ArrowUpDown, ArrowUp, ArrowDown } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -36,11 +36,16 @@ interface PayrollPaymentWithEmployee {
   };
 }
 
+type SortField = 'employee' | 'periodStart' | 'paymentDate' | 'grossSalary' | 'totalDeductions' | 'netSalary' | 'status';
+type SortDirection = 'asc' | 'desc';
+
 export default function Payroll() {
   const { toast } = useToast();
   const [selectedYear, setSelectedYear] = useState(new Date().getFullYear());
   const [selectedMonth, setSelectedMonth] = useState<number | null>(null);
   const [selectedPayments, setSelectedPayments] = useState<string[]>([]);
+  const [sortField, setSortField] = useState<SortField>('paymentDate');
+  const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
   const buildQueryKey = () => {
     const key: any[] = ['/api/payroll/payments'];
@@ -167,6 +172,71 @@ export default function Payroll() {
     });
   };
 
+  // Handle sorting
+  const handleSort = (field: SortField) => {
+    if (sortField === field) {
+      // Toggle direction if same field
+      setSortDirection(sortDirection === 'asc' ? 'desc' : 'asc');
+    } else {
+      // New field, default to ascending
+      setSortField(field);
+      setSortDirection('asc');
+    }
+  };
+
+  // Sort payments
+  const sortedPayments = payments ? [...payments].sort((a, b) => {
+    let aValue: any;
+    let bValue: any;
+
+    switch (sortField) {
+      case 'employee':
+        aValue = `${a.employee.lastName} ${a.employee.firstName}`;
+        bValue = `${b.employee.lastName} ${b.employee.firstName}`;
+        break;
+      case 'periodStart':
+        aValue = new Date(a.periodStart);
+        bValue = new Date(b.periodStart);
+        break;
+      case 'paymentDate':
+        aValue = new Date(a.paymentDate);
+        bValue = new Date(b.paymentDate);
+        break;
+      case 'grossSalary':
+        aValue = Number(a.grossSalary);
+        bValue = Number(b.grossSalary);
+        break;
+      case 'totalDeductions':
+        aValue = Number(a.totalDeductions);
+        bValue = Number(b.totalDeductions);
+        break;
+      case 'netSalary':
+        aValue = Number(a.netSalary);
+        bValue = Number(b.netSalary);
+        break;
+      case 'status':
+        aValue = a.isLocked ? 1 : 0;
+        bValue = b.isLocked ? 1 : 0;
+        break;
+      default:
+        return 0;
+    }
+
+    if (aValue < bValue) return sortDirection === 'asc' ? -1 : 1;
+    if (aValue > bValue) return sortDirection === 'asc' ? 1 : -1;
+    return 0;
+  }) : [];
+
+  // Sort icon component
+  const SortIcon = ({ field }: { field: SortField }) => {
+    if (sortField !== field) {
+      return <ArrowUpDown className="h-3 w-3 ml-1 opacity-50" />;
+    }
+    return sortDirection === 'asc' 
+      ? <ArrowUp className="h-3 w-3 ml-1" />
+      : <ArrowDown className="h-3 w-3 ml-1" />;
+  };
+
   return (
     <div className="space-y-6">
       <div className="flex items-center justify-between">
@@ -266,18 +336,95 @@ export default function Payroll() {
                       data-testid="checkbox-select-all"
                     />
                   </TableHead>
-                  <TableHead>Mitarbeiter</TableHead>
-                  <TableHead>Zeitraum</TableHead>
-                  <TableHead>Auszahlungsdatum</TableHead>
-                  <TableHead className="text-right">Bruttolohn</TableHead>
-                  <TableHead className="text-right">Abzüge</TableHead>
-                  <TableHead className="text-right">Nettolohn</TableHead>
-                  <TableHead>Status</TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('employee')}
+                      className="h-8 px-2 -ml-2"
+                      data-testid="sort-employee"
+                    >
+                      Mitarbeiter
+                      <SortIcon field="employee" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('periodStart')}
+                      className="h-8 px-2 -ml-2"
+                      data-testid="sort-period"
+                    >
+                      Zeitraum
+                      <SortIcon field="periodStart" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('paymentDate')}
+                      className="h-8 px-2 -ml-2"
+                      data-testid="sort-paymentDate"
+                    >
+                      Auszahlungsdatum
+                      <SortIcon field="paymentDate" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('grossSalary')}
+                      className="h-8 px-2 -mr-2 w-full justify-end"
+                      data-testid="sort-grossSalary"
+                    >
+                      Bruttolohn
+                      <SortIcon field="grossSalary" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('totalDeductions')}
+                      className="h-8 px-2 -mr-2 w-full justify-end"
+                      data-testid="sort-totalDeductions"
+                    >
+                      Abzüge
+                      <SortIcon field="totalDeductions" />
+                    </Button>
+                  </TableHead>
+                  <TableHead className="text-right">
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('netSalary')}
+                      className="h-8 px-2 -mr-2 w-full justify-end"
+                      data-testid="sort-netSalary"
+                    >
+                      Nettolohn
+                      <SortIcon field="netSalary" />
+                    </Button>
+                  </TableHead>
+                  <TableHead>
+                    <Button 
+                      variant="ghost" 
+                      size="sm" 
+                      onClick={() => handleSort('status')}
+                      className="h-8 px-2 -ml-2"
+                      data-testid="sort-status"
+                    >
+                      Status
+                      <SortIcon field="status" />
+                    </Button>
+                  </TableHead>
                   <TableHead className="text-right">Aktionen</TableHead>
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {payments.map((payment) => (
+                {sortedPayments.map((payment) => (
                   <TableRow key={payment.id} data-testid={`row-payment-${payment.id}`}>
                     <TableCell>
                       <Checkbox
