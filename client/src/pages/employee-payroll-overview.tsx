@@ -248,6 +248,24 @@ export default function EmployeePayrollOverview() {
                       {parseFloat(overview.totalDeductions).toFixed(2)}
                     </TableCell>
                   </TableRow>
+
+                  {/* Net Salary Row */}
+                  <TableRow className="bg-primary/10 font-bold">
+                    <TableCell colSpan={2} className="text-xs">NETTOLOHN</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => {
+                      const gross = parseFloat(overview.grossMonthlyTotals[month] || "0");
+                      const deductions = parseFloat(overview.deductionMonthlyTotals[month] || "0");
+                      const net = gross - deductions;
+                      return (
+                        <TableCell key={month} className="text-right text-xs font-mono" data-testid={`net-month-${month}`}>
+                          {net.toFixed(2)}
+                        </TableCell>
+                      );
+                    })}
+                    <TableCell className="text-right text-xs font-mono" data-testid="net-total">
+                      {(parseFloat(overview.totalGross) - parseFloat(overview.totalDeductions)).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
                 </TableBody>
               </Table>
             </div>

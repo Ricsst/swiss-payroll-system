@@ -74,7 +74,42 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Features (October 2025)
 
-### Smart Payroll Entry with Context-Aware Calculations (Latest - October 22, 2025)
+### Employee Payroll Overview Page (Latest - October 22, 2025)
+A new page displays a comprehensive yearly payroll overview for individual employees:
+
+**Key Features:**
+- Employee selector showing all employees (active and inactive)
+- Dynamic year selection (current year -5 to +2 years)
+- Comprehensive table with monthly breakdown:
+  - 12 monthly columns + 13th month salary + total column
+  - All wage types with codes and names
+  - BRUTTOLOHN subtotal row
+  - All deductions (AHV, ALV, NBU, BVG, QST)
+  - TOTAL ABZÜGE subtotal row
+  - NETTOLOHN final row (gross - deductions)
+
+**Navigation:**
+- Sidebar menu item: "Lohnauszahlung pro MA"
+- Located between "Lohnauszahlungen" and "Monatsabrechnung"
+
+**Data Presentation:**
+- All amounts formatted with 2 decimal places
+- Right-aligned monetary values with monospace font
+- Inactive employees marked with "(Inaktiv)" label
+- Employee details displayed in card header (AHV number, entry/exit dates)
+
+**Technical Implementation:**
+- Backend: `getEmployeePayrollOverview` function aggregates all payroll data per employee per year
+- API endpoint: GET `/api/reports/employee-payroll-overview?employeeId={id}&year={year}`
+- Frontend: Responsive table layout with proper data-testid attributes for testing
+
+**Benefits:**
+- Complete annual payroll overview for individual employees
+- Easy access to historical data for audits and reviews
+- Clear separation of wage types, deductions, and net salary
+- Support for both active and inactive employees
+
+### Smart Payroll Entry with Context-Aware Calculations (October 22, 2025)
 The payroll entry form now intelligently handles different wage types with automatic calculations:
 
 **Monatslohn (Monthly Salary):**
