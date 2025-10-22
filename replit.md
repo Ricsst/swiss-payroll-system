@@ -74,7 +74,38 @@ Preferred communication style: Simple, everyday language.
 
 ## Recent Features (October 2025)
 
-### Improved Monthly Report Layout (Latest)
+### Payroll Payment Lock/Unlock (Latest - October 22, 2025)
+Payroll payments can now be locked to prevent modifications after finalization, ensuring data integrity and compliance:
+
+**Lock/Unlock Functionality:**
+- Added `isLocked` boolean field to `payroll_payments` table
+- Lock button on payroll list page converts "Offen" payments to "Abgeschlossen" status
+- Unlock button allows reopening locked payments if corrections are needed
+- Locked payments display warning alert in detail view
+
+**API Endpoints:**
+- POST `/api/payroll/payments/:id/lock` - Locks a payment
+- POST `/api/payroll/payments/:id/unlock` - Unlocks a payment
+- DELETE endpoint blocks deletion of locked payments
+
+**User Interface:**
+- Status badges: "Offen" (green, unlocked) and "Abgeschlossen" (gray, locked)
+- Lock/unlock icons in payroll list actions column
+- Alert box in detail view explaining locked status
+- Optimistic UI updates via TanStack Query cache invalidation
+
+**Technical Implementation:**
+- Query keys structured as arrays: `['/api/payroll/payments', { year, month }]`
+- Proper cache invalidation ensures immediate UI updates without manual reload
+- Backend validation prevents editing/deleting locked payments
+
+**Benefits:**
+- Prevents accidental modification of finalized payroll data
+- Clear visual indicators of payment status
+- Maintains audit trail and data integrity
+- Flexible unlock capability for authorized corrections
+
+### Improved Monthly Report Layout
 The monthly report PDF has been redesigned for better clarity and readability:
 
 **Lohnarten Names Instead of Codes:**
