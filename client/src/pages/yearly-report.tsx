@@ -39,6 +39,31 @@ interface YearlyReportData {
     netSalary: string;
     paymentsCount: number;
   }>;
+  payrollItemSummary: Array<{
+    type: string;
+    quantity: string;
+    amount: string;
+  }>;
+  deductionSummary: Array<{
+    type: string;
+    amount: string;
+  }>;
+  basisAmounts: {
+    ahvBasis: string;
+    alvBasis: string;
+    nbuBasis: string;
+    bvgBasis: string;
+  };
+  employeeSummary: Array<{
+    ahvNumber: string;
+    birthDate: string;
+    firstName: string;
+    lastName: string;
+    employedFrom: number;
+    employedTo: number;
+    ahvWage: string;
+    alvWage: string;
+  }>;
   totals: {
     grossSalary: string;
     deductions: string;
@@ -189,6 +214,208 @@ export default function YearlyReport() {
               </CardContent>
             </Card>
           </div>
+
+          {/* Lohnarten Rekapitulation */}
+          <Card>
+            <CardHeader>
+              <CardTitle>Lohnarten Rekapitulation - Ganzes Jahr {selectedYear}</CardTitle>
+            </CardHeader>
+            <CardContent>
+              <Table>
+                <TableHeader>
+                  <TableRow>
+                    <TableHead>Legende</TableHead>
+                    <TableHead className="text-right">Menge</TableHead>
+                    <TableHead className="text-right">Betrag</TableHead>
+                  </TableRow>
+                </TableHeader>
+                <TableBody>
+                  {report.payrollItemSummary && report.payrollItemSummary.length > 0 ? (
+                    report.payrollItemSummary.map((item, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{item.type}</TableCell>
+                        <TableCell className="text-right font-mono">{item.quantity}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {Number(item.amount).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} +
+                        </TableCell>
+                      </TableRow>
+                    ))
+                  ) : (
+                    <TableRow>
+                      <TableCell colSpan={3} className="text-center text-muted-foreground">
+                        Keine Lohnarten verfügbar
+                      </TableCell>
+                    </TableRow>
+                  )}
+                  <TableRow className="font-semibold border-t-2">
+                    <TableCell>BRUTTOLOHN</TableCell>
+                    <TableCell></TableCell>
+                    <TableCell className="text-right font-mono">
+                      {Number(report.totals.grossSalary).toLocaleString("de-CH", {
+                        minimumFractionDigits: 2,
+                        maximumFractionDigits: 2,
+                      })}
+                    </TableCell>
+                  </TableRow>
+                </TableBody>
+              </Table>
+            </CardContent>
+          </Card>
+
+          {/* Abzüge Details */}
+          {report.deductionSummary && report.deductionSummary.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Abzüge - Details</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Abzugstyp</TableHead>
+                      <TableHead className="text-right">Betrag</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.deductionSummary.map((ded, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-medium">{ded.type}</TableCell>
+                        <TableCell className="text-right font-mono">
+                          {Number(ded.amount).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })} -
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                    <TableRow className="font-semibold border-t-2">
+                      <TableCell>TOTAL ABZUEGE</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.totals.deductions).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="font-semibold border-t-2">
+                      <TableCell>NETTOLOHN</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.totals.netSalary).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Basis-Beträge */}
+          {report.basisAmounts && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Basis-Beträge</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium">AHV-Basis</TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(report.basisAmounts.ahvBasis).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">ALV-Basis</TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(report.basisAmounts.alvBasis).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">NBU-Basis</TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(report.basisAmounts.nbuBasis).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">BVG-Basis</TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {Number(report.basisAmounts.bvgBasis).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Mitarbeiter-Übersicht */}
+          {report.employeeSummary && report.employeeSummary.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Mitarbeiter-Übersicht</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>AHV Nr</TableHead>
+                      <TableHead>Geburtstag</TableHead>
+                      <TableHead>Name Vorname</TableHead>
+                      <TableHead className="text-center">Beschäftigt</TableHead>
+                      <TableHead className="text-right">AHV Lohn</TableHead>
+                      <TableHead className="text-right">ALV Lohn</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.employeeSummary.map((emp, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-mono text-sm">{emp.ahvNumber}</TableCell>
+                        <TableCell>
+                          {new Date(emp.birthDate).toLocaleDateString("de-CH")}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {emp.lastName} {emp.firstName}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {emp.employedFrom.toString().padStart(2, '0')} bis {emp.employedTo.toString().padStart(2, '0')}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          CHF {Number(emp.ahvWage).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          CHF {Number(emp.alvWage).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
 
           {/* Monthly Breakdown Table */}
           <Card>

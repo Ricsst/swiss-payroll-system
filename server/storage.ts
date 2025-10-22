@@ -470,73 +470,175 @@ export class DatabaseStorage implements IStorage {
       "Juli", "August", "September", "Oktober", "November", "Dezember"
     ];
 
+    const company = await this.getCompany();
+    const alvMaxIncome = company ? parseFloat(company.alvMaxIncomePerYear) : 148200;
+
+    // Get all payments for the year
+    const allPayments = await db
+      .select()
+      .from(payrollPayments)
+      .where(eq(payrollPayments.paymentYear, year));
+
+    // Get all payroll items for the year
+    const allPayrollItems = await db
+      .select()
+      .from(payrollItems)
+      .innerJoin(payrollPayments, eq(payrollItems.payrollPaymentId, payrollPayments.id))
+      .where(eq(payrollPayments.paymentYear, year));
+
+    // Get all deductions for the year
+    const allDeductions = await db
+      .select()
+      .from(deductions)
+      .innerJoin(payrollPayments, eq(deductions.payrollPaymentId, payrollPayments.id))
+      .where(eq(payrollPayments.paymentYear, year));
+
+    // Aggregate payroll items by type
+    const payrollItemBreakdown: Record<string, { quantity: number; amount: number }> = {};
+    for (const item of allPayrollItems) {
+      const typeName = item.payroll_items.type;
+      const hours = item.payroll_items.hours ? parseFloat(item.payroll_items.hours) : 0;
+      const amount = parseFloat(item.payroll_items.amount);
+
+      if (!payrollItemBreakdown[typeName]) {
+        payrollItemBreakdown[typeName] = { quantity: 0, amount: 0 };
+      }
+      payrollItemBreakdown[typeName].quantity += hours || 1; // Use hours if available, otherwise count as 1
+      payrollItemBreakdown[typeName].amount += amount;
+    }
+
+    const payrollItemSummary = Object.entries(payrollItemBreakdown)
+      .map(([type, data]) => ({
+        type,
+        quantity: data.quantity.toFixed(2),
+        amount: data.amount.toFixed(2),
+      }))
+      .sort((a, b) => a.type.localeCompare(b.type));
+
+    // Aggregate deductions by type
+    const deductionBreakdown: Record<string, number> = {};
+    for (const ded of allDeductions) {
+      const type = ded.deductions.type;
+      const amount = parseFloat(ded.deductions.amount);
+
+      if (!deductionBreakdown[type]) {
+        deductionBreakdown[type] = 0;
+      }
+      deductionBreakdown[type] += amount;
+    }
+
+    const deductionSummary = Object.entries(deductionBreakdown)
+      .map(([type, amount]) => ({
+        type,
+        amount: amount.toFixed(2),
+      }))
+      .sort((a, b) => a.type.localeCompare(b.type));
+
+    // Calculate totals
+    const totalGross = allPayments.reduce((sum, p) => sum + parseFloat(p.grossSalary), 0);
+    const totalDeductions = allPayments.reduce((sum, p) => sum + parseFloat(p.totalDeductions), 0);
+    const totalNet = allPayments.reduce((sum, p) => sum + parseFloat(p.netSalary), 0);
+
+    // Calculate basis amounts (sum of gross salaries, as simple approximation for now)
+    // In a more complex system, this would check which items are subject to each deduction
+    let ahvBasis = totalGross;
+    let alvBasis = totalGross;
+    let nbuBasis = totalGross;
+    let bvgBasis = totalGross;
+
+    // Get employee summary
+    const employeeMap = new Map<string, any>();
+    
+    for (const payment of allPayments) {
+      const employee = await db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
+      if (employee.length === 0) continue;
+
+      const emp = employee[0];
+      const empId = emp.id;
+
+      if (!employeeMap.has(empId)) {
+        employeeMap.set(empId, {
+          ahvNumber: emp.ahvNumber,
+          birthDate: emp.birthDate,
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          employedFrom: null,
+          employedTo: null,
+          ahvWage: 0,
+          alvWage: 0,
+        });
+      }
+
+      const empData = employeeMap.get(empId);
+      const month = payment.paymentMonth;
+
+      // Track employment period
+      if (empData.employedFrom === null || month < empData.employedFrom) {
+        empData.employedFrom = month;
+      }
+      if (empData.employedTo === null || month > empData.employedTo) {
+        empData.employedTo = month;
+      }
+
+      // For simplicity, use gross salary as AHV/ALV wage
+      // In a more complex system, you would check which items are subject to each
+      const grossSalary = parseFloat(payment.grossSalary);
+      empData.ahvWage += grossSalary;
+      empData.alvWage += grossSalary;
+    }
+
+    // Convert to array and apply ALV limit
+    const employeeSummary = Array.from(employeeMap.values()).map(emp => ({
+      ...emp,
+      alvWage: Math.min(emp.alvWage, alvMaxIncome),
+      ahvWage: emp.ahvWage.toFixed(2),
+      alvWageRaw: emp.alvWage,
+    })).map(emp => ({
+      ...emp,
+      alvWage: emp.alvWage.toFixed(2),
+    }));
+
+    // Monthly breakdown
     const allMonths = [];
     for (let month = 1; month <= 12; month++) {
-      const payments = await db
-        .select({
-          grossSalary: payrollPayments.grossSalary,
-          totalDeductions: payrollPayments.totalDeductions,
-          netSalary: payrollPayments.netSalary,
-        })
-        .from(payrollPayments)
-        .where(
-          and(
-            eq(payrollPayments.paymentYear, year),
-            eq(payrollPayments.paymentMonth, month)
-          )
-        );
-
-      const monthTotals = payments.reduce(
+      const monthPayments = allPayments.filter(p => p.paymentMonth === month);
+      const monthTotals = monthPayments.reduce(
         (acc, payment) => ({
-          grossSalary: (
-            parseFloat(acc.grossSalary) +
-            parseFloat(payment.grossSalary)
-          ).toFixed(2),
-          deductions: (
-            parseFloat(acc.deductions) +
-            parseFloat(payment.totalDeductions)
-          ).toFixed(2),
-          netSalary: (
-            parseFloat(acc.netSalary) +
-            parseFloat(payment.netSalary)
-          ).toFixed(2),
+          grossSalary: acc.grossSalary + parseFloat(payment.grossSalary),
+          deductions: acc.deductions + parseFloat(payment.totalDeductions),
+          netSalary: acc.netSalary + parseFloat(payment.netSalary),
         }),
-        { grossSalary: "0", deductions: "0", netSalary: "0" }
+        { grossSalary: 0, deductions: 0, netSalary: 0 }
       );
 
       allMonths.push({
         month,
         monthName: monthNames[month - 1],
-        grossSalary: monthTotals.grossSalary,
-        deductions: monthTotals.deductions,
-        netSalary: monthTotals.netSalary,
-        paymentsCount: payments.length,
+        grossSalary: monthTotals.grossSalary.toFixed(2),
+        deductions: monthTotals.deductions.toFixed(2),
+        netSalary: monthTotals.netSalary.toFixed(2),
+        paymentsCount: monthPayments.length,
       });
     }
-
-    const yearTotals = allMonths.reduce(
-      (acc, month) => ({
-        grossSalary: (
-          parseFloat(acc.grossSalary) +
-          parseFloat(month.grossSalary)
-        ).toFixed(2),
-        deductions: (
-          parseFloat(acc.deductions) +
-          parseFloat(month.deductions)
-        ).toFixed(2),
-        netSalary: (
-          parseFloat(acc.netSalary) +
-          parseFloat(month.netSalary)
-        ).toFixed(2),
-        paymentsCount: acc.paymentsCount + month.paymentsCount,
-      }),
-      { grossSalary: "0", deductions: "0", netSalary: "0", paymentsCount: 0 }
-    );
 
     return {
       year,
       months: allMonths,
-      totals: yearTotals,
+      payrollItemSummary,
+      deductionSummary,
+      basisAmounts: {
+        ahvBasis: ahvBasis.toFixed(2),
+        alvBasis: alvBasis.toFixed(2),
+        nbuBasis: nbuBasis.toFixed(2),
+        bvgBasis: bvgBasis.toFixed(2),
+      },
+      employeeSummary,
+      totals: {
+        grossSalary: totalGross.toFixed(2),
+        deductions: totalDeductions.toFixed(2),
+        netSalary: totalNet.toFixed(2),
+        paymentsCount: allPayments.length,
+      },
     };
   }
 
