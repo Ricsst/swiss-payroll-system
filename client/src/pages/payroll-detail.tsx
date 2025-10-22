@@ -11,7 +11,8 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { ArrowLeft, FileDown } from "lucide-react";
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { ArrowLeft, FileDown, Lock } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 
@@ -43,6 +44,7 @@ interface PayrollPaymentDetail {
   grossSalary: string;
   totalDeductions: string;
   netSalary: string;
+  isLocked: boolean;
   employee: {
     id: string;
     firstName: string;
@@ -111,17 +113,36 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
             </p>
           </div>
         </div>
-        <Button
-          variant="outline"
-          data-testid="button-export-pdf"
-          onClick={() => {
-            window.open(`/api/pdf/payroll/${payment.id}`, '_blank');
-          }}
-        >
-          <FileDown className="h-4 w-4 mr-2" />
-          PDF Export
-        </Button>
+        <div className="flex items-center gap-2">
+          {payment.isLocked && (
+            <Badge variant="secondary" data-testid="badge-locked">
+              <Lock className="h-3 w-3 mr-1" />
+              Abgeschlossen
+            </Badge>
+          )}
+          <Button
+            variant="outline"
+            data-testid="button-export-pdf"
+            onClick={() => {
+              window.open(`/api/pdf/payroll/${payment.id}`, '_blank');
+            }}
+          >
+            <FileDown className="h-4 w-4 mr-2" />
+            PDF Export
+          </Button>
+        </div>
       </div>
+
+      {payment.isLocked && (
+        <Alert data-testid="alert-locked">
+          <Lock className="h-4 w-4" />
+          <AlertTitle>Abgeschlossene Lohnauszahlung</AlertTitle>
+          <AlertDescription>
+            Diese Lohnauszahlung wurde abgeschlossen und kann nicht mehr bearbeitet werden. 
+            Sie können die Auszahlung in der Lohnauszahlungsliste entsperren, falls Änderungen nötig sind.
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid gap-6 md:grid-cols-2">
         <Card>
