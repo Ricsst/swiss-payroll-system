@@ -246,6 +246,7 @@ export class DatabaseStorage implements IStorage {
     const adjustedDeductions = await this.applyCumulativeAlvLimit(
       payment.employeeId,
       payment.paymentYear,
+      payment.paymentMonth,
       items,
       deductionsList,
       undefined // no payment ID to exclude (new payment)
@@ -303,7 +304,12 @@ export class DatabaseStorage implements IStorage {
   ): Promise<PayrollPayment> {
     // Check if payment is locked
     const [existingPayment] = await db
-      .select({ isLocked: payrollPayments.isLocked, employeeId: payrollPayments.employeeId, paymentYear: payrollPayments.paymentYear })
+      .select({ 
+        isLocked: payrollPayments.isLocked, 
+        employeeId: payrollPayments.employeeId, 
+        paymentYear: payrollPayments.paymentYear,
+        paymentMonth: payrollPayments.paymentMonth
+      })
       .from(payrollPayments)
       .where(eq(payrollPayments.id, id));
     
@@ -311,10 +317,14 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Abgeschlossene Lohnauszahlungen können nicht bearbeitet werden");
     }
 
+    // Get payment month for ALV calculation
+    const paymentMonth = payment.paymentMonth || existingPayment.paymentMonth;
+
     // Apply cumulative ALV calculation
     const adjustedDeductions = await this.applyCumulativeAlvLimit(
       payment.employeeId || existingPayment.employeeId,
       payment.paymentYear || existingPayment.paymentYear,
+      paymentMonth,
       items,
       deductionsList,
       id // exclude current payment from cumulative calculation
@@ -1119,6 +1129,7 @@ export class DatabaseStorage implements IStorage {
   private async applyCumulativeAlvLimit(
     employeeId: string,
     year: number,
+    paymentMonth: number,
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[],
     excludePaymentId?: string
@@ -1148,19 +1159,25 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get cumulative ALV data (excluding current payment if editing)
-    const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId);
-    const previousAlvSubjectAmount = parseFloat(cumulativeData.cumulativeAlvSubjectAmount);
+    // IMPORTANT: Only consider payments BEFORE the current month
+    const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId, paymentMonth);
+    const previousAlvBaseUsed = parseFloat(cumulativeData.cumulativeAlvBaseUsed);
 
-    // Calculate total cumulative ALV-subject amount (previous + current)
-    const totalAlvSubjectAmount = previousAlvSubjectAmount + currentAlvSubjectAmount;
-
-    // Get ALV Höchstlohn (CHF 148'200 per year)
+    // Get ALV Höchstlohn settings
     const alvMaxIncomePerYear = parseFloat(company.alvMaxIncomePerYear) || 148200;
+    const monthlyMaxIncome = alvMaxIncomePerYear / 12; // CHF 12'350 per month
 
-    // Calculate how much is still subject to ALV
+    // Calculate cumulative "Soll-Höchstlohn" based on payment month
+    // This allows for cumulative compensation across months
+    // Example: If January used CHF 10'000, February can use up to CHF 14'700
+    // (2 months × CHF 12'350 = CHF 24'700 - CHF 10'000 = CHF 14'700)
+    const sollHoechstlohn = monthlyMaxIncome * paymentMonth;
+    const availableAlvBase = sollHoechstlohn - previousAlvBaseUsed;
+
+    // Calculate ALV base amount (cannot exceed available)
     const alvBaseAmount = Math.max(0, Math.min(
       currentAlvSubjectAmount, // Current amount
-      alvMaxIncomePerYear - previousAlvSubjectAmount // Remaining limit
+      availableAlvBase // Remaining limit based on monthly compensation
     ));
 
     // Calculate ALV amount
@@ -1181,22 +1198,31 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   // CUMULATIVE ALV CALCULATION API
   // ============================================================================
-  async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string): Promise<any> {
-    // Get all payroll payments for this employee in this year (excluding the specified payment if provided)
+  async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string, beforeMonth?: number): Promise<any> {
+    // Get all payroll payments for this employee in this year
+    // If beforeMonth is specified: include payments BEFORE that month AND payments IN that month (except excluded)
+    // This ensures multiple payments in the same month are properly counted
+    const conditions = [
+      eq(payrollPayments.employeeId, employeeId),
+      eq(payrollPayments.paymentYear, year)
+    ];
+    
+    // Add month filter if specified
+    // Include: (month < beforeMonth) OR (month = beforeMonth AND id != excludePaymentId)
+    if (beforeMonth !== undefined) {
+      conditions.push(sql`${payrollPayments.paymentMonth} <= ${beforeMonth}`);
+    }
+    
     let paymentsQuery = db
       .select()
       .from(payrollPayments)
-      .where(
-        and(
-          eq(payrollPayments.employeeId, employeeId),
-          eq(payrollPayments.paymentYear, year)
-        )
-      )
+      .where(and(...conditions))
       .orderBy(payrollPayments.paymentMonth, payrollPayments.periodEnd);
 
     const payments = await paymentsQuery;
 
     // Filter out excluded payment if specified
+    // This handles both: editing a payment (exclude it) and multiple payments in same month
     const filteredPayments = excludePaymentId
       ? payments.filter(p => p.id !== excludePaymentId)
       : payments;
@@ -1205,6 +1231,7 @@ export class DatabaseStorage implements IStorage {
     const payrollItemTypesData = await this.getPayrollItemTypes();
 
     let cumulativeAlvSubjectAmount = 0;
+    let cumulativeAlvBaseUsed = 0; // Track the actual base used for ALV calculation
     let cumulativeAlvDeductionAmount = 0;
 
     // Calculate cumulative ALV-subject income from all payments
@@ -1222,7 +1249,7 @@ export class DatabaseStorage implements IStorage {
         }
       }
 
-      // Sum up ALV deductions already paid
+      // Sum up ALV deductions already paid (and their base amounts)
       const alvDeductions = await db
         .select()
         .from(deductions)
@@ -1235,6 +1262,14 @@ export class DatabaseStorage implements IStorage {
 
       for (const deduction of alvDeductions) {
         cumulativeAlvDeductionAmount += parseFloat(deduction.amount);
+        // Use baseAmount if available, otherwise fall back to calculating from amount
+        if (deduction.baseAmount) {
+          cumulativeAlvBaseUsed += parseFloat(deduction.baseAmount);
+        } else {
+          // Fallback: calculate from amount (reverse calculation)
+          const alvRate = deduction.percentage ? parseFloat(deduction.percentage) : 1.1;
+          cumulativeAlvBaseUsed += parseFloat(deduction.amount) / (alvRate / 100);
+        }
       }
     }
 
@@ -1242,6 +1277,7 @@ export class DatabaseStorage implements IStorage {
       employeeId,
       year,
       cumulativeAlvSubjectAmount: cumulativeAlvSubjectAmount.toFixed(2),
+      cumulativeAlvBaseUsed: cumulativeAlvBaseUsed.toFixed(2), // New field for tracking base used
       cumulativeAlvDeductionAmount: cumulativeAlvDeductionAmount.toFixed(2),
       paymentsCount: filteredPayments.length,
     };
