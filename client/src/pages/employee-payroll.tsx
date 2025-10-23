@@ -278,6 +278,7 @@ export default function EmployeePayroll() {
     }
 
     // ALV (1.1%)
+    // Note: Cumulative Höchstlohn (CHF 148'200/year) is calculated in backend
     const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
     const alvBaseAmount = calculateBaseAmount('subjectToAlv');
     if (alvBaseAmount > 0) {

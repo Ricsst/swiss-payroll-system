@@ -242,12 +242,21 @@ export class DatabaseStorage implements IStorage {
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment> {
+    // Apply cumulative ALV calculation
+    const adjustedDeductions = await this.applyCumulativeAlvLimit(
+      payment.employeeId,
+      payment.paymentYear,
+      items,
+      deductionsList,
+      undefined // no payment ID to exclude (new payment)
+    );
+
     // Calculate totals
     const grossSalary = items.reduce(
       (sum, item) => sum + parseFloat(item.amount),
       0
     );
-    const totalDeductions = deductionsList.reduce(
+    const totalDeductions = adjustedDeductions.reduce(
       (sum, d) => sum + parseFloat(d.amount),
       0
     );
@@ -274,9 +283,9 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Insert deductions
-    if (deductionsList.length > 0) {
+    if (adjustedDeductions.length > 0) {
       await db.insert(deductions).values(
-        deductionsList.map((d) => ({
+        adjustedDeductions.map((d) => ({
           ...d,
           payrollPaymentId: paymentRecord.id,
         }))
@@ -294,7 +303,7 @@ export class DatabaseStorage implements IStorage {
   ): Promise<PayrollPayment> {
     // Check if payment is locked
     const [existingPayment] = await db
-      .select({ isLocked: payrollPayments.isLocked })
+      .select({ isLocked: payrollPayments.isLocked, employeeId: payrollPayments.employeeId, paymentYear: payrollPayments.paymentYear })
       .from(payrollPayments)
       .where(eq(payrollPayments.id, id));
     
@@ -302,12 +311,21 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Abgeschlossene Lohnauszahlungen können nicht bearbeitet werden");
     }
 
+    // Apply cumulative ALV calculation
+    const adjustedDeductions = await this.applyCumulativeAlvLimit(
+      payment.employeeId || existingPayment.employeeId,
+      payment.paymentYear || existingPayment.paymentYear,
+      items,
+      deductionsList,
+      id // exclude current payment from cumulative calculation
+    );
+
     // Calculate totals
     const grossSalary = items.reduce(
       (sum, item) => sum + parseFloat(item.amount),
       0
     );
-    const totalDeductions = deductionsList.reduce(
+    const totalDeductions = adjustedDeductions.reduce(
       (sum, d) => sum + parseFloat(d.amount),
       0
     );
@@ -341,9 +359,9 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Insert new deductions
-    if (deductionsList.length > 0) {
+    if (adjustedDeductions.length > 0) {
       await db.insert(deductions).values(
-        deductionsList.map((d) => ({
+        adjustedDeductions.map((d) => ({
           ...d,
           payrollPaymentId: id,
         }))
@@ -1096,7 +1114,72 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============================================================================
-  // CUMULATIVE ALV CALCULATION
+  // CUMULATIVE ALV CALCULATION HELPER
+  // ============================================================================
+  private async applyCumulativeAlvLimit(
+    employeeId: string,
+    year: number,
+    items: InsertPayrollItem[],
+    deductionsList: InsertDeduction[],
+    excludePaymentId?: string
+  ): Promise<InsertDeduction[]> {
+    // Get company for ALV settings
+    const company = await this.getCompany();
+    if (!company) {
+      return deductionsList; // No company, return unchanged
+    }
+
+    // Find ALV deduction
+    const alvIndex = deductionsList.findIndex(d => d.type === 'ALV');
+    if (alvIndex === -1) {
+      return deductionsList; // No ALV deduction, return unchanged
+    }
+
+    // Get payroll item types for calculating ALV-subject amounts
+    const payrollItemTypesData = await this.getPayrollItemTypes();
+
+    // Calculate current ALV-subject amount from items
+    let currentAlvSubjectAmount = 0;
+    for (const item of items) {
+      const itemType = payrollItemTypesData.find(t => t.code === item.type);
+      if (itemType && itemType.subjectToAlv) {
+        currentAlvSubjectAmount += parseFloat(item.amount);
+      }
+    }
+
+    // Get cumulative ALV data (excluding current payment if editing)
+    const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId);
+    const previousAlvSubjectAmount = parseFloat(cumulativeData.cumulativeAlvSubjectAmount);
+
+    // Calculate total cumulative ALV-subject amount (previous + current)
+    const totalAlvSubjectAmount = previousAlvSubjectAmount + currentAlvSubjectAmount;
+
+    // Get ALV Höchstlohn (CHF 148'200 per year)
+    const alvMaxIncomePerYear = parseFloat(company.alvMaxIncomePerYear) || 148200;
+
+    // Calculate how much is still subject to ALV
+    const alvBaseAmount = Math.max(0, Math.min(
+      currentAlvSubjectAmount, // Current amount
+      alvMaxIncomePerYear - previousAlvSubjectAmount // Remaining limit
+    ));
+
+    // Calculate ALV amount
+    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
+    const alvAmount = (alvBaseAmount * (alvRate / 100)).toFixed(2);
+
+    // Create adjusted deductions list
+    const adjustedDeductions = [...deductionsList];
+    adjustedDeductions[alvIndex] = {
+      ...deductionsList[alvIndex],
+      baseAmount: alvBaseAmount.toFixed(2),
+      amount: alvAmount,
+    };
+
+    return adjustedDeductions;
+  }
+
+  // ============================================================================
+  // CUMULATIVE ALV CALCULATION API
   // ============================================================================
   async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string): Promise<any> {
     // Get all payroll payments for this employee in this year (excluding the specified payment if provided)
