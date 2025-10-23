@@ -59,6 +59,36 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
+### Kompakte Lohnauszahlungs-Detail-Ansicht mit Navigation (Oktober 23, 2025)
+Die Lohnauszahlungs-Detail-Seite wurde kompakter gestaltet und mit Navigation durch gefilterte Payments erweitert:
+
+**Kompakteres Layout:**
+- Kleinere Überschriften und Texte (text-xl für Titel, text-xs für Details)
+- Reduziertes Padding in Cards (py-2 px-4 statt py-4 px-6)
+- Kompakte Tabellen mit h-7 Zeilen und text-xs Schrift
+- Kleinere Buttons und Badges (size="sm", h-5)
+- Engere Abstände zwischen Elementen (space-y-3 statt space-y-6)
+- Mehr Inhalt auf einem Bildschirm sichtbar
+
+**Navigation durch gefilterte Lohnauszahlungen:**
+- Vor/Zurück-Buttons (ChevronLeft/ChevronRight) zum Durchblättern
+- Positionsanzeige (z.B. "3 / 10") zeigt aktuelle Position in der gefilterten Liste
+- Filter-Parameter (Jahr/Monat) werden über URL weitergegeben und beibehalten
+- Navigation nur sichtbar wenn mehr als eine Zahlung in der gefilterten Liste
+- Buttons automatisch deaktiviert am Anfang/Ende der Liste
+
+**Technische Umsetzung:**
+- URL-Parameter (?year=2025&month=10) werden von der Payroll-Liste an Detail-Seite übergeben
+- Detail-Seite lädt gefilterte Payments für Navigation-Context
+- Navigation erhält Filter-Parameter bei jedem Seitenwechsel
+- Interface-Korrekturen: `hourlyRate` (statt rate), `percentage` und `baseAmount` für Deductions
+
+**Benutzerfreundlichkeit:**
+- Schnelles Durchblättern durch alle Auszahlungen eines Monats
+- Keine Rückkehr zur Liste nötig zum Vergleichen mehrerer Auszahlungen
+- Filter bleiben aktiv beim Zurückkehren zur Liste
+- Kompakte Darstellung ermöglicht besseren Überblick
+
 ### PDF-Layout-Anpassung an Referenzdokument (Oktober 23, 2025)
 Das Layout der Lohnabrechnung (PDF) wurde an das Referenzdokument angepasst:
 
@@ -79,11 +109,17 @@ Das Layout der Lohnabrechnung (PDF) wurde an das Referenzdokument angepasst:
 - Frontend (payroll-detail.tsx) aktualisiert für korrekte Feldnamen
 - Keine "NaN" Werte mehr in der UI
 
+**Adressformatierung für Fensterkuvert:**
+- Adresse wird auf drei separate Zeilen aufgeteilt für bessere Lesbarkeit
+- Format: Name / Strasse Nr / PLZ Ort
+- Automatische Aufteilung von "Strasse Nr, PLZ Ort" Format
+
 **PDF-Struktur:**
 ```
 Lohnabrechnung
 Oktober 2025                                    Hans Müller
-                                                Bahnhofstrasse 12, 8001 Zürich
+                                                Bahnhofstrasse 12
+                                                8001 Zürich
 
 LOHNBESTANDTEILE
 01 (Grundgehalt Oktober)                        CHF 6'500.00
