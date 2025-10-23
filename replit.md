@@ -59,6 +59,52 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
+### PDF-Layout-Anpassung an Referenzdokument (Oktober 23, 2025)
+Das Layout der Lohnabrechnung (PDF) wurde an das Referenzdokument angepasst:
+
+**Layout-Verbesserungen:**
+- Titel "Lohnabrechnung" ist jetzt größer und prominenter (18pt statt 16pt)
+- Monat/Jahr ist größer (12pt statt 10pt)
+- Mitarbeitername und Adresse rechtsbündig für Fensterkuvert
+- Professionelles, übersichtliches vertikales Layout
+
+**Abzugsbeschreibungen:**
+- AHV, ALV, NBU, QST zeigen Prozentsatz mit Basisbetrag: "AHV - AHV/IV/EO Abzug (5.30% von CHF 6'500.00)"
+- BVG zeigt Beschreibung ohne Prozentsatz: "BVG - Pensionskasse"
+- Alle Abzugsbeträge mit Minuszeichen
+
+**Datenstruktur-Korrekturen:**
+- Deductions verwenden jetzt korrekt `percentage` und `baseAmount` Felder (statt `rate`)
+- PayrollItems verwenden `hourlyRate` Feld korrekt
+- Frontend (payroll-detail.tsx) aktualisiert für korrekte Feldnamen
+- Keine "NaN" Werte mehr in der UI
+
+**PDF-Struktur:**
+```
+Lohnabrechnung
+Oktober 2025                                    Hans Müller
+                                                Bahnhofstrasse 12, 8001 Zürich
+
+LOHNBESTANDTEILE
+01 (Grundgehalt Oktober)                        CHF 6'500.00
+
+BRUTTOLOHN                                      CHF 6'500.00
+
+ABZÜGE
+AHV - AHV/IV/EO Abzug (5.30% von CHF 6'500.00)  - CHF 344.50
+ALV - ALV Abzug (1.10% von CHF 6'500.00)        - CHF 71.50
+NBU - NBU/SUVA Abzug (1.17% von CHF 6'500.00)   - CHF 75.92
+BVG - Pensionskasse                              - CHF 223.58
+
+TOTAL ABZÜGE                                    - CHF 715.50
+
+NETTOLOHN                                       CHF 5'784.50
+
+Periode: 01.10.2025 - 31.10.2025 | AHV-Nr: 756... | Auszahlung: 31.10.2025
+```
+
+## Recent Features (October 2025)
+
 ### Bearbeiten-Button in Lohnauszahlungs-Liste (Oktober 22, 2025)
 Die Lohnauszahlungs-Liste wurde um einen direkten Bearbeiten-Button erweitert:
 

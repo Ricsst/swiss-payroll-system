@@ -315,8 +315,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       deductions.push({
         type: "AHV",
         description: (payment.employee && 'isRentner' in payment.employee && (payment.employee as any).isRentner) ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
-        rate: ahvRate.toString(),
+        percentage: ahvRate.toString(),
+        baseAmount: ahvBaseAmount.toFixed(2),
         amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
       });
     }
 
@@ -327,8 +329,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       deductions.push({
         type: "ALV",
         description: "ALV Abzug",
-        rate: alvRate.toString(),
+        percentage: alvRate.toString(),
+        baseAmount: alvBaseAmount.toFixed(2),
         amount: (alvBaseAmount * (alvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
       });
     }
 
@@ -340,8 +344,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
         deductions.push({
           type: "NBU",
           description: "NBU/SUVA Abzug",
-          rate: suvaRate.toString(),
+          percentage: suvaRate.toString(),
+          baseAmount: nbuBaseAmount.toFixed(2),
           amount: (nbuBaseAmount * (suvaRate / 100)).toFixed(2),
+          isAutoCalculated: true,
         });
       }
     }
@@ -354,8 +360,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
         deductions.push({
           type: "BVG",
           description: "BVG Abzug",
-          rate: null,
+          percentage: null,
+          baseAmount: null,
           amount: bvgAmount.toFixed(2),
+          isAutoCalculated: true,
         });
       }
     }
@@ -368,8 +376,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
         deductions.push({
           type: "QST",
           description: "Quellensteuer Abzug",
-          rate: qstRate.toString(),
+          percentage: qstRate.toString(),
+          baseAmount: qstBaseAmount.toFixed(2),
           amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
+          isAutoCalculated: true,
         });
       }
     }

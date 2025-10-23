@@ -231,11 +231,11 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
                     </TableCell>
                     <TableCell>{item.description || "-"}</TableCell>
                     <TableCell className="text-center font-mono">
-                      {item.hours !== null ? item.hours.toFixed(2) : "-"}
+                      {item.hours !== null && item.hours !== undefined ? Number(item.hours).toFixed(2) : "-"}
                     </TableCell>
                     <TableCell className="text-right font-mono">
-                      {item.rate !== null
-                        ? `CHF ${Number(item.rate).toLocaleString("de-CH", {
+                      {item.hourlyRate !== null && item.hourlyRate !== undefined
+                        ? `CHF ${Number(item.hourlyRate).toLocaleString("de-CH", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}`
@@ -283,7 +283,7 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
                     </TableCell>
                     <TableCell>{deduction.description || "-"}</TableCell>
                     <TableCell className="text-right font-mono">
-                      {deduction.rate !== null ? `${Number(deduction.rate).toFixed(2)}%` : "-"}
+                      {deduction.percentage !== null && deduction.percentage !== undefined ? `${Number(deduction.percentage).toFixed(2)}%` : "-"}
                     </TableCell>
                     <TableCell className="text-right font-mono font-medium text-destructive">
                       - CHF{" "}

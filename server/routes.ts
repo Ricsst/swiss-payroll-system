@@ -524,10 +524,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         payment.deductions.forEach((d: any) => {
           let label = `${d.type}`;
           if (d.description) {
-            label += ` - ${d.description}`;
+            label = `${d.type} - ${d.description}`;
           }
           if (d.percentage && d.baseAmount) {
             label += ` (${formatPercentage(parseFloat(d.percentage))} von ${formatCurrency(parseFloat(d.baseAmount))})`;
+          } else if (d.percentage && !d.baseAmount) {
+            // For BVG without baseAmount, show percentage without base
+            label += ` (${formatPercentage(parseFloat(d.percentage))})`;
           }
           pdf.addPayrollLine(label, formatCurrency(parseFloat(d.amount)), false, true);
         });
