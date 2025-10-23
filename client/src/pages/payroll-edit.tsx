@@ -214,8 +214,15 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       return;
     }
 
-    // Calculate deductions
-    const calculatedDeductions = calculateDeductions();
+    // Use existing deductions (don't recalculate - BVG can change over the year)
+    const existingDeductions = payment.deductions.map(d => ({
+      type: d.type,
+      description: d.description || null,
+      percentage: d.percentage || null,
+      baseAmount: d.baseAmount || null,
+      amount: d.amount,
+      isAutoCalculated: false,
+    }));
 
     const payload = {
       employeeId: payment.employeeId,
@@ -226,7 +233,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       paymentYear: new Date(periodEnd).getFullYear(),
       notes: notes || null,
       items,
-      deductions: calculatedDeductions,
+      deductions: existingDeductions,
     };
 
     updatePaymentMutation.mutate(payload);
@@ -289,123 +296,8 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
     return sum + (isNaN(amount) ? 0 : amount);
   }, 0);
 
-  // Calculate deductions based on payroll item type flags
-  const calculateDeductions = () => {
-    if (!company || !payment || payrollItemTypes.length === 0) return [];
-
-    const deductions: any[] = [];
-    
-    // Calculate base amounts for each deduction type based on payroll item type flags
-    const calculateBaseAmount = (deductionFlag: keyof Pick<PayrollItemType, 'subjectToAhv' | 'subjectToAlv' | 'subjectToNbu' | 'subjectToBvg' | 'subjectToQst'>) => {
-      return Object.values(payrollRows).reduce((sum, row) => {
-        const amount = parseFloat(row.amount) || 0;
-        if (amount <= 0) return sum;
-        
-        const itemType = payrollItemTypes.find(t => t.code === row.type);
-        if (!itemType || !itemType[deductionFlag]) return sum;
-        
-        return sum + amount;
-      }, 0);
-    };
-    
-    // AHV - with Rentner allowance if applicable
-    const ahvRate = parseFloat(company.ahvEmployeeRate) || 5.3;
-    let ahvBaseAmount = calculateBaseAmount('subjectToAhv');
-    
-    // Apply Rentner allowance if employee is Rentner
-    if (payment.employee && 'isRentner' in payment.employee && (payment.employee as any).isRentner && ahvBaseAmount > 0) {
-      const rentnerAllowance = parseFloat(company.ahvRentnerAllowance) || 1400;
-      ahvBaseAmount = Math.max(0, ahvBaseAmount - rentnerAllowance);
-    }
-    
-    if (ahvBaseAmount > 0) {
-      deductions.push({
-        type: "AHV",
-        description: (payment.employee && 'isRentner' in payment.employee && (payment.employee as any).isRentner) ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
-        percentage: ahvRate.toString(),
-        baseAmount: ahvBaseAmount.toFixed(2),
-        amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
-        isAutoCalculated: true,
-      });
-    }
-
-    // ALV
-    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
-    const alvBaseAmount = calculateBaseAmount('subjectToAlv');
-    if (alvBaseAmount > 0) {
-      deductions.push({
-        type: "ALV",
-        description: "ALV Abzug",
-        percentage: alvRate.toString(),
-        baseAmount: alvBaseAmount.toFixed(2),
-        amount: (alvBaseAmount * (alvRate / 100)).toFixed(2),
-        isAutoCalculated: true,
-      });
-    }
-
-    // NBU/SUVA - only if employee is NBU insured
-    if (payment.employee && 'isNbuInsured' in payment.employee && (payment.employee as any).isNbuInsured) {
-      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
-      const nbuBaseAmount = calculateBaseAmount('subjectToNbu');
-      if (nbuBaseAmount > 0) {
-        deductions.push({
-          type: "NBU",
-          description: "NBU/SUVA Abzug",
-          percentage: suvaRate.toString(),
-          baseAmount: nbuBaseAmount.toFixed(2),
-          amount: (nbuBaseAmount * (suvaRate / 100)).toFixed(2),
-          isAutoCalculated: true,
-        });
-      }
-    }
-
-    // BVG - only calculate if employee has BVG configured
-    const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
-    if (bvgBaseAmount > 0 && payment.employee) {
-      let bvgAmount: number | null = null;
-      
-      // Check if employee has BVG deduction configured
-      if (payment.employee.bvgDeductionAmount && parseFloat(payment.employee.bvgDeductionAmount) > 0) {
-        // Use fixed CHF amount (only if > 0)
-        bvgAmount = parseFloat(payment.employee.bvgDeductionAmount);
-      } else if ('bvgDeductionPercentage' in payment.employee && payment.employee.bvgDeductionPercentage && parseFloat(payment.employee.bvgDeductionPercentage) > 0) {
-        // Use percentage of BVG-subject salary (only if > 0)
-        bvgAmount = bvgBaseAmount * (parseFloat(payment.employee.bvgDeductionPercentage) / 100);
-      }
-      // If both fields are NULL/empty or set to 0, no BVG deduction is applied
-      
-      if (bvgAmount !== null && bvgAmount > 0) {
-        deductions.push({
-          type: "BVG",
-          description: "BVG Abzug",
-          percentage: null,
-          baseAmount: null,
-          amount: bvgAmount.toFixed(2),
-          isAutoCalculated: true,
-        });
-      }
-    }
-
-    // QST - only if employee is subject to Quellensteuer
-    if (payment.employee && 'isQstSubject' in payment.employee && (payment.employee as any).isQstSubject) {
-      const qstRate = parseFloat((payment.employee as any).qstRate || "0");
-      const qstBaseAmount = calculateBaseAmount('subjectToQst');
-      if (qstBaseAmount > 0 && qstRate > 0) {
-        deductions.push({
-          type: "QST",
-          description: "Quellensteuer Abzug",
-          percentage: qstRate.toString(),
-          baseAmount: qstBaseAmount.toFixed(2),
-          amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
-          isAutoCalculated: true,
-        });
-      }
-    }
-
-    return deductions;
-  };
-
-  const deductions = calculateDeductions();
+  // Use stored deductions (don't recalculate - BVG can change during the year)
+  const deductions = payment?.deductions || [];
   const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netSalary = grossSalary - totalDeductions;
 
