@@ -139,6 +139,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get cumulative ALV data for an employee in a year (for ALV Höchstlohn calculation)
+  app.get("/api/payroll/cumulative-alv", async (req, res) => {
+    try {
+      const employeeId = req.query.employeeId as string;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const excludePaymentId = req.query.excludePaymentId as string | undefined;
+
+      if (!employeeId || !year) {
+        return res.status(400).json({ error: "employeeId and year are required" });
+      }
+
+      const data = await storage.getCumulativeAlvData(employeeId, year, excludePaymentId);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/payroll/payments/:id", async (req, res) => {
     try {
       const payment = await storage.getPayrollPayment(req.params.id);

@@ -70,6 +70,9 @@ export interface IStorage {
   getMonthlyReport(year: number, month: number): Promise<any>;
   getYearlyReport(year: number): Promise<any>;
   getDashboardStats(): Promise<any>;
+  
+  // Cumulative ALV calculation
+  getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1089,6 +1092,75 @@ export class DatabaseStorage implements IStorage {
       ),
       totalGross: Object.values(grossMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
       totalDeductions: Object.values(deductionMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
+    };
+  }
+
+  // ============================================================================
+  // CUMULATIVE ALV CALCULATION
+  // ============================================================================
+  async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string): Promise<any> {
+    // Get all payroll payments for this employee in this year (excluding the specified payment if provided)
+    let paymentsQuery = db
+      .select()
+      .from(payrollPayments)
+      .where(
+        and(
+          eq(payrollPayments.employeeId, employeeId),
+          eq(payrollPayments.paymentYear, year)
+        )
+      )
+      .orderBy(payrollPayments.paymentMonth, payrollPayments.periodEnd);
+
+    const payments = await paymentsQuery;
+
+    // Filter out excluded payment if specified
+    const filteredPayments = excludePaymentId
+      ? payments.filter(p => p.id !== excludePaymentId)
+      : payments;
+
+    // Load payroll items and item types for ALV calculation
+    const payrollItemTypesData = await this.getPayrollItemTypes();
+
+    let cumulativeAlvSubjectAmount = 0;
+    let cumulativeAlvDeductionAmount = 0;
+
+    // Calculate cumulative ALV-subject income from all payments
+    for (const payment of filteredPayments) {
+      const items = await db
+        .select()
+        .from(payrollItems)
+        .where(eq(payrollItems.payrollPaymentId, payment.id));
+
+      // Sum up ALV-subject amounts
+      for (const item of items) {
+        const itemType = payrollItemTypesData.find(t => t.code === item.type);
+        if (itemType && itemType.subjectToAlv) {
+          cumulativeAlvSubjectAmount += parseFloat(item.amount);
+        }
+      }
+
+      // Sum up ALV deductions already paid
+      const alvDeductions = await db
+        .select()
+        .from(deductions)
+        .where(
+          and(
+            eq(deductions.payrollPaymentId, payment.id),
+            eq(deductions.type, 'ALV')
+          )
+        );
+
+      for (const deduction of alvDeductions) {
+        cumulativeAlvDeductionAmount += parseFloat(deduction.amount);
+      }
+    }
+
+    return {
+      employeeId,
+      year,
+      cumulativeAlvSubjectAmount: cumulativeAlvSubjectAmount.toFixed(2),
+      cumulativeAlvDeductionAmount: cumulativeAlvDeductionAmount.toFixed(2),
+      paymentsCount: filteredPayments.length,
     };
   }
 }
