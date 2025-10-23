@@ -214,15 +214,9 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       return;
     }
 
-    // Use existing deductions (don't recalculate - BVG can change over the year)
-    const existingDeductions = payment.deductions.map(d => ({
-      type: d.type,
-      description: d.description || null,
-      percentage: d.percentage || null,
-      baseAmount: d.baseAmount || null,
-      amount: d.amount,
-      isAutoCalculated: false,
-    }));
+    // Recalculate deductions based on new gross salary
+    // BUT preserve original BVG values (BVG can change during the year)
+    const calculatedDeductions = calculateDeductions();
 
     const payload = {
       employeeId: payment.employeeId,
@@ -233,7 +227,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       paymentYear: new Date(periodEnd).getFullYear(),
       notes: notes || null,
       items,
-      deductions: existingDeductions,
+      deductions: calculatedDeductions,
     };
 
     updatePaymentMutation.mutate(payload);
@@ -296,8 +290,111 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
     return sum + (isNaN(amount) ? 0 : amount);
   }, 0);
 
-  // Use stored deductions (don't recalculate - BVG can change during the year)
-  const deductions = payment?.deductions || [];
+  // Calculate deductions based on current gross salary
+  // BUT preserve original BVG values (BVG can change during the year)
+  const calculateDeductions = () => {
+    if (!company || !payment || payrollItemTypes.length === 0) return [];
+
+    const deductions: any[] = [];
+    
+    // Calculate base amounts for each deduction type based on payroll item type flags
+    const calculateBaseAmount = (deductionFlag: keyof Pick<PayrollItemType, 'subjectToAhv' | 'subjectToAlv' | 'subjectToNbu' | 'subjectToBvg' | 'subjectToQst'>) => {
+      return Object.values(payrollRows).reduce((sum, row) => {
+        const amount = parseFloat(row.amount) || 0;
+        if (amount <= 0) return sum;
+        
+        const itemType = payrollItemTypes.find(t => t.code === row.type);
+        if (!itemType || !itemType[deductionFlag]) return sum;
+        
+        return sum + amount;
+      }, 0);
+    };
+    
+    // AHV - with Rentner allowance if applicable
+    const ahvRate = parseFloat(company.ahvEmployeeRate) || 5.3;
+    let ahvBaseAmount = calculateBaseAmount('subjectToAhv');
+    
+    // Apply Rentner allowance if employee is Rentner
+    if (payment.employee && payment.employee.isRentner && ahvBaseAmount > 0) {
+      const rentnerAllowance = parseFloat(company.ahvRentnerAllowance) || 1400;
+      ahvBaseAmount = Math.max(0, ahvBaseAmount - rentnerAllowance);
+    }
+    
+    if (ahvBaseAmount > 0) {
+      deductions.push({
+        type: "AHV",
+        description: payment.employee.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
+        percentage: ahvRate.toString(),
+        baseAmount: ahvBaseAmount.toFixed(2),
+        amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // ALV
+    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
+    const alvBaseAmount = calculateBaseAmount('subjectToAlv');
+    if (alvBaseAmount > 0) {
+      deductions.push({
+        type: "ALV",
+        description: "ALV Abzug",
+        percentage: alvRate.toString(),
+        baseAmount: alvBaseAmount.toFixed(2),
+        amount: (alvBaseAmount * (alvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // NBU/SUVA - only if employee is NBU insured
+    if (payment.employee && payment.employee.isNbuInsured) {
+      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+      const nbuBaseAmount = calculateBaseAmount('subjectToNbu');
+      if (nbuBaseAmount > 0) {
+        deductions.push({
+          type: "NBU",
+          description: "NBU/SUVA Abzug",
+          percentage: suvaRate.toString(),
+          baseAmount: nbuBaseAmount.toFixed(2),
+          amount: (nbuBaseAmount * (suvaRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    // BVG - Use ORIGINAL values from stored deductions (don't recalculate from current employee)
+    // This preserves historical BVG rates that may have changed during the year
+    const originalBvgDeduction = payment.deductions.find(d => d.type === 'BVG');
+    if (originalBvgDeduction) {
+      deductions.push({
+        type: "BVG",
+        description: originalBvgDeduction.description || "BVG Abzug",
+        percentage: originalBvgDeduction.percentage,
+        baseAmount: originalBvgDeduction.baseAmount,
+        amount: originalBvgDeduction.amount, // Keep original amount
+        isAutoCalculated: true,
+      });
+    }
+
+    // QST - only if employee is subject to Quellensteuer
+    if (payment.employee && payment.employee.isQstSubject) {
+      const qstRate = parseFloat(payment.employee.qstRate || "0");
+      const qstBaseAmount = calculateBaseAmount('subjectToQst');
+      if (qstBaseAmount > 0 && qstRate > 0) {
+        deductions.push({
+          type: "QST",
+          description: "Quellensteuer Abzug",
+          percentage: qstRate.toString(),
+          baseAmount: qstBaseAmount.toFixed(2),
+          amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    return deductions;
+  };
+
+  const deductions = calculateDeductions();
   const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netSalary = grossSalary - totalDeductions;
 
