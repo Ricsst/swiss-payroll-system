@@ -379,72 +379,68 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const monthName = monthNames[payment.paymentMonth - 1];
 
-        // Custom header for payroll slip with employee name
-        pdf.addHeader({
-          title: "Lohnabrechnung",
-          subtitle: `${employee.firstName} ${employee.lastName}`,
-          details: `${monthName} ${payment.paymentYear} • AHV: ${employee.ahvNumber}`,
-        });
+        // Add title on the left
+        pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`);
+        
+        // Add employee address on the right (for window envelope)
+        const employeeName = `${employee.firstName} ${employee.lastName}`;
+        pdf.addWindowEnvelopeAddress(employeeName, employee.address);
 
-        // Payroll items table
-        const itemRows: any[] = [];
+        // Add section header
+        pdf.addSection("LOHNBESTANDTEILE");
+        
+        // Add payroll items as individual lines
         if (payment.payrollItems && payment.payrollItems.length > 0) {
           payment.payrollItems.forEach((item: any) => {
-            const quantity = item.hours || "";
-            const rate = item.hourlyRate || "";
-            
-            itemRows.push([
-              item.type,
-              "",  // % column (empty for payroll items)
-              quantity,
-              rate ? formatCurrency(parseFloat(rate)) : "",
-              formatCurrency(parseFloat(item.amount)) + " +"
-            ]);
+            let label = item.type;
+            if (item.description) {
+              label += ` (${item.description})`;
+            }
+            if (item.hours && item.hourlyRate) {
+              label += ` - ${item.hours}h à ${formatCurrency(parseFloat(item.hourlyRate))}`;
+            }
+            pdf.addPayrollLine(label, formatCurrency(parseFloat(item.amount)), false, false);
           });
         }
 
-        pdf.addTable(
-          ["Legende", "%", "Menge", "Ansatz", "Betrag"],
-          itemRows
-        );
-
-        // Gross salary
-        pdf.addSection("BRUTTOLOHN");
-        pdf.addText("Total", formatCurrency(parseFloat(payment.grossSalary)));
-
-        // Deductions table
-        const deductionRows: any[] = [];
+        pdf.addSeparatorLine();
+        
+        // Gross salary total
+        pdf.addPayrollLine("BRUTTOLOHN", formatCurrency(parseFloat(payment.grossSalary)), true, false);
+        
+        pdf.addSeparatorLine();
+        
+        // Add deductions section
         if (payment.deductions && payment.deductions.length > 0) {
+          pdf.addSection("ABZÜGE");
+          
           payment.deductions.forEach((d: any) => {
-            const percentage = d.percentage ? formatPercentage(parseFloat(d.percentage)) : "";
-            const baseAmount = d.baseAmount ? formatCurrency(parseFloat(d.baseAmount)) : "";
-            
-            deductionRows.push([
-              `${d.type} - ${d.description || "Abzug"}`,
-              percentage,
-              "",  // Menge (empty for deductions)
-              baseAmount,
-              formatCurrency(parseFloat(d.amount)) + " -"
-            ]);
+            let label = `${d.type}`;
+            if (d.description) {
+              label = `${d.type} - ${d.description}`;
+            }
+            if (d.percentage && d.baseAmount) {
+              label += ` (${formatPercentage(parseFloat(d.percentage))} von ${formatCurrency(parseFloat(d.baseAmount))})`;
+            } else if (d.percentage && !d.baseAmount) {
+              // For BVG without baseAmount, show percentage without base
+              label += ` (${formatPercentage(parseFloat(d.percentage))})`;
+            }
+            pdf.addPayrollLine(label, formatCurrency(parseFloat(d.amount)), false, true);
           });
-        }
-
-        if (deductionRows.length > 0) {
-          pdf.addTable(
-            ["Legende", "%", "Menge", "Ansatz", "Betrag"],
-            deductionRows
-          );
+          
+          pdf.addSeparatorLine();
         }
 
         // Total deductions
-        pdf.addSection("TOTAL ABZÜGE");
-        pdf.addText("Total", formatCurrency(parseFloat(payment.totalDeductions)));
+        pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(payment.totalDeductions)), true, true);
+        
+        pdf.addSeparatorLine();
+        
+        // Net salary - highlighted
+        pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
 
-        // Net salary
-        pdf.addSection("NETTOLOHN");
-        pdf.addText("Total", formatCurrency(parseFloat(payment.netSalary)));
-
-        pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+        // Add footer with additional info
+        pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlung: ${formatDate(payment.paymentDate)}`);
       }
 
       const pdfBlob = pdf.getBlob();
