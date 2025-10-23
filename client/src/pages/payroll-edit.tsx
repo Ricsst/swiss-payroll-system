@@ -51,6 +51,7 @@ interface PayrollPaymentDetail {
     isQstSubject: boolean;
     qstRate: string;
     bvgDeductionAmount: string;
+    bvgDeductionPercentage: string;
   };
   items: {
     id: string;
@@ -358,11 +359,22 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       }
     }
 
-    // BVG - use employee default if available
+    // BVG - only calculate if employee has BVG configured
     const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
-    if (bvgBaseAmount > 0 && payment.employee && 'bvgDeductionAmount' in payment.employee) {
-      const bvgAmount = parseFloat((payment.employee as any).bvgDeductionAmount || "0");
-      if (bvgAmount > 0) {
+    if (bvgBaseAmount > 0 && payment.employee) {
+      let bvgAmount: number | null = null;
+      
+      // Check if employee has BVG deduction configured
+      if (payment.employee.bvgDeductionAmount && parseFloat(payment.employee.bvgDeductionAmount) > 0) {
+        // Use fixed CHF amount (only if > 0)
+        bvgAmount = parseFloat(payment.employee.bvgDeductionAmount);
+      } else if ('bvgDeductionPercentage' in payment.employee && payment.employee.bvgDeductionPercentage && parseFloat(payment.employee.bvgDeductionPercentage) > 0) {
+        // Use percentage of BVG-subject salary (only if > 0)
+        bvgAmount = bvgBaseAmount * (parseFloat(payment.employee.bvgDeductionPercentage) / 100);
+      }
+      // If both fields are NULL/empty or set to 0, no BVG deduction is applied
+      
+      if (bvgAmount !== null && bvgAmount > 0) {
         deductions.push({
           type: "BVG",
           description: "BVG Abzug",

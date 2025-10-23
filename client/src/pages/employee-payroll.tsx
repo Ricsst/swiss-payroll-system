@@ -307,23 +307,20 @@ export default function EmployeePayroll() {
       }
     }
 
-    // BVG - use employee default or approximately 3.5% of BVG-subject salary
+    // BVG - only calculate if employee has BVG configured
     const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
     if (bvgBaseAmount > 0) {
       let bvgAmount: number | null = null;
       
-      // Check if employee has custom BVG deduction
+      // Check if employee has BVG deduction configured
       if (currentEmployee?.bvgDeductionAmount && parseFloat(currentEmployee.bvgDeductionAmount) > 0) {
-        // Use fixed CHF amount
+        // Use fixed CHF amount (only if > 0)
         bvgAmount = parseFloat(currentEmployee.bvgDeductionAmount);
       } else if (currentEmployee?.bvgDeductionPercentage && parseFloat(currentEmployee.bvgDeductionPercentage) > 0) {
-        // Use percentage of BVG-subject salary
+        // Use percentage of BVG-subject salary (only if > 0)
         bvgAmount = bvgBaseAmount * (parseFloat(currentEmployee.bvgDeductionPercentage) / 100);
-      } else if (!currentEmployee?.bvgDeductionAmount && !currentEmployee?.bvgDeductionPercentage) {
-        // Default: 3.5% of BVG-subject salary (only if neither amount nor percentage is set)
-        bvgAmount = bvgBaseAmount * 0.035;
       }
-      // If bvgDeductionPercentage is explicitly set to 0, bvgAmount remains null and BVG is not added
+      // If both fields are NULL/empty or set to 0, no BVG deduction is applied
       
       if (bvgAmount !== null && bvgAmount > 0) {
         deductions.push({
