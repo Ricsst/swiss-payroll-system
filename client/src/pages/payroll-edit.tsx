@@ -46,6 +46,11 @@ interface PayrollPaymentDetail {
     firstName: string;
     lastName: string;
     ahvNumber: string;
+    isRentner: boolean;
+    isNbuInsured: boolean;
+    isQstSubject: boolean;
+    qstRate: string;
+    bvgDeductionAmount: string;
   };
   items: {
     id: string;
@@ -53,14 +58,15 @@ interface PayrollPaymentDetail {
     description: string | null;
     amount: string;
     hours: string | null;
-    rate: string | null;
+    hourlyRate: string | null;
   }[];
   deductions: {
     id: string;
     type: string;
     description: string | null;
     amount: string;
-    rate: string | null;
+    percentage: string | null;
+    baseAmount: string | null;
   }[];
 }
 
@@ -115,7 +121,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
             description: item.description || "",
             amount: item.amount,
             hours: item.hours || "",
-            hourlyRate: item.rate || "",
+            hourlyRate: item.hourlyRate || "",
           };
         }
       });
@@ -195,7 +201,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
         description: row.description || null,
         amount: row.amount,
         hours: row.hours || null,
-        rate: row.hourlyRate || null,
+        hourlyRate: row.hourlyRate || null,
       }));
 
     if (items.length === 0) {
