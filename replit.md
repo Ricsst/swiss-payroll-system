@@ -59,6 +59,27 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
+### Monatsabrechnung-Aggregation und BVG-Korrekturen (Oktober 23, 2025)
+
+**Monatsabrechnung-Export korrigiert:**
+- PDF/Excel-Export zeigt jetzt korrekt **Monatstotals pro Mitarbeiter** statt einzelne Lohnabrechnungen
+- Payroll Items werden nach Typ aggregiert und summiert (z.B. alle "Monatslohn" Einträge zusammengefasst)
+- Deductions werden nach Typ aggregiert und summiert (z.B. alle "AHV" Abzüge zusammen)
+- **Intelligente hourlyRate-Berechnung**: Bei Stundenlohn wird ein gewichteter Durchschnitt berechnet (totalAmount / totalHours)
+- Robuste Handhabung von gemischten hourly/non-hourly Items mit demselben Typ
+- Beispiel: Michelle Müller mit 5 Lohnauszahlungen im Oktober → PDF zeigt 1 aggregierte Zeile pro Lohnart
+
+**BVG-Berechnung korrigiert:**
+- Wenn `bvgDeductionPercentage` explizit auf 0 gesetzt wird, wird **kein BVG** mehr berechnet
+- Vorher: BVG wurde mit CHF 0.00 angezeigt auch wenn auf 0 gesetzt
+- Jetzt: BVG erscheint nur wenn tatsächlich ein Betrag oder Prozentsatz > 0 definiert ist
+- Standard bleibt 3.5% wenn weder Betrag noch Prozentsatz gesetzt
+
+**Technische Details:**
+- Aggregations-Maps für effiziente Gruppierung nach employeeId + type
+- Separate Tracking von `totalHourlyAmount` für korrekte Rate-Berechnung
+- BVG-Logik prüft jetzt explizit auf > 0 statt nur auf Vorhandensein
+
 ### Kompakte Lohnauszahlungs-Detail-Ansicht mit Navigation (Oktober 23, 2025)
 Die Lohnauszahlungs-Detail-Seite wurde kompakter gestaltet und mit Navigation durch gefilterte Payments erweitert:
 
