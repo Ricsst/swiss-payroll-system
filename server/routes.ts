@@ -350,6 +350,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Company not found" });
       }
 
+      // Load payroll item types for name mapping
+      const payrollItemTypes = await storage.getPayrollItemTypes();
+
       // Month names in German
       const monthNames = [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -392,7 +395,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Add payroll items as individual lines
         if (payment.payrollItems && payment.payrollItems.length > 0) {
           payment.payrollItems.forEach((item: any) => {
-            let label = item.type;
+            // Find the name for this payroll item type
+            const itemType = payrollItemTypes.find(t => t.code === item.type);
+            const typeName = itemType ? itemType.name : item.type;
+            let label = `${item.type} - ${typeName}`;
             if (item.description) {
               label += ` (${item.description})`;
             }
@@ -472,6 +478,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Company not found" });
       }
 
+      // Load payroll item types for name mapping
+      const payrollItemTypes = await storage.getPayrollItemTypes();
+
       // Month names in German
       const monthNames = [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -495,7 +504,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Add payroll items as individual lines
       if (payment.payrollItems && payment.payrollItems.length > 0) {
         payment.payrollItems.forEach((item: any) => {
-          let label = item.type;
+          // Find the name for this payroll item type
+          const itemType = payrollItemTypes.find(t => t.code === item.type);
+          const typeName = itemType ? itemType.name : item.type;
+          let label = `${item.type} - ${typeName}`;
           if (item.description) {
             label += ` (${item.description})`;
           }
@@ -608,7 +620,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (emp.payrollItems && emp.payrollItems.length > 0) {
             emp.payrollItems.forEach((item: any) => {
               const description = item.description ? ` (${item.description})` : "";
-              pdf.addPayrollLine(`${item.code}${description}`, formatCurrency(parseFloat(item.amount)), false, false);
+              const label = item.name ? `${item.code} - ${item.name}` : item.code;
+              pdf.addPayrollLine(`${label}${description}`, formatCurrency(parseFloat(item.amount)), false, false);
             });
           }
 
