@@ -468,35 +468,92 @@ export class DatabaseStorage implements IStorage {
       }
     }
 
-    // Add payroll items and deductions to each employee
+    // Aggregate payroll items by employee and type
+    const employeePayrollItemsMap = new Map<string, Map<string, any>>();
     for (const item of allPayrollItems) {
       const payment = payments.find(p => p.paymentId === item.payrollPaymentId);
       if (payment) {
-        const employee = employeeMap.get(payment.employeeId);
-        if (employee) {
-          const itemType = allPayrollItemTypes.find(t => t.code === item.type);
-          employee.payrollItems.push({
+        if (!employeePayrollItemsMap.has(payment.employeeId)) {
+          employeePayrollItemsMap.set(payment.employeeId, new Map());
+        }
+        const itemsMap = employeePayrollItemsMap.get(payment.employeeId)!;
+        const itemType = allPayrollItemTypes.find(t => t.code === item.type);
+        const itemKey = item.type;
+        
+        if (itemsMap.has(itemKey)) {
+          const existing = itemsMap.get(itemKey);
+          existing.amount = (parseFloat(existing.amount) + parseFloat(item.amount)).toFixed(2);
+          
+          // Track hourly amounts separately for correct rate calculation
+          if (item.hours && parseFloat(item.hours) > 0) {
+            // This item has hours - accumulate hours and hourly amounts
+            existing.hours = existing.hours 
+              ? (parseFloat(existing.hours) + parseFloat(item.hours)).toFixed(2)
+              : item.hours;
+            existing.totalHourlyAmount = existing.totalHourlyAmount
+              ? (parseFloat(existing.totalHourlyAmount) + parseFloat(item.amount)).toFixed(2)
+              : item.amount;
+            // Recalculate weighted average rate for hourly items
+            existing.hourlyRate = (parseFloat(existing.totalHourlyAmount) / parseFloat(existing.hours)).toFixed(2);
+          }
+        } else {
+          const hasHours = item.hours && parseFloat(item.hours) > 0;
+          itemsMap.set(itemKey, {
             code: item.type,
             name: itemType?.name || item.type,
             description: item.description,
             amount: item.amount,
+            hours: item.hours || null,
+            hourlyRate: item.hourlyRate || null,
+            totalHourlyAmount: hasHours ? item.amount : null, // Track separately for rate calculation
           });
         }
       }
     }
 
+    // Aggregate deductions by employee and type
+    const employeeDeductionsMap = new Map<string, Map<string, any>>();
     for (const ded of allDeductions) {
       const payment = payments.find(p => p.paymentId === ded.payrollPaymentId);
       if (payment) {
-        const employee = employeeMap.get(payment.employeeId);
-        if (employee) {
-          employee.deductions.push({
+        if (!employeeDeductionsMap.has(payment.employeeId)) {
+          employeeDeductionsMap.set(payment.employeeId, new Map());
+        }
+        const deductionsMap = employeeDeductionsMap.get(payment.employeeId)!;
+        const dedKey = ded.type;
+        
+        if (deductionsMap.has(dedKey)) {
+          const existing = deductionsMap.get(dedKey);
+          existing.amount = (parseFloat(existing.amount) + parseFloat(ded.amount)).toFixed(2);
+          // For aggregated deductions, we average the rate and baseAmount
+          if (ded.percentage && existing.rate) {
+            existing.rate = ded.percentage; // Keep the same rate (should be consistent)
+          }
+          if (ded.baseAmount && existing.baseAmount) {
+            existing.baseAmount = (parseFloat(existing.baseAmount) + parseFloat(ded.baseAmount)).toFixed(2);
+          }
+        } else {
+          deductionsMap.set(dedKey, {
             type: ded.type,
             amount: ded.amount,
             rate: ded.percentage,
             baseAmount: ded.baseAmount,
           });
         }
+      }
+    }
+
+    // Add aggregated items and deductions to each employee
+    for (const [employeeId, employee] of Array.from(employeeMap.entries())) {
+      if (employeePayrollItemsMap.has(employeeId)) {
+        // Remove the internal totalHourlyAmount field before exposing to API
+        employee.payrollItems = Array.from(employeePayrollItemsMap.get(employeeId)!.values()).map(item => {
+          const { totalHourlyAmount, ...itemWithoutInternalFields } = item;
+          return itemWithoutInternalFields;
+        });
+      }
+      if (employeeDeductionsMap.has(employeeId)) {
+        employee.deductions = Array.from(employeeDeductionsMap.get(employeeId)!.values());
       }
     }
 
