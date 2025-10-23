@@ -98,8 +98,24 @@ export class PDFGenerator {
     this.doc.setFontSize(11);
     this.doc.setFont("helvetica", "normal");
     
-    const addressLines = [name, ...address.split('\n')];
-    addressLines.forEach((line, index) => {
+    // Parse address: split by newline if exists, or by comma for "Street, PLZ City" format
+    let addressLines: string[] = [];
+    if (address.includes('\n')) {
+      // Already formatted with line breaks
+      addressLines = address.split('\n');
+    } else if (address.includes(',')) {
+      // Format: "Strasse Nr, PLZ Ort" -> split into two lines
+      const parts = address.split(',').map(p => p.trim());
+      addressLines = parts;
+    } else {
+      // Single line address
+      addressLines = [address];
+    }
+    
+    // Combine name and address lines
+    const allLines = [name, ...addressLines];
+    
+    allLines.forEach((line, index) => {
       this.doc.text(line, xPos, yPos + (index * 5));
     });
   }
