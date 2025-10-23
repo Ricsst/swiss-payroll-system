@@ -59,35 +59,42 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
-### Kumulative ALV-Berechnung mit Höchstlohn-Limit (Oktober 23, 2025)
-Das System berechnet jetzt automatisch die ALV (Arbeitslosenversicherung) unter Berücksichtigung des jährlichen Höchstlohns von CHF 148'200.
+### Monatlicher ALV-Höchstlohn mit kumulativer Kompensation (Oktober 23, 2025)
+Das System implementiert jetzt die monatliche ALV-Höchstlohn-Logik nach Swiss DATA WIN® Standard mit CHF 12'350 pro Monat und kumulativer Kompensation.
 
 **Funktionalität:**
-- **Automatische kumulative Berechnung**: ALV wird basierend auf dem kumulativen ALV-pflichtigen Einkommen des gesamten Jahres berechnet
-- **Höchstlohn-Limit**: Nach Erreichen von CHF 148'200 wird keine ALV mehr abgezogen
-- **Automatische Kompensation**: Bei Gehaltsfluktuationen wird der verbleibende ALV-pflichtige Betrag automatisch berechnet
-- **Rückwirkende Konsistenz**: Änderungen an vergangenen Lohnauszahlungen werden korrekt verarbeitet
+- **Monatlicher Höchstlohn**: CHF 12'350 pro Monat (CHF 148'200 / 12)
+- **Kumulative Kompensation**: Nicht ausgeschöpfte Beträge aus früheren Monaten können in späteren Monaten verwendet werden
+- **Soll-Höchstlohn-Berechnung**: `Soll = Monatslimit × Monat` (z.B. April: 4 × CHF 12'350 = CHF 49'400)
+- **Verfügbare Basis**: `Verfügbar = Soll - bisherige ALV-Basis`
+- **Mehrere Zahlungen pro Monat**: Alle Zahlungen im selben Monat werden korrekt aggregiert
 
-**Beispiel-Szenario:**
-- Januar 2025: CHF 6'500 → ALV CHF 71.50 (Basis: CHF 6'500)
-- Februar 2025: CHF 8'000 → ALV CHF 88.00 (Basis: CHF 8'000, kumulativ: CHF 14'500)
-- März 2025: CHF 140'000 → ALV CHF 1'470.70 (Basis: CHF 133'700, kumulativ: CHF 148'200 - Limit erreicht!)
-- April 2025: CHF 10'000 → ALV CHF 0.00 (Basis: CHF 0, über Limit)
+**Beispiel-Szenario (Anja Payroll 2025):**
+- Jan-März: je CHF 12'100 → ALV je CHF 133.10 (Basis: je CHF 12'100)
+- April (1. Zahlung): CHF 30'100 → ALV CHF 144.10 (Basis: CHF 13'100, begrenzt von CHF 30'100)
+  - Soll: 4 × CHF 12'350 = CHF 49'400
+  - Bisherig: CHF 36'300 (Jan-März)
+  - Verfügbar: CHF 49'400 - CHF 36'300 = CHF 13'100
+- April (2. Zahlung): CHF 5'000 → ALV CHF 0.00 (Basis: CHF 0, Limit bereits erreicht)
+  - Verfügbar: CHF 49'400 - CHF 49'400 = CHF 0
 
 **Technische Implementierung:**
-- **Backend-Berechnung**: `applyCumulativeAlvLimit()` Hilfsfunktion in storage.ts
-  - Lädt alle Lohnauszahlungen des Mitarbeiters für das Jahr
-  - Berechnet kumulatives ALV-pflichtiges Einkommen
-  - Wendet Höchstlohn-Limit an: `baseAmount = min(currentAmount, 148200 - previousAmount)`
-  - Berechnet ALV: `amount = baseAmount * 1.1%`
+- **Backend-Berechnung**: `applyCumulativeAlvLimit()` in storage.ts
+  - Berechnet Soll-Höchstlohn: `monthlyMaxIncome × paymentMonth`
+  - Lädt kumulative ALV-Basis aus allen früheren und gleichzeitigen Zahlungen
+  - `getCumulativeAlvData()`: Verwendet `<= paymentMonth` für Same-Month-Aggregation
+  - Filtert `excludePaymentId` beim Bearbeiten
+  - Limitiert ALV-Basis: `min(currentAmount, sollHöchstlohn - previousAlvBaseUsed)`
+  - Berechnet ALV: `amount = baseAmount × 1.1%`
 - **API-Endpunkt**: `/api/payroll/cumulative-alv` für Abfrage kumulativer Daten
-- **Automatische Anwendung**: Wird bei jedem Erstellen/Bearbeiten einer Lohnauszahlung ausgeführt
+- **Automatische Anwendung**: Bei jedem Erstellen/Bearbeiten einer Lohnauszahlung
 - **Frontend-Vorschau**: Einfache ALV-Vorschau (Backend berechnet finale Werte)
 
 **Edge Cases abgedeckt:**
-- Mehrere Zahlungen pro Monat
+- Mehrere Zahlungen pro Monat (korrekte Aggregation)
 - Updates an vergangenen Lohnauszahlungen (exkludiert aktuelle Zahlung bei Neuberechnung)
 - Unterschiedliche Lohnarten mit `subjectToAlv` Flag
+- Bearbeiten von Zahlungen (verwendet `excludePaymentId`)
 
 **Datenintegrität:**
 - Deductions werden mit jedem Payment gespeichert (historische Genauigkeit)
