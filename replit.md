@@ -59,6 +59,41 @@ UUIDs are used for primary keys, along with timestamps and decimal types for fin
 
 ## Recent Features (October 2025)
 
+### Kumulative ALV-Berechnung mit Höchstlohn-Limit (Oktober 23, 2025)
+Das System berechnet jetzt automatisch die ALV (Arbeitslosenversicherung) unter Berücksichtigung des jährlichen Höchstlohns von CHF 148'200.
+
+**Funktionalität:**
+- **Automatische kumulative Berechnung**: ALV wird basierend auf dem kumulativen ALV-pflichtigen Einkommen des gesamten Jahres berechnet
+- **Höchstlohn-Limit**: Nach Erreichen von CHF 148'200 wird keine ALV mehr abgezogen
+- **Automatische Kompensation**: Bei Gehaltsfluktuationen wird der verbleibende ALV-pflichtige Betrag automatisch berechnet
+- **Rückwirkende Konsistenz**: Änderungen an vergangenen Lohnauszahlungen werden korrekt verarbeitet
+
+**Beispiel-Szenario:**
+- Januar 2025: CHF 6'500 → ALV CHF 71.50 (Basis: CHF 6'500)
+- Februar 2025: CHF 8'000 → ALV CHF 88.00 (Basis: CHF 8'000, kumulativ: CHF 14'500)
+- März 2025: CHF 140'000 → ALV CHF 1'470.70 (Basis: CHF 133'700, kumulativ: CHF 148'200 - Limit erreicht!)
+- April 2025: CHF 10'000 → ALV CHF 0.00 (Basis: CHF 0, über Limit)
+
+**Technische Implementierung:**
+- **Backend-Berechnung**: `applyCumulativeAlvLimit()` Hilfsfunktion in storage.ts
+  - Lädt alle Lohnauszahlungen des Mitarbeiters für das Jahr
+  - Berechnet kumulatives ALV-pflichtiges Einkommen
+  - Wendet Höchstlohn-Limit an: `baseAmount = min(currentAmount, 148200 - previousAmount)`
+  - Berechnet ALV: `amount = baseAmount * 1.1%`
+- **API-Endpunkt**: `/api/payroll/cumulative-alv` für Abfrage kumulativer Daten
+- **Automatische Anwendung**: Wird bei jedem Erstellen/Bearbeiten einer Lohnauszahlung ausgeführt
+- **Frontend-Vorschau**: Einfache ALV-Vorschau (Backend berechnet finale Werte)
+
+**Edge Cases abgedeckt:**
+- Mehrere Zahlungen pro Monat
+- Updates an vergangenen Lohnauszahlungen (exkludiert aktuelle Zahlung bei Neuberechnung)
+- Unterschiedliche Lohnarten mit `subjectToAlv` Flag
+
+**Datenintegrität:**
+- Deductions werden mit jedem Payment gespeichert (historische Genauigkeit)
+- Backend-Authority: Alle kumulativen Berechnungen erfolgen im Backend
+- Konsistenz über Edits: Bei Änderungen werden Deductions neu berechnet (außer BVG)
+
 ### Monatsabrechnung-Aggregation und BVG-Korrekturen (Oktober 23, 2025)
 
 **Monatsabrechnung-Export korrigiert:**
