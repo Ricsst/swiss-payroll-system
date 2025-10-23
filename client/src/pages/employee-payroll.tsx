@@ -310,28 +310,31 @@ export default function EmployeePayroll() {
     // BVG - use employee default or approximately 3.5% of BVG-subject salary
     const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
     if (bvgBaseAmount > 0) {
-      let bvgAmount: number;
+      let bvgAmount: number | null = null;
       
       // Check if employee has custom BVG deduction
-      if (currentEmployee?.bvgDeductionAmount) {
+      if (currentEmployee?.bvgDeductionAmount && parseFloat(currentEmployee.bvgDeductionAmount) > 0) {
         // Use fixed CHF amount
         bvgAmount = parseFloat(currentEmployee.bvgDeductionAmount);
-      } else if (currentEmployee?.bvgDeductionPercentage) {
+      } else if (currentEmployee?.bvgDeductionPercentage && parseFloat(currentEmployee.bvgDeductionPercentage) > 0) {
         // Use percentage of BVG-subject salary
         bvgAmount = bvgBaseAmount * (parseFloat(currentEmployee.bvgDeductionPercentage) / 100);
-      } else {
-        // Default: 3.5% of BVG-subject salary
+      } else if (!currentEmployee?.bvgDeductionAmount && !currentEmployee?.bvgDeductionPercentage) {
+        // Default: 3.5% of BVG-subject salary (only if neither amount nor percentage is set)
         bvgAmount = bvgBaseAmount * 0.035;
       }
+      // If bvgDeductionPercentage is explicitly set to 0, bvgAmount remains null and BVG is not added
       
-      deductions.push({
-        type: "BVG",
-        description: "Pensionskasse",
-        percentage: null,
-        baseAmount: null,
-        amount: bvgAmount.toFixed(2),
-        isAutoCalculated: false,
-      });
+      if (bvgAmount !== null && bvgAmount > 0) {
+        deductions.push({
+          type: "BVG",
+          description: "Pensionskasse",
+          percentage: null,
+          baseAmount: null,
+          amount: bvgAmount.toFixed(2),
+          isAutoCalculated: false,
+        });
+      }
     }
 
     return deductions;
