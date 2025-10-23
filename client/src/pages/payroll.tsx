@@ -47,6 +47,15 @@ export default function Payroll() {
   const [sortField, setSortField] = useState<SortField>('paymentDate');
   const [sortDirection, setSortDirection] = useState<SortDirection>('desc');
 
+  // Helper function to build detail URL with filter params
+  const buildDetailUrl = (paymentId: string): string => {
+    const params = new URLSearchParams();
+    if (selectedYear) params.append('year', selectedYear.toString());
+    if (selectedMonth) params.append('month', selectedMonth.toString());
+    const queryString = params.toString();
+    return `/payroll/${paymentId}${queryString ? `?${queryString}` : ''}`;
+  };
+
   const buildQueryKey = () => {
     const key: any[] = ['/api/payroll/payments'];
     if (selectedYear || selectedMonth) {
@@ -536,7 +545,7 @@ export default function Payroll() {
                             </Button>
                           </Link>
                         )}
-                        <Link href={`/payroll/${payment.id}`}>
+                        <Link href={buildDetailUrl(payment.id)}>
                           <Button
                             variant="ghost"
                             size="icon"

@@ -204,6 +204,9 @@ export class DatabaseStorage implements IStorage {
           id: employees.id,
           firstName: employees.firstName,
           lastName: employees.lastName,
+          ahvNumber: employees.ahvNumber,
+          email: employees.email,
+          address: employees.address,
         },
       })
       .from(payrollPayments)
