@@ -255,6 +255,7 @@ export class DatabaseStorage implements IStorage {
       payment.paymentMonth,
       items,
       deductionsList,
+      payment.periodEnd, // for prorated calculation
       undefined // no payment ID to exclude (new payment)
     );
 
@@ -265,6 +266,7 @@ export class DatabaseStorage implements IStorage {
       payment.paymentMonth,
       items,
       adjustedDeductions,
+      payment.periodEnd, // for prorated calculation
       undefined // no payment ID to exclude (new payment)
     );
 
@@ -324,7 +326,8 @@ export class DatabaseStorage implements IStorage {
         isLocked: payrollPayments.isLocked, 
         employeeId: payrollPayments.employeeId, 
         paymentYear: payrollPayments.paymentYear,
-        paymentMonth: payrollPayments.paymentMonth
+        paymentMonth: payrollPayments.paymentMonth,
+        periodEnd: payrollPayments.periodEnd
       })
       .from(payrollPayments)
       .where(eq(payrollPayments.id, id));
@@ -333,10 +336,11 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Abgeschlossene Lohnauszahlungen können nicht bearbeitet werden");
     }
 
-    // Get payment month for ALV calculation
+    // Get payment month and period end for ALV calculation
     const paymentMonth = payment.paymentMonth || existingPayment.paymentMonth;
     const employeeId = payment.employeeId || existingPayment.employeeId;
     const paymentYear = payment.paymentYear || existingPayment.paymentYear;
+    const periodEnd = payment.periodEnd || existingPayment.periodEnd;
 
     // If BOTH items and deductions arrays are empty, load existing items from database
     // This allows recalculating deductions without re-sending all items
@@ -371,6 +375,7 @@ export class DatabaseStorage implements IStorage {
       paymentMonth,
       effectiveItems,
       calculatedDeductions,
+      periodEnd, // for prorated calculation
       id // exclude current payment from cumulative calculation
     );
 
@@ -381,6 +386,7 @@ export class DatabaseStorage implements IStorage {
       paymentMonth,
       effectiveItems,
       adjustedDeductions,
+      periodEnd, // for prorated calculation
       id // exclude current payment from cumulative calculation
     );
 
