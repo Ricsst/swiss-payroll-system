@@ -1385,14 +1385,14 @@ export class DatabaseStorage implements IStorage {
     // NEW RULE: 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage (but capped at monthly max)
     // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
-    // IMPORTANT: Always cap at actual wage - base amount can never exceed actual wage!
     let alvBaseAmount: number;
     if (previousAlvSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage, but cap at monthly max (prorated if needed)
       alvBaseAmount = Math.min(currentAlvSubjectAmount, currentMonthMaxIncome);
     } else {
-      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated), but never more than actual wage
-      alvBaseAmount = Math.min(currentAlvSubjectAmount, currentMonthMaxIncome);
+      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
+      // IMPORTANT: Use max even if it exceeds actual wage - this is correct per Swiss DATA WIN standards
+      alvBaseAmount = currentMonthMaxIncome;
     }
 
     // Calculate ALV amount
@@ -1475,14 +1475,14 @@ export class DatabaseStorage implements IStorage {
     // NEW RULE (same as ALV): 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage (but capped at monthly max)
     // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
-    // IMPORTANT: Always cap at actual wage - base amount can never exceed actual wage!
     let nbuBaseAmount: number;
     if (previousNbuSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage, but cap at monthly max (prorated if needed)
       nbuBaseAmount = Math.min(currentNbuSubjectAmount, currentMonthMaxIncome);
     } else {
-      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated), but never more than actual wage
-      nbuBaseAmount = Math.min(currentNbuSubjectAmount, currentMonthMaxIncome);
+      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
+      // IMPORTANT: Use max even if it exceeds actual wage - this is correct per Swiss DATA WIN standards
+      nbuBaseAmount = currentMonthMaxIncome;
     }
 
     // Calculate NBU amount
