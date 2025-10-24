@@ -251,6 +251,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         periodEnd // optional: for prorated calculation if partial month
       );
 
+      console.log('[preview-deductions] Returning deductions:', JSON.stringify(deductions, null, 2));
       res.json(deductions);
     } catch (error: any) {
       res.status(500).json({ error: error.message });

@@ -176,8 +176,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
 
         if (response.ok) {
           const deductions = await response.json();
+          console.log('[payroll-edit] Received deductions from API:', deductions);
           setBackendDeductions(deductions);
         } else {
+          console.log('[payroll-edit] API error, setting empty deductions');
           setBackendDeductions([]);
         }
       } catch (error) {
