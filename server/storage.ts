@@ -73,6 +73,9 @@ export interface IStorage {
   
   // Cumulative ALV calculation
   getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string): Promise<any>;
+  
+  // Cumulative NBU calculation
+  getCumulativeNbuData(employeeId: string, year: number, excludePaymentId?: string): Promise<any>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -243,12 +246,22 @@ export class DatabaseStorage implements IStorage {
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment> {
     // Apply cumulative ALV calculation
-    const adjustedDeductions = await this.applyCumulativeAlvLimit(
+    let adjustedDeductions = await this.applyCumulativeAlvLimit(
       payment.employeeId,
       payment.paymentYear,
       payment.paymentMonth,
       items,
       deductionsList,
+      undefined // no payment ID to exclude (new payment)
+    );
+
+    // Apply cumulative NBU calculation
+    adjustedDeductions = await this.applyCumulativeNbuLimit(
+      payment.employeeId,
+      payment.paymentYear,
+      payment.paymentMonth,
+      items,
+      adjustedDeductions,
       undefined // no payment ID to exclude (new payment)
     );
 
@@ -321,12 +334,22 @@ export class DatabaseStorage implements IStorage {
     const paymentMonth = payment.paymentMonth || existingPayment.paymentMonth;
 
     // Apply cumulative ALV calculation
-    const adjustedDeductions = await this.applyCumulativeAlvLimit(
+    let adjustedDeductions = await this.applyCumulativeAlvLimit(
       payment.employeeId || existingPayment.employeeId,
       payment.paymentYear || existingPayment.paymentYear,
       paymentMonth,
       items,
       deductionsList,
+      id // exclude current payment from cumulative calculation
+    );
+
+    // Apply cumulative NBU calculation
+    adjustedDeductions = await this.applyCumulativeNbuLimit(
+      payment.employeeId || existingPayment.employeeId,
+      payment.paymentYear || existingPayment.paymentYear,
+      paymentMonth,
+      items,
+      adjustedDeductions,
       id // exclude current payment from cumulative calculation
     );
 
@@ -1196,6 +1219,75 @@ export class DatabaseStorage implements IStorage {
   }
 
   // ============================================================================
+  // CUMULATIVE NBU CALCULATION HELPER
+  // ============================================================================
+  private async applyCumulativeNbuLimit(
+    employeeId: string,
+    year: number,
+    paymentMonth: number,
+    items: InsertPayrollItem[],
+    deductionsList: InsertDeduction[],
+    excludePaymentId?: string
+  ): Promise<InsertDeduction[]> {
+    // Get company for NBU settings
+    const company = await this.getCompany();
+    if (!company) {
+      return deductionsList; // No company, return unchanged
+    }
+
+    // Find NBU deduction
+    const nbuIndex = deductionsList.findIndex(d => d.type === 'NBU');
+    if (nbuIndex === -1) {
+      return deductionsList; // No NBU deduction, return unchanged
+    }
+
+    // Get payroll item types for calculating NBU-subject amounts
+    const payrollItemTypesData = await this.getPayrollItemTypes();
+
+    // Calculate current NBU-subject amount from items
+    let currentNbuSubjectAmount = 0;
+    for (const item of items) {
+      const itemType = payrollItemTypesData.find(t => t.code === item.type);
+      if (itemType && itemType.subjectToNbu) {
+        currentNbuSubjectAmount += parseFloat(item.amount);
+      }
+    }
+
+    // Get cumulative NBU data (excluding current payment if editing)
+    const cumulativeData = await this.getCumulativeNbuData(employeeId, year, excludePaymentId, paymentMonth);
+    const previousNbuBaseUsed = parseFloat(cumulativeData.cumulativeNbuBaseUsed);
+
+    // Get NBU Höchstlohn settings
+    const nbuMaxIncomePerYear = parseFloat(company.suvaMaxIncomePerYear) || 148200;
+    const monthlyMaxIncome = nbuMaxIncomePerYear / 12; // CHF 12'350 per month
+
+    // Calculate cumulative "Soll-Höchstlohn" based on payment month
+    // This allows for cumulative compensation across months (same as ALV)
+    const sollHoechstlohn = monthlyMaxIncome * paymentMonth;
+    const availableNbuBase = sollHoechstlohn - previousNbuBaseUsed;
+
+    // Calculate NBU base amount (cannot exceed available)
+    const nbuBaseAmount = Math.max(0, Math.min(
+      currentNbuSubjectAmount, // Current amount
+      availableNbuBase // Remaining limit based on monthly compensation
+    ));
+
+    // Calculate NBU amount
+    const nbuRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+    const nbuAmount = (nbuBaseAmount * (nbuRate / 100)).toFixed(2);
+
+    // Create adjusted deductions list
+    const adjustedDeductions = [...deductionsList];
+    adjustedDeductions[nbuIndex] = {
+      ...deductionsList[nbuIndex],
+      baseAmount: nbuBaseAmount.toFixed(2),
+      amount: nbuAmount,
+    };
+
+    return adjustedDeductions;
+  }
+
+  // ============================================================================
   // CUMULATIVE ALV CALCULATION API
   // ============================================================================
   async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string, beforeMonth?: number): Promise<any> {
@@ -1279,6 +1371,91 @@ export class DatabaseStorage implements IStorage {
       cumulativeAlvSubjectAmount: cumulativeAlvSubjectAmount.toFixed(2),
       cumulativeAlvBaseUsed: cumulativeAlvBaseUsed.toFixed(2), // New field for tracking base used
       cumulativeAlvDeductionAmount: cumulativeAlvDeductionAmount.toFixed(2),
+      paymentsCount: filteredPayments.length,
+    };
+  }
+
+  // ============================================================================
+  // CUMULATIVE NBU CALCULATION API
+  // ============================================================================
+  async getCumulativeNbuData(employeeId: string, year: number, excludePaymentId?: string, beforeMonth?: number): Promise<any> {
+    // Get all payroll payments for this employee in this year
+    // If beforeMonth is specified: include payments BEFORE that month AND payments IN that month (except excluded)
+    const conditions = [
+      eq(payrollPayments.employeeId, employeeId),
+      eq(payrollPayments.paymentYear, year)
+    ];
+    
+    // Add month filter if specified
+    if (beforeMonth !== undefined) {
+      conditions.push(sql`${payrollPayments.paymentMonth} <= ${beforeMonth}`);
+    }
+    
+    let paymentsQuery = db
+      .select()
+      .from(payrollPayments)
+      .where(and(...conditions))
+      .orderBy(payrollPayments.paymentMonth, payrollPayments.periodEnd);
+
+    const payments = await paymentsQuery;
+
+    // Filter out excluded payment if specified
+    const filteredPayments = excludePaymentId
+      ? payments.filter(p => p.id !== excludePaymentId)
+      : payments;
+
+    // Load payroll items and item types for NBU calculation
+    const payrollItemTypesData = await this.getPayrollItemTypes();
+
+    let cumulativeNbuSubjectAmount = 0;
+    let cumulativeNbuBaseUsed = 0; // Track the actual base used for NBU calculation
+    let cumulativeNbuDeductionAmount = 0;
+
+    // Calculate cumulative NBU-subject income from all payments
+    for (const payment of filteredPayments) {
+      const items = await db
+        .select()
+        .from(payrollItems)
+        .where(eq(payrollItems.payrollPaymentId, payment.id));
+
+      // Sum up NBU-subject amounts
+      for (const item of items) {
+        const itemType = payrollItemTypesData.find(t => t.code === item.type);
+        if (itemType && itemType.subjectToNbu) {
+          cumulativeNbuSubjectAmount += parseFloat(item.amount);
+        }
+      }
+
+      // Sum up NBU deductions already paid (and their base amounts)
+      const nbuDeductions = await db
+        .select()
+        .from(deductions)
+        .where(
+          and(
+            eq(deductions.payrollPaymentId, payment.id),
+            eq(deductions.type, 'NBU')
+          )
+        );
+
+      for (const deduction of nbuDeductions) {
+        cumulativeNbuDeductionAmount += parseFloat(deduction.amount);
+        // Use baseAmount if available, otherwise fall back to calculating from amount
+        if (deduction.baseAmount) {
+          cumulativeNbuBaseUsed += parseFloat(deduction.baseAmount);
+        } else {
+          // Fallback: calculate from amount (reverse calculation)
+          const nbuRate = deduction.percentage ? parseFloat(deduction.percentage) : 1.168;
+          cumulativeNbuBaseUsed += parseFloat(deduction.amount) / (nbuRate / 100);
+        }
+      }
+    }
+
+    return {
+      employeeId,
+      year,
+      cumulativeNbuSubjectAmount: cumulativeNbuSubjectAmount.toFixed(2),
+      cumulativeNbuBaseUsed: cumulativeNbuBaseUsed.toFixed(2), // Track base used
+      cumulativeNbuDeductionAmount: cumulativeNbuDeductionAmount.toFixed(2),
       paymentsCount: filteredPayments.length,
     };
   }

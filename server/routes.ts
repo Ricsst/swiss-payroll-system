@@ -157,6 +157,24 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // Get cumulative NBU data for an employee in a year (for NBU Höchstlohn calculation)
+  app.get("/api/payroll/cumulative-nbu", async (req, res) => {
+    try {
+      const employeeId = req.query.employeeId as string;
+      const year = req.query.year ? parseInt(req.query.year as string) : undefined;
+      const excludePaymentId = req.query.excludePaymentId as string | undefined;
+
+      if (!employeeId || !year) {
+        return res.status(400).json({ error: "employeeId and year are required" });
+      }
+
+      const data = await storage.getCumulativeNbuData(employeeId, year, excludePaymentId);
+      res.json(data);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/payroll/payments/:id", async (req, res) => {
     try {
       const payment = await storage.getPayrollPayment(req.params.id);
