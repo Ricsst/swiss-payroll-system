@@ -152,6 +152,7 @@ export default function EmployeePayroll() {
             paymentMonth,
             paymentYear,
             payrollItems,
+            periodEnd, // for prorated ALV/NBU calculation
           }),
         });
 
