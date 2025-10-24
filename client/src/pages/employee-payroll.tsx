@@ -253,6 +253,7 @@ export default function EmployeePayroll() {
         if (amount <= 0) return sum;
         
         const itemType = payrollItemTypes.find(t => t.code === row.type);
+        console.log(`[employee-payroll calculateBaseAmount] row.type=${row.type}, amount=${amount}, itemType found=${!!itemType}, deductionFlag=${deductionFlag}, itemType[deductionFlag]=${itemType?.[deductionFlag]}`);
         if (!itemType || !itemType[deductionFlag]) return sum;
         
         return sum + amount;

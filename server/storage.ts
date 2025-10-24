@@ -332,21 +332,29 @@ export class DatabaseStorage implements IStorage {
 
     // Get payment month for ALV calculation
     const paymentMonth = payment.paymentMonth || existingPayment.paymentMonth;
+    const employeeId = payment.employeeId || existingPayment.employeeId;
+    const paymentYear = payment.paymentYear || existingPayment.paymentYear;
+
+    // If deductionsList is empty, calculate deductions from items
+    let calculatedDeductions = deductionsList;
+    if (deductionsList.length === 0) {
+      calculatedDeductions = await this.calculateDeductionsFromItems(employeeId, items);
+    }
 
     // Apply cumulative ALV calculation
     let adjustedDeductions = await this.applyCumulativeAlvLimit(
-      payment.employeeId || existingPayment.employeeId,
-      payment.paymentYear || existingPayment.paymentYear,
+      employeeId,
+      paymentYear,
       paymentMonth,
       items,
-      deductionsList,
+      calculatedDeductions,
       id // exclude current payment from cumulative calculation
     );
 
     // Apply cumulative NBU calculation
     adjustedDeductions = await this.applyCumulativeNbuLimit(
-      payment.employeeId || existingPayment.employeeId,
-      payment.paymentYear || existingPayment.paymentYear,
+      employeeId,
+      paymentYear,
       paymentMonth,
       items,
       adjustedDeductions,
@@ -1144,6 +1152,136 @@ export class DatabaseStorage implements IStorage {
       totalGross: Object.values(grossMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
       totalDeductions: Object.values(deductionMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
     };
+  }
+
+  // ============================================================================
+  // DEDUCTION CALCULATION HELPER
+  // ============================================================================
+  private async calculateDeductionsFromItems(
+    employeeId: string,
+    items: InsertPayrollItem[]
+  ): Promise<InsertDeduction[]> {
+    const company = await this.getCompany();
+    const employee = await this.getEmployee(employeeId);
+    
+    if (!company || !employee) {
+      return [];
+    }
+
+    const deductions: InsertDeduction[] = [];
+    const payrollItemTypesData = await this.getPayrollItemTypes();
+
+    // Helper function to calculate base amount for each deduction type
+    const calculateBaseAmount = (deductionFlag: keyof Pick<typeof payrollItemTypesData[0], 'subjectToAhv' | 'subjectToAlv' | 'subjectToNbu' | 'subjectToBvg' | 'subjectToQst'>) => {
+      return items.reduce((sum, item) => {
+        const amount = parseFloat(item.amount) || 0;
+        if (amount <= 0) return sum;
+        
+        const itemType = payrollItemTypesData.find(t => t.code === item.type);
+        console.log(`[calculateDeductionsFromItems] item.type=${item.type}, amount=${amount}, itemType=${JSON.stringify(itemType)}, deductionFlag=${deductionFlag}, itemType[deductionFlag]=${itemType?.[deductionFlag]}`);
+        if (!itemType || !itemType[deductionFlag]) return sum;
+        
+        return sum + amount;
+      }, 0);
+    };
+
+    // AHV - with Rentner allowance if applicable
+    const ahvRate = parseFloat(company.ahvEmployeeRate) || 5.3;
+    let ahvBaseAmount = calculateBaseAmount('subjectToAhv');
+    
+    // Apply Rentner allowance if employee is Rentner
+    if (employee.isRentner && ahvBaseAmount > 0) {
+      const rentnerAllowance = parseFloat(company.ahvRentnerAllowance) || 1400;
+      ahvBaseAmount = Math.max(0, ahvBaseAmount - rentnerAllowance);
+    }
+    
+    if (ahvBaseAmount > 0) {
+      deductions.push({
+        type: "AHV",
+        description: employee.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
+        percentage: ahvRate.toString(),
+        baseAmount: ahvBaseAmount.toFixed(2),
+        amount: (ahvBaseAmount * (ahvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // ALV (will be adjusted by applyCumulativeAlvLimit later)
+    const alvRate = parseFloat(company.alvEmployeeRate) || 1.1;
+    const alvBaseAmount = calculateBaseAmount('subjectToAlv');
+    if (alvBaseAmount > 0) {
+      deductions.push({
+        type: "ALV",
+        description: "ALV Abzug",
+        percentage: alvRate.toString(),
+        baseAmount: alvBaseAmount.toFixed(2),
+        amount: (alvBaseAmount * (alvRate / 100)).toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // NBU/SUVA - only if employee is NBU insured (will be adjusted by applyCumulativeNbuLimit later)
+    if (employee.isNbuInsured) {
+      const suvaRate = parseFloat(company.suvaNbuMaleRate) || 1.168;
+      const nbuBaseAmount = calculateBaseAmount('subjectToNbu');
+      if (nbuBaseAmount > 0) {
+        deductions.push({
+          type: "NBU",
+          description: "NBU/SUVA Abzug",
+          percentage: suvaRate.toString(),
+          baseAmount: nbuBaseAmount.toFixed(2),
+          amount: (nbuBaseAmount * (suvaRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    // BVG
+    const bvgDeductionPercentage = parseFloat(employee.bvgDeductionPercentage || "0");
+    const bvgDeductionAmount = parseFloat(employee.bvgDeductionAmount || "0");
+    const bvgBaseAmount = calculateBaseAmount('subjectToBvg');
+    
+    // Only add BVG if there's a percentage > 0 OR an amount > 0
+    if (bvgBaseAmount > 0 && (bvgDeductionPercentage > 0 || bvgDeductionAmount > 0)) {
+      let bvgAmount: number;
+      let bvgPercentage: string | null = null;
+      
+      if (bvgDeductionAmount > 0) {
+        // Fixed amount
+        bvgAmount = bvgDeductionAmount;
+      } else {
+        // Percentage-based
+        bvgPercentage = bvgDeductionPercentage.toString();
+        bvgAmount = bvgBaseAmount * (bvgDeductionPercentage / 100);
+      }
+      
+      deductions.push({
+        type: "BVG",
+        description: "BVG Abzug",
+        percentage: bvgPercentage,
+        baseAmount: bvgBaseAmount.toFixed(2),
+        amount: bvgAmount.toFixed(2),
+        isAutoCalculated: true,
+      });
+    }
+
+    // QST - only if employee is subject to Quellensteuer
+    if (employee.isQstSubject) {
+      const qstRate = parseFloat(employee.qstRate || "0");
+      const qstBaseAmount = calculateBaseAmount('subjectToQst');
+      if (qstBaseAmount > 0 && qstRate > 0) {
+        deductions.push({
+          type: "QST",
+          description: "Quellensteuer Abzug",
+          percentage: qstRate.toString(),
+          baseAmount: qstBaseAmount.toFixed(2),
+          amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    return deductions;
   }
 
   // ============================================================================

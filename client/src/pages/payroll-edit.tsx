@@ -448,9 +448,13 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
             </div>
             <Separator />
             {deductions.map((d, index) => (
-              <div key={index} className="flex justify-between text-xs text-muted-foreground">
-                <span>{d.description || d.type}</span>
-                <span className="font-mono">CHF {d.amount}</span>
+              <div 
+                key={index} 
+                className="flex justify-between text-xs text-muted-foreground"
+                data-testid={`row-deduction-${d.type}`}
+              >
+                <span data-testid={`text-deduction-description-${d.type}`}>{d.description || d.type}</span>
+                <span className="font-mono" data-testid={`text-deduction-amount-${d.type}`}>CHF {d.amount}</span>
               </div>
             ))}
             {deductions.length > 0 && (
