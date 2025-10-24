@@ -1383,12 +1383,12 @@ export class DatabaseStorage implements IStorage {
     const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
     // NEW RULE: 
-    // If cumulative GROSS WAGE < cumulative max: Use actual wage
+    // If cumulative GROSS WAGE < cumulative max: Use actual wage (but capped at monthly max)
     // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
     let alvBaseAmount: number;
     if (previousAlvSubjectAmount < sollHoechstlohn) {
-      // Case 1: Still under cumulative limit → use actual wage
-      alvBaseAmount = currentAlvSubjectAmount;
+      // Case 1: Still under cumulative limit → use actual wage, but cap at monthly max (prorated if needed)
+      alvBaseAmount = Math.min(currentAlvSubjectAmount, currentMonthMaxIncome);
     } else {
       // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
       alvBaseAmount = currentMonthMaxIncome;
@@ -1472,12 +1472,12 @@ export class DatabaseStorage implements IStorage {
     const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
     // NEW RULE (same as ALV): 
-    // If cumulative GROSS WAGE < cumulative max: Use actual wage
+    // If cumulative GROSS WAGE < cumulative max: Use actual wage (but capped at monthly max)
     // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
     let nbuBaseAmount: number;
     if (previousNbuSubjectAmount < sollHoechstlohn) {
-      // Case 1: Still under cumulative limit → use actual wage
-      nbuBaseAmount = currentNbuSubjectAmount;
+      // Case 1: Still under cumulative limit → use actual wage, but cap at monthly max (prorated if needed)
+      nbuBaseAmount = Math.min(currentNbuSubjectAmount, currentMonthMaxIncome);
     } else {
       // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
       nbuBaseAmount = currentMonthMaxIncome;
