@@ -50,6 +50,8 @@ export default function PayrollNew() {
   const { toast } = useToast();
 
   const [selectedEmployeeId, setSelectedEmployeeId] = useState("");
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState(new Date().getFullYear().toString());
   const [paymentDate, setPaymentDate] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
@@ -61,6 +63,53 @@ export default function PayrollNew() {
   const { data: employees } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
   });
+
+  // Format date as YYYY-MM-DD without timezone conversion
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Auto-fill period dates when month is selected
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    if (month && selectedYear) {
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(selectedYear);
+      
+      // First day of month
+      const firstDay = new Date(yearNum, monthNum - 1, 1);
+      const firstDayStr = formatDateLocal(firstDay);
+      
+      // Last day of month
+      const lastDay = new Date(yearNum, monthNum, 0);
+      const lastDayStr = formatDateLocal(lastDay);
+      
+      setPeriodStart(firstDayStr);
+      setPeriodEnd(lastDayStr);
+    }
+  };
+
+  const handleYearChange = (year: string) => {
+    setSelectedYear(year);
+    if (selectedMonth && year) {
+      const monthNum = parseInt(selectedMonth);
+      const yearNum = parseInt(year);
+      
+      // First day of month
+      const firstDay = new Date(yearNum, monthNum - 1, 1);
+      const firstDayStr = formatDateLocal(firstDay);
+      
+      // Last day of month
+      const lastDay = new Date(yearNum, monthNum, 0);
+      const lastDayStr = formatDateLocal(lastDay);
+      
+      setPeriodStart(firstDayStr);
+      setPeriodEnd(lastDayStr);
+    }
+  };
 
   const createMutation = useMutation({
     mutationFn: async (data: any) =>
@@ -224,9 +273,48 @@ export default function PayrollNew() {
                   </SelectContent>
                 </Select>
               </div>
+              <div className="grid grid-cols-2 gap-4">
+                <div>
+                  <Label htmlFor="month">Monat *</Label>
+                  <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                    <SelectTrigger id="month" data-testid="select-month">
+                      <SelectValue placeholder="Monat auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      <SelectItem value="1">Januar</SelectItem>
+                      <SelectItem value="2">Februar</SelectItem>
+                      <SelectItem value="3">März</SelectItem>
+                      <SelectItem value="4">April</SelectItem>
+                      <SelectItem value="5">Mai</SelectItem>
+                      <SelectItem value="6">Juni</SelectItem>
+                      <SelectItem value="7">Juli</SelectItem>
+                      <SelectItem value="8">August</SelectItem>
+                      <SelectItem value="9">September</SelectItem>
+                      <SelectItem value="10">Oktober</SelectItem>
+                      <SelectItem value="11">November</SelectItem>
+                      <SelectItem value="12">Dezember</SelectItem>
+                    </SelectContent>
+                  </Select>
+                </div>
+                <div>
+                  <Label htmlFor="year">Jahr *</Label>
+                  <Select value={selectedYear} onValueChange={handleYearChange}>
+                    <SelectTrigger id="year" data-testid="select-year">
+                      <SelectValue placeholder="Jahr auswählen" />
+                    </SelectTrigger>
+                    <SelectContent>
+                      {[2024, 2025, 2026, 2027, 2028].map((year) => (
+                        <SelectItem key={year} value={year.toString()}>
+                          {year}
+                        </SelectItem>
+                      ))}
+                    </SelectContent>
+                  </Select>
+                </div>
+              </div>
               <div className="grid grid-cols-3 gap-4">
                 <div>
-                  <Label htmlFor="periodStart">Zeitraum von *</Label>
+                  <Label htmlFor="periodStart">von *</Label>
                   <Input
                     id="periodStart"
                     type="date"
@@ -236,7 +324,7 @@ export default function PayrollNew() {
                   />
                 </div>
                 <div>
-                  <Label htmlFor="periodEnd">Zeitraum bis *</Label>
+                  <Label htmlFor="periodEnd">bis *</Label>
                   <Input
                     id="periodEnd"
                     type="date"

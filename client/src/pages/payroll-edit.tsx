@@ -6,6 +6,13 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import {
+  Select,
+  SelectContent,
+  SelectItem,
+  SelectTrigger,
+  SelectValue,
+} from "@/components/ui/select";
+import {
   Table,
   TableBody,
   TableCell,
@@ -74,6 +81,8 @@ interface PayrollPaymentDetail {
 export default function PayrollEdit({ params }: { params: { id: string } }) {
   const { toast } = useToast();
   const [, setLocation] = useLocation();
+  const [selectedMonth, setSelectedMonth] = useState("");
+  const [selectedYear, setSelectedYear] = useState("");
   const [paymentDate, setPaymentDate] = useState("");
   const [periodStart, setPeriodStart] = useState("");
   const [periodEnd, setPeriodEnd] = useState("");
@@ -93,6 +102,53 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
     queryKey: ["/api/payroll-item-types"],
   });
 
+  // Format date as YYYY-MM-DD without timezone conversion
+  const formatDateLocal = (date: Date): string => {
+    const year = date.getFullYear();
+    const month = String(date.getMonth() + 1).padStart(2, '0');
+    const day = String(date.getDate()).padStart(2, '0');
+    return `${year}-${month}-${day}`;
+  };
+
+  // Auto-fill period dates when month is selected
+  const handleMonthChange = (month: string) => {
+    setSelectedMonth(month);
+    if (month && selectedYear) {
+      const monthNum = parseInt(month);
+      const yearNum = parseInt(selectedYear);
+      
+      // First day of month
+      const firstDay = new Date(yearNum, monthNum - 1, 1);
+      const firstDayStr = formatDateLocal(firstDay);
+      
+      // Last day of month
+      const lastDay = new Date(yearNum, monthNum, 0);
+      const lastDayStr = formatDateLocal(lastDay);
+      
+      setPeriodStart(firstDayStr);
+      setPeriodEnd(lastDayStr);
+    }
+  };
+
+  const handleYearChange = (year: string) => {
+    setSelectedYear(year);
+    if (selectedMonth && year) {
+      const monthNum = parseInt(selectedMonth);
+      const yearNum = parseInt(year);
+      
+      // First day of month
+      const firstDay = new Date(yearNum, monthNum - 1, 1);
+      const firstDayStr = formatDateLocal(firstDay);
+      
+      // Last day of month
+      const lastDay = new Date(yearNum, monthNum, 0);
+      const lastDayStr = formatDateLocal(lastDay);
+      
+      setPeriodStart(firstDayStr);
+      setPeriodEnd(lastDayStr);
+    }
+  };
+
   // Load payment data into form when available
   useEffect(() => {
     if (payment && payrollItemTypes.length > 0) {
@@ -100,6 +156,10 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       setPeriodStart(payment.periodStart.split('T')[0]);
       setPeriodEnd(payment.periodEnd.split('T')[0]);
       setNotes(payment.notes || "");
+      
+      // Set month and year from payment data
+      setSelectedMonth(payment.paymentMonth.toString());
+      setSelectedYear(payment.paymentYear.toString());
 
       // Initialize all payroll item types
       const rows: Record<string, PayrollItemRow> = {};
@@ -368,14 +428,41 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
         <CardContent className="space-y-3 py-0">
           <div className="grid grid-cols-12 gap-2 items-end">
             <div className="col-span-2">
-              <Label className="text-xs">Auszahlungsdatum *</Label>
-              <Input
-                type="date"
-                value={paymentDate}
-                onChange={(e) => setPaymentDate(e.target.value)}
-                className="h-8 text-sm"
-                data-testid="input-payment-date"
-              />
+              <Label className="text-xs">Monat *</Label>
+              <Select value={selectedMonth} onValueChange={handleMonthChange}>
+                <SelectTrigger className="h-8 text-sm" data-testid="select-month">
+                  <SelectValue placeholder="Monat" />
+                </SelectTrigger>
+                <SelectContent>
+                  <SelectItem value="1">Januar</SelectItem>
+                  <SelectItem value="2">Februar</SelectItem>
+                  <SelectItem value="3">März</SelectItem>
+                  <SelectItem value="4">April</SelectItem>
+                  <SelectItem value="5">Mai</SelectItem>
+                  <SelectItem value="6">Juni</SelectItem>
+                  <SelectItem value="7">Juli</SelectItem>
+                  <SelectItem value="8">August</SelectItem>
+                  <SelectItem value="9">September</SelectItem>
+                  <SelectItem value="10">Oktober</SelectItem>
+                  <SelectItem value="11">November</SelectItem>
+                  <SelectItem value="12">Dezember</SelectItem>
+                </SelectContent>
+              </Select>
+            </div>
+            <div className="col-span-1">
+              <Label className="text-xs">Jahr *</Label>
+              <Select value={selectedYear} onValueChange={handleYearChange}>
+                <SelectTrigger className="h-8 text-sm" data-testid="select-year">
+                  <SelectValue placeholder="Jahr" />
+                </SelectTrigger>
+                <SelectContent>
+                  {[2024, 2025, 2026, 2027, 2028].map((year) => (
+                    <SelectItem key={year} value={year.toString()}>
+                      {year}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
             <div className="col-span-2">
               <Label className="text-xs">von *</Label>
@@ -395,6 +482,16 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 onChange={(e) => setPeriodEnd(e.target.value)}
                 className="h-8 text-sm"
                 data-testid="input-period-end"
+              />
+            </div>
+            <div className="col-span-2">
+              <Label className="text-xs">Auszahlungsdatum *</Label>
+              <Input
+                type="date"
+                value={paymentDate}
+                onChange={(e) => setPaymentDate(e.target.value)}
+                className="h-8 text-sm"
+                data-testid="input-payment-date"
               />
             </div>
             <div className="col-span-4">
