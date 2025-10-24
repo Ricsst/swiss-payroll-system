@@ -89,6 +89,9 @@ export default function Payroll() {
       apiRequest("POST", `/api/payroll/payments/${paymentId}/lock`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/employee-payroll-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/yearly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/monthly"] });
       toast({
         title: "Abgeschlossen",
         description: "Die Lohnauszahlung wurde abgeschlossen",
@@ -108,6 +111,9 @@ export default function Payroll() {
       apiRequest("POST", `/api/payroll/payments/${paymentId}/unlock`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/employee-payroll-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/yearly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/monthly"] });
       toast({
         title: "Entsperrt",
         description: "Die Lohnauszahlung kann wieder bearbeitet werden",
@@ -127,6 +133,9 @@ export default function Payroll() {
       apiRequest("DELETE", `/api/payroll/payments/${paymentId}`, {}),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/employee-payroll-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/yearly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/monthly"] });
       toast({
         title: "Gelöscht",
         description: "Die Lohnauszahlung wurde erfolgreich gelöscht",

@@ -138,6 +138,9 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments", params.id] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/employee-payroll-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/yearly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/monthly"] });
       toast({ title: "Lohnauszahlung erfolgreich aktualisiert" });
       setLocation(`/payroll/${params.id}`);
     },

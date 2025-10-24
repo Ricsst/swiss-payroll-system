@@ -67,6 +67,9 @@ export default function PayrollNew() {
       apiRequest("POST", "/api/payroll/payments", data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["/api/payroll/payments"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/employee-payroll-overview"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/yearly"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/reports/monthly"] });
       toast({ title: "Lohnauszahlung erfolgreich erstellt" });
       navigate("/payroll");
     },
