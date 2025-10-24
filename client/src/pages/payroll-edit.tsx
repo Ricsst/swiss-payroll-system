@@ -217,10 +217,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       return;
     }
 
-    // Recalculate deductions based on new gross salary
-    // BUT preserve original BVG values (BVG can change during the year)
-    const calculatedDeductions = calculateDeductions();
-
+    // Send empty deductions array - backend will recalculate with cumulative ALV/NBU limits
     const payload = {
       employeeId: payment.employeeId,
       paymentDate,
@@ -230,7 +227,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
       paymentYear: new Date(periodEnd).getFullYear(),
       notes: notes || null,
       items,
-      deductions: calculatedDeductions,
+      deductions: [], // Backend recalculates with cumulative limits
     };
 
     updatePaymentMutation.mutate(payload);
@@ -456,6 +453,11 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 <span className="font-mono">CHF {d.amount}</span>
               </div>
             ))}
+            {deductions.length > 0 && (
+              <div className="text-xs text-muted-foreground italic pt-1">
+                Abzüge werden beim Speichern neu berechnet (inkl. ALV/NBU Höchstlohn)
+              </div>
+            )}
             <div className="flex justify-between text-xs">
               <span className="font-medium">Total Abzüge:</span>
               <span className="font-mono">CHF {totalDeductions.toFixed(2)}</span>
