@@ -1678,7 +1678,8 @@ export class DatabaseStorage implements IStorage {
     employeeId: string,
     paymentMonth: number,
     paymentYear: number,
-    payrollItems: any[]
+    payrollItems: any[],
+    periodEnd?: string // Format: "YYYY-MM-DD" - used for prorated calculation
   ): Promise<InsertDeduction[]> {
     // Convert payroll items to InsertPayrollItem format
     const items: InsertPayrollItem[] = payrollItems.map(item => ({
@@ -1699,7 +1700,8 @@ export class DatabaseStorage implements IStorage {
       paymentYear,
       paymentMonth,
       items,
-      deductions
+      deductions,
+      periodEnd // for prorated calculation
     );
 
     // Apply cumulative NBU limit
@@ -1708,7 +1710,8 @@ export class DatabaseStorage implements IStorage {
       paymentYear,
       paymentMonth,
       items,
-      deductions
+      deductions,
+      periodEnd // for prorated calculation
     );
 
     return deductions;

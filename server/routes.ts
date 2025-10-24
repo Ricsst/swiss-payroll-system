@@ -235,7 +235,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payroll/preview-deductions", async (req, res) => {
     try {
-      const { employeeId, paymentMonth, paymentYear, payrollItems } = req.body;
+      const { employeeId, paymentMonth, paymentYear, payrollItems, periodEnd } = req.body;
 
       if (!employeeId || !paymentMonth || !paymentYear || !payrollItems) {
         return res.status(400).json({ 
@@ -247,7 +247,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         employeeId,
         paymentMonth,
         paymentYear,
-        payrollItems
+        payrollItems,
+        periodEnd // optional: for prorated calculation if partial month
       );
 
       res.json(deductions);
