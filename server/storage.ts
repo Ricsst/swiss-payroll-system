@@ -1322,6 +1322,7 @@ export class DatabaseStorage implements IStorage {
     paymentMonth: number,
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[],
+    periodEnd?: string, // Format: "YYYY-MM-DD" - used for prorated calculation
     excludePaymentId?: string
   ): Promise<InsertDeduction[]> {
     // Get company for ALV settings
@@ -1358,19 +1359,33 @@ export class DatabaseStorage implements IStorage {
     const alvMaxIncomePerYear = parseFloat(company.alvMaxIncomePerYear) || 148200;
     const monthlyMaxIncome = alvMaxIncomePerYear / 12; // CHF 12'350 per month
 
+    // Calculate prorated monthly max if periodEnd is provided and is partial month
+    let currentMonthMaxIncome = monthlyMaxIncome;
+    if (periodEnd) {
+      const periodEndDate = new Date(periodEnd);
+      const dayOfMonth = periodEndDate.getDate();
+      const daysInMonth = new Date(year, paymentMonth, 0).getDate(); // Get days in month
+      
+      // Only prorate if periodEnd is not the last day of the month
+      if (dayOfMonth < daysInMonth) {
+        currentMonthMaxIncome = (monthlyMaxIncome / daysInMonth) * dayOfMonth;
+        console.log(`[applyCumulativeAlvLimit] Prorated max for ${periodEnd}: ${currentMonthMaxIncome.toFixed(2)} (${dayOfMonth}/${daysInMonth} days)`);
+      }
+    }
+
     // Calculate cumulative "Soll-Höchstlohn" based on payment month (before current month)
     const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
     // NEW RULE: 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage
-    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350 regardless of actual wage)
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
     let alvBaseAmount: number;
     if (previousAlvSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage
       alvBaseAmount = currentAlvSubjectAmount;
     } else {
-      // Case 2: Already at or over cumulative limit → always use monthly max
-      alvBaseAmount = monthlyMaxIncome;
+      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
+      alvBaseAmount = currentMonthMaxIncome;
     }
 
     // Calculate ALV amount
@@ -1397,6 +1412,7 @@ export class DatabaseStorage implements IStorage {
     paymentMonth: number,
     items: InsertPayrollItem[],
     deductionsList: InsertDeduction[],
+    periodEnd?: string, // Format: "YYYY-MM-DD" - used for prorated calculation
     excludePaymentId?: string
   ): Promise<InsertDeduction[]> {
     // Get company for NBU settings
@@ -1432,19 +1448,33 @@ export class DatabaseStorage implements IStorage {
     const nbuMaxIncomePerYear = parseFloat(company.suvaMaxIncomePerYear) || 148200;
     const monthlyMaxIncome = nbuMaxIncomePerYear / 12; // CHF 12'350 per month
 
+    // Calculate prorated monthly max if periodEnd is provided and is partial month
+    let currentMonthMaxIncome = monthlyMaxIncome;
+    if (periodEnd) {
+      const periodEndDate = new Date(periodEnd);
+      const dayOfMonth = periodEndDate.getDate();
+      const daysInMonth = new Date(year, paymentMonth, 0).getDate(); // Get days in month
+      
+      // Only prorate if periodEnd is not the last day of the month
+      if (dayOfMonth < daysInMonth) {
+        currentMonthMaxIncome = (monthlyMaxIncome / daysInMonth) * dayOfMonth;
+        console.log(`[applyCumulativeNbuLimit] Prorated max for ${periodEnd}: ${currentMonthMaxIncome.toFixed(2)} (${dayOfMonth}/${daysInMonth} days)`);
+      }
+    }
+
     // Calculate cumulative "Soll-Höchstlohn" based on payment month (before current month)
     const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
     // NEW RULE (same as ALV): 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage
-    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350 regardless of actual wage)
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (prorated if partial month)
     let nbuBaseAmount: number;
     if (previousNbuSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage
       nbuBaseAmount = currentNbuSubjectAmount;
     } else {
-      // Case 2: Already at or over cumulative limit → always use monthly max
-      nbuBaseAmount = monthlyMaxIncome;
+      // Case 2: Already at or over cumulative limit → use monthly max (potentially prorated)
+      nbuBaseAmount = currentMonthMaxIncome;
     }
 
     // Calculate NBU amount
