@@ -1342,28 +1342,28 @@ export class DatabaseStorage implements IStorage {
     // IMPORTANT: Only consider payments BEFORE the current month
     const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId, paymentMonth);
     const previousAlvBaseUsed = parseFloat(cumulativeData.cumulativeAlvBaseUsed);
+    const previousAlvSubjectAmount = parseFloat(cumulativeData.cumulativeAlvSubjectAmount);
 
     // Get ALV Höchstlohn settings
     const alvMaxIncomePerYear = parseFloat(company.alvMaxIncomePerYear) || 148200;
     const monthlyMaxIncome = alvMaxIncomePerYear / 12; // CHF 12'350 per month
 
-    // Calculate cumulative "Soll-Höchstlohn" based on payment month
-    const sollHoechstlohn = monthlyMaxIncome * paymentMonth;
+    // Calculate cumulative "Soll-Höchstlohn" based on payment month (before current month)
+    const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
-    // Calculate cumulative actual wages (including current month)
-    const cumulativeLohn = previousAlvBaseUsed + currentAlvSubjectAmount;
-
     // NEW RULE: 
-    // If cumulative wages <= cumulative max: Use monthly max (limited by actual wage)
-    // If cumulative wages > cumulative max: Use available headroom
+    // If cumulative GROSS WAGE < cumulative max: Use actual wage
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350)
+    console.log(`[ALV Debug] Month ${paymentMonth}: previousSubject=${previousAlvSubjectAmount}, sollHoechst=${sollHoechstlohn}, currentSubject=${currentAlvSubjectAmount}, monthlyMax=${monthlyMaxIncome}`);
     let alvBaseAmount: number;
-    if (cumulativeLohn <= sollHoechstlohn) {
-      // Case 1: Still under cumulative limit → use monthly max (but not more than actual wage)
-      alvBaseAmount = Math.min(currentAlvSubjectAmount, monthlyMaxIncome);
+    if (previousAlvSubjectAmount < sollHoechstlohn) {
+      // Case 1: Still under cumulative limit → use actual wage
+      console.log(`[ALV Debug] Using actual wage: ${currentAlvSubjectAmount}`);
+      alvBaseAmount = currentAlvSubjectAmount;
     } else {
-      // Case 2: Exceeds cumulative limit → use available headroom
-      const availableAlvBase = sollHoechstlohn - previousAlvBaseUsed;
-      alvBaseAmount = Math.max(0, Math.min(currentAlvSubjectAmount, availableAlvBase));
+      // Case 2: Already at or over cumulative limit → use monthly max
+      alvBaseAmount = Math.min(currentAlvSubjectAmount, monthlyMaxIncome);
+      console.log(`[ALV Debug] Using monthly max: ${alvBaseAmount}`);
     }
 
     // Calculate ALV amount
@@ -1419,28 +1419,25 @@ export class DatabaseStorage implements IStorage {
     // Get cumulative NBU data (excluding current payment if editing)
     const cumulativeData = await this.getCumulativeNbuData(employeeId, year, excludePaymentId, paymentMonth);
     const previousNbuBaseUsed = parseFloat(cumulativeData.cumulativeNbuBaseUsed);
+    const previousNbuSubjectAmount = parseFloat(cumulativeData.cumulativeNbuSubjectAmount);
 
     // Get NBU Höchstlohn settings
     const nbuMaxIncomePerYear = parseFloat(company.suvaMaxIncomePerYear) || 148200;
     const monthlyMaxIncome = nbuMaxIncomePerYear / 12; // CHF 12'350 per month
 
-    // Calculate cumulative "Soll-Höchstlohn" based on payment month
-    const sollHoechstlohn = monthlyMaxIncome * paymentMonth;
+    // Calculate cumulative "Soll-Höchstlohn" based on payment month (before current month)
+    const sollHoechstlohn = monthlyMaxIncome * (paymentMonth - 1);
     
-    // Calculate cumulative actual wages (including current month)
-    const cumulativeLohn = previousNbuBaseUsed + currentNbuSubjectAmount;
-
     // NEW RULE (same as ALV): 
-    // If cumulative wages <= cumulative max: Use monthly max (limited by actual wage)
-    // If cumulative wages > cumulative max: Use available headroom
+    // If cumulative GROSS WAGE < cumulative max: Use actual wage
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350)
     let nbuBaseAmount: number;
-    if (cumulativeLohn <= sollHoechstlohn) {
-      // Case 1: Still under cumulative limit → use monthly max (but not more than actual wage)
-      nbuBaseAmount = Math.min(currentNbuSubjectAmount, monthlyMaxIncome);
+    if (previousNbuSubjectAmount < sollHoechstlohn) {
+      // Case 1: Still under cumulative limit → use actual wage
+      nbuBaseAmount = currentNbuSubjectAmount;
     } else {
-      // Case 2: Exceeds cumulative limit → use available headroom
-      const availableNbuBase = sollHoechstlohn - previousNbuBaseUsed;
-      nbuBaseAmount = Math.max(0, Math.min(currentNbuSubjectAmount, availableNbuBase));
+      // Case 2: Already at or over cumulative limit → use monthly max
+      nbuBaseAmount = Math.min(currentNbuSubjectAmount, monthlyMaxIncome);
     }
 
     // Calculate NBU amount
