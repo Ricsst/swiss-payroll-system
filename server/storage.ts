@@ -349,6 +349,7 @@ export class DatabaseStorage implements IStorage {
         .where(eq(payrollItems.payrollPaymentId, id));
       
       effectiveItems = existingItems.map(item => ({
+        payrollPaymentId: item.payrollPaymentId,
         type: item.type,
         description: item.description || "",
         amount: item.amount,
@@ -1219,6 +1220,7 @@ export class DatabaseStorage implements IStorage {
     
     if (ahvBaseAmount > 0) {
       deductions.push({
+        payrollPaymentId: "", // Dummy value, will be set when payment is created
         type: "AHV",
         description: employee.isRentner ? "AHV/IV/EO Abzug (Rentner)" : "AHV/IV/EO Abzug",
         percentage: ahvRate.toString(),
@@ -1233,6 +1235,7 @@ export class DatabaseStorage implements IStorage {
     const alvBaseAmount = calculateBaseAmount('subjectToAlv');
     if (alvBaseAmount > 0) {
       deductions.push({
+        payrollPaymentId: "", // Dummy value, will be set when payment is created
         type: "ALV",
         description: "ALV Abzug",
         percentage: alvRate.toString(),
@@ -1248,6 +1251,7 @@ export class DatabaseStorage implements IStorage {
       const nbuBaseAmount = calculateBaseAmount('subjectToNbu');
       if (nbuBaseAmount > 0) {
         deductions.push({
+          payrollPaymentId: "", // Dummy value, will be set when payment is created
           type: "NBU",
           description: "NBU/SUVA Abzug",
           percentage: suvaRate.toString(),
@@ -1278,6 +1282,7 @@ export class DatabaseStorage implements IStorage {
       }
       
       deductions.push({
+        payrollPaymentId: "", // Dummy value, will be set when payment is created
         type: "BVG",
         description: "BVG Abzug",
         percentage: bvgPercentage,
@@ -1288,20 +1293,22 @@ export class DatabaseStorage implements IStorage {
     }
 
     // QST - only if employee is subject to Quellensteuer
-    if (employee.isQstSubject) {
-      const qstRate = parseFloat(employee.qstRate || "0");
-      const qstBaseAmount = calculateBaseAmount('subjectToQst');
-      if (qstBaseAmount > 0 && qstRate > 0) {
-        deductions.push({
-          type: "QST",
-          description: "Quellensteuer Abzug",
-          percentage: qstRate.toString(),
-          baseAmount: qstBaseAmount.toFixed(2),
-          amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
-          isAutoCalculated: true,
-        });
-      }
-    }
+    // NOTE: isQstSubject and qstRate are not yet implemented in Employee schema
+    // if (employee.isQstSubject) {
+    //   const qstRate = parseFloat(employee.qstRate || "0");
+    //   const qstBaseAmount = calculateBaseAmount('subjectToQst');
+    //   if (qstBaseAmount > 0 && qstRate > 0) {
+    //     deductions.push({
+    //       payrollPaymentId: "", // Dummy value, will be set when payment is created
+    //       type: "QST",
+    //       description: "Quellensteuer Abzug",
+    //       percentage: qstRate.toString(),
+    //       baseAmount: qstBaseAmount.toFixed(2),
+    //       amount: (qstBaseAmount * (qstRate / 100)).toFixed(2),
+    //       isAutoCalculated: true,
+    //     });
+    //   }
+    // }
 
     return deductions;
   }
@@ -1655,6 +1662,7 @@ export class DatabaseStorage implements IStorage {
       employeeId,
       paymentYear,
       paymentMonth,
+      items,
       deductions
     );
 
@@ -1663,6 +1671,7 @@ export class DatabaseStorage implements IStorage {
       employeeId,
       paymentYear,
       paymentMonth,
+      items,
       deductions
     );
 

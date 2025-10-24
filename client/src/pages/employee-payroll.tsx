@@ -42,6 +42,7 @@ export default function EmployeePayroll() {
   const [periodEnd, setPeriodEnd] = useState("");
   const [notes, setNotes] = useState("");
   const [payrollRows, setPayrollRows] = useState<Record<string, PayrollItemRow>>({});
+  const [backendDeductions, setBackendDeductions] = useState<any[]>([]);
 
   const { data: employees = [] } = useQuery<Employee[]>({
     queryKey: ["/api/employees"],
@@ -112,6 +113,62 @@ export default function EmployeePayroll() {
       }
     }
   }, [selectedEmployeeId, employees, payrollItemTypes]);
+
+  // Fetch backend deductions with cumulative ALV/NBU limits
+  useEffect(() => {
+    const fetchDeductions = async () => {
+      if (!selectedEmployeeId || !periodEnd) {
+        setBackendDeductions([]);
+        return;
+      }
+
+      // Extract payment month and year from period end date
+      const periodEndDate = new Date(periodEnd);
+      const paymentMonth = periodEndDate.getMonth() + 1;
+      const paymentYear = periodEndDate.getFullYear();
+
+      // Filter out empty rows
+      const payrollItems = Object.values(payrollRows)
+        .filter(row => parseFloat(row.amount) > 0)
+        .map(row => ({
+          type: row.type,
+          description: row.description || undefined,
+          amount: row.amount,
+          hours: row.hours || undefined,
+          hourlyRate: row.hourlyRate || undefined,
+        }));
+
+      if (payrollItems.length === 0) {
+        setBackendDeductions([]);
+        return;
+      }
+
+      try {
+        const response = await fetch("/api/payroll/preview-deductions", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({
+            employeeId: selectedEmployeeId,
+            paymentMonth,
+            paymentYear,
+            payrollItems,
+          }),
+        });
+
+        if (response.ok) {
+          const deductions = await response.json();
+          setBackendDeductions(deductions);
+        } else {
+          setBackendDeductions([]);
+        }
+      } catch (error) {
+        console.error("Error fetching deduction preview:", error);
+        setBackendDeductions([]);
+      }
+    };
+
+    fetchDeductions();
+  }, [selectedEmployeeId, periodEnd, payrollRows]);
 
   const createPaymentMutation = useMutation({
     mutationFn: async (data: any) => {
@@ -383,9 +440,6 @@ export default function EmployeePayroll() {
       return;
     }
 
-    const { grossSalary } = calculateTotals();
-    const deductions = calculateDeductions(grossSalary);
-
     // Calculate payment month and year based on period end date (not payment date)
     const periodEndDate = new Date(periodEnd);
     
@@ -398,15 +452,14 @@ export default function EmployeePayroll() {
       paymentYear: periodEndDate.getFullYear(),
       notes,
       payrollItems,
-      deductions,
+      deductions: backendDeductions,
     };
 
     createPaymentMutation.mutate(paymentData);
   };
 
   const { grossSalary } = calculateTotals();
-  const deductions = calculateDeductions(grossSalary);
-  const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
+  const totalDeductions = backendDeductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netSalary = grossSalary - totalDeductions;
 
   const selectedEmployee = activeEmployees.find(e => e.id === selectedEmployeeId);
@@ -681,7 +734,7 @@ export default function EmployeePayroll() {
             </div>
             <Separator className="my-2" />
             <div className="grid grid-cols-4 gap-x-4 gap-y-1">
-              {deductions.map((deduction, index) => (
+              {backendDeductions.map((deduction, index) => (
                 <div key={index} className="flex justify-between text-xs">
                   <span className="text-muted-foreground">
                     {deduction.type} {deduction.percentage && `(${deduction.percentage}%)`}
