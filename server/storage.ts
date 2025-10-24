@@ -335,10 +335,29 @@ export class DatabaseStorage implements IStorage {
     const employeeId = payment.employeeId || existingPayment.employeeId;
     const paymentYear = payment.paymentYear || existingPayment.paymentYear;
 
+    // If BOTH items and deductions arrays are empty, load existing items from database
+    // This allows recalculating deductions without re-sending all items
+    // If only items is empty (but deductions is not), allow clearing items
+    let effectiveItems = items;
+    if (items.length === 0 && deductionsList.length === 0) {
+      const existingItems = await db
+        .select()
+        .from(payrollItems)
+        .where(eq(payrollItems.payrollPaymentId, id));
+      
+      effectiveItems = existingItems.map(item => ({
+        type: item.type,
+        description: item.description || "",
+        amount: item.amount,
+        hours: item.hours || undefined,
+        hourlyRate: item.hourlyRate || undefined,
+      }));
+    }
+
     // If deductionsList is empty, calculate deductions from items
     let calculatedDeductions = deductionsList;
     if (deductionsList.length === 0) {
-      calculatedDeductions = await this.calculateDeductionsFromItems(employeeId, items);
+      calculatedDeductions = await this.calculateDeductionsFromItems(employeeId, effectiveItems);
     }
 
     // Apply cumulative ALV calculation
@@ -346,7 +365,7 @@ export class DatabaseStorage implements IStorage {
       employeeId,
       paymentYear,
       paymentMonth,
-      items,
+      effectiveItems,
       calculatedDeductions,
       id // exclude current payment from cumulative calculation
     );
@@ -356,13 +375,13 @@ export class DatabaseStorage implements IStorage {
       employeeId,
       paymentYear,
       paymentMonth,
-      items,
+      effectiveItems,
       adjustedDeductions,
       id // exclude current payment from cumulative calculation
     );
 
     // Calculate totals
-    const grossSalary = items.reduce(
+    const grossSalary = effectiveItems.reduce(
       (sum, item) => sum + parseFloat(item.amount),
       0
     );
@@ -389,10 +408,10 @@ export class DatabaseStorage implements IStorage {
     await db.delete(payrollItems).where(eq(payrollItems.payrollPaymentId, id));
     await db.delete(deductions).where(eq(deductions.payrollPaymentId, id));
 
-    // Insert new payroll items
-    if (items.length > 0) {
+    // Insert new payroll items (use effectiveItems which includes existing items if items was empty)
+    if (effectiveItems.length > 0) {
       await db.insert(payrollItems).values(
-        items.map((item) => ({
+        effectiveItems.map((item) => ({
           ...item,
           payrollPaymentId: id,
         }))
