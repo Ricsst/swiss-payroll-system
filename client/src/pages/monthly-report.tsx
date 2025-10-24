@@ -62,7 +62,12 @@ export default function MonthlyReport() {
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
 
   const { data: report, isLoading } = useQuery<MonthlyReportData>({
-    queryKey: [`/api/reports/monthly?year=${selectedYear}&month=${selectedMonth}`],
+    queryKey: ["/api/reports/monthly", selectedYear, selectedMonth],
+    queryFn: async () => {
+      const response = await fetch(`/api/reports/monthly?year=${selectedYear}&month=${selectedMonth}`);
+      if (!response.ok) throw new Error("Failed to fetch monthly report");
+      return response.json();
+    },
   });
 
   const monthNames = [

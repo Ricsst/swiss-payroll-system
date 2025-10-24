@@ -78,7 +78,12 @@ export default function YearlyReport() {
   const [selectedYear, setSelectedYear] = useState(currentYear);
 
   const { data: report, isLoading } = useQuery<YearlyReportData>({
-    queryKey: [`/api/reports/yearly?year=${selectedYear}`],
+    queryKey: ["/api/reports/yearly", selectedYear],
+    queryFn: async () => {
+      const response = await fetch(`/api/reports/yearly?year=${selectedYear}`);
+      if (!response.ok) throw new Error("Failed to fetch yearly report");
+      return response.json();
+    },
   });
 
   const availableYears = [2023, 2024, 2025, 2026];
