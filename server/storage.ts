@@ -1353,17 +1353,14 @@ export class DatabaseStorage implements IStorage {
     
     // NEW RULE: 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage
-    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350)
-    console.log(`[ALV Debug] Month ${paymentMonth}: previousSubject=${previousAlvSubjectAmount}, sollHoechst=${sollHoechstlohn}, currentSubject=${currentAlvSubjectAmount}, monthlyMax=${monthlyMaxIncome}`);
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350 regardless of actual wage)
     let alvBaseAmount: number;
     if (previousAlvSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage
-      console.log(`[ALV Debug] Using actual wage: ${currentAlvSubjectAmount}`);
       alvBaseAmount = currentAlvSubjectAmount;
     } else {
-      // Case 2: Already at or over cumulative limit → use monthly max
-      alvBaseAmount = Math.min(currentAlvSubjectAmount, monthlyMaxIncome);
-      console.log(`[ALV Debug] Using monthly max: ${alvBaseAmount}`);
+      // Case 2: Already at or over cumulative limit → always use monthly max
+      alvBaseAmount = monthlyMaxIncome;
     }
 
     // Calculate ALV amount
@@ -1430,14 +1427,14 @@ export class DatabaseStorage implements IStorage {
     
     // NEW RULE (same as ALV): 
     // If cumulative GROSS WAGE < cumulative max: Use actual wage
-    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350)
+    // If cumulative GROSS WAGE >= cumulative max: Use monthly max (CHF 12'350 regardless of actual wage)
     let nbuBaseAmount: number;
     if (previousNbuSubjectAmount < sollHoechstlohn) {
       // Case 1: Still under cumulative limit → use actual wage
       nbuBaseAmount = currentNbuSubjectAmount;
     } else {
-      // Case 2: Already at or over cumulative limit → use monthly max
-      nbuBaseAmount = Math.min(currentNbuSubjectAmount, monthlyMaxIncome);
+      // Case 2: Already at or over cumulative limit → always use monthly max
+      nbuBaseAmount = monthlyMaxIncome;
     }
 
     // Calculate NBU amount
