@@ -79,7 +79,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
   const [periodEnd, setPeriodEnd] = useState("");
   const [notes, setNotes] = useState("");
   const [payrollRows, setPayrollRows] = useState<Record<string, PayrollItemRow>>({});
-  const [backendDeductions, setBackendDeductions] = useState<any[]>([]);
+  const [backendDeductions, setBackendDeductions] = useState<any[] | null>(null);
 
   const { data: payment, isLoading: isLoadingPayment } = useQuery<PayrollPaymentDetail>({
     queryKey: ["/api/payroll/payments", params.id],
@@ -136,7 +136,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
   useEffect(() => {
     const fetchDeductions = async () => {
       if (!payment?.employeeId || !periodEnd) {
-        setBackendDeductions([]);
+        setBackendDeductions(null);
         return;
       }
 
@@ -349,8 +349,9 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
   }, 0);
 
   // Use live preview of deductions (with cumulative ALV/NBU limits)
-  // Falls back to stored deductions if preview hasn't loaded yet
-  const deductions = backendDeductions.length > 0 ? backendDeductions : (payment?.deductions || []);
+  // Falls back to stored deductions only if preview hasn't been fetched yet (null)
+  // Empty array from backend is intentional and should be shown
+  const deductions = backendDeductions !== null ? backendDeductions : (payment?.deductions || []);
   const totalDeductions = deductions.reduce((sum, d) => sum + parseFloat(d.amount), 0);
   const netSalary = grossSalary - totalDeductions;
 
@@ -515,7 +516,7 @@ export default function PayrollEdit({ params }: { params: { id: string } }) {
                 <span className="font-mono" data-testid={`text-deduction-amount-${d.type}`}>CHF {d.amount}</span>
               </div>
             ))}
-            {deductions.length > 0 && backendDeductions.length > 0 && (
+            {deductions.length > 0 && backendDeductions !== null && (
               <div className="text-xs text-muted-foreground italic pt-1">
                 Vorschau mit kumulativen ALV/NBU Höchstlöhnen
               </div>
