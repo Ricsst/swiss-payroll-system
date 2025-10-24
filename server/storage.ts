@@ -1357,7 +1357,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get cumulative ALV data (excluding current payment if editing)
     // IMPORTANT: Only consider payments BEFORE the current month
-    const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId, paymentMonth);
+    const cumulativeData = await this.getCumulativeAlvData(employeeId, year, excludePaymentId, paymentMonth - 1);
     const previousAlvBaseUsed = parseFloat(cumulativeData.cumulativeAlvBaseUsed);
     const previousAlvSubjectAmount = parseFloat(cumulativeData.cumulativeAlvSubjectAmount);
 
@@ -1447,7 +1447,8 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get cumulative NBU data (excluding current payment if editing)
-    const cumulativeData = await this.getCumulativeNbuData(employeeId, year, excludePaymentId, paymentMonth);
+    // IMPORTANT: Only consider payments BEFORE the current month
+    const cumulativeData = await this.getCumulativeNbuData(employeeId, year, excludePaymentId, paymentMonth - 1);
     const previousNbuBaseUsed = parseFloat(cumulativeData.cumulativeNbuBaseUsed);
     const previousNbuSubjectAmount = parseFloat(cumulativeData.cumulativeNbuSubjectAmount);
 
@@ -1505,8 +1506,8 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   async getCumulativeAlvData(employeeId: string, year: number, excludePaymentId?: string, beforeMonth?: number): Promise<any> {
     // Get all payroll payments for this employee in this year
-    // If beforeMonth is specified: include payments BEFORE that month AND payments IN that month (except excluded)
-    // This ensures multiple payments in the same month are properly counted
+    // If beforeMonth is specified: include payments with month <= beforeMonth (except excluded)
+    // NOTE: Caller should pass (currentMonth - 1) to get data BEFORE current month
     const conditions = [
       eq(payrollPayments.employeeId, employeeId),
       eq(payrollPayments.paymentYear, year)
@@ -1593,7 +1594,8 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   async getCumulativeNbuData(employeeId: string, year: number, excludePaymentId?: string, beforeMonth?: number): Promise<any> {
     // Get all payroll payments for this employee in this year
-    // If beforeMonth is specified: include payments BEFORE that month AND payments IN that month (except excluded)
+    // If beforeMonth is specified: include payments with month <= beforeMonth (except excluded)
+    // NOTE: Caller should pass (currentMonth - 1) to get data BEFORE current month
     const conditions = [
       eq(payrollPayments.employeeId, employeeId),
       eq(payrollPayments.paymentYear, year)
