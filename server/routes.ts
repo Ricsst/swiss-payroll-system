@@ -233,6 +233,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.post("/api/payroll/preview-deductions", async (req, res) => {
+    try {
+      const { employeeId, paymentMonth, paymentYear, payrollItems } = req.body;
+
+      if (!employeeId || !paymentMonth || !paymentYear || !payrollItems) {
+        return res.status(400).json({ 
+          error: "employeeId, paymentMonth, paymentYear, and payrollItems are required" 
+        });
+      }
+
+      const deductions = await storage.previewDeductions(
+        employeeId,
+        paymentMonth,
+        paymentYear,
+        payrollItems
+      );
+
+      res.json(deductions);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.post("/api/payroll/payments/:id/lock", async (req, res) => {
     try {
       const payment = await storage.lockPayrollPayment(req.params.id);

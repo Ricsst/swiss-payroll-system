@@ -76,6 +76,9 @@ export interface IStorage {
   
   // Cumulative NBU calculation
   getCumulativeNbuData(employeeId: string, year: number, excludePaymentId?: string): Promise<any>;
+  
+  // Preview deductions
+  previewDeductions(employeeId: string, paymentMonth: number, paymentYear: number, payrollItems: any[]): Promise<InsertDeduction[]>;
 }
 
 export class DatabaseStorage implements IStorage {
@@ -1623,6 +1626,47 @@ export class DatabaseStorage implements IStorage {
       cumulativeNbuDeductionAmount: cumulativeNbuDeductionAmount.toFixed(2),
       paymentsCount: filteredPayments.length,
     };
+  }
+
+  // ============================================================================
+  // PREVIEW DEDUCTIONS
+  // ============================================================================
+  async previewDeductions(
+    employeeId: string,
+    paymentMonth: number,
+    paymentYear: number,
+    payrollItems: any[]
+  ): Promise<InsertDeduction[]> {
+    // Convert payroll items to InsertPayrollItem format
+    const items: InsertPayrollItem[] = payrollItems.map(item => ({
+      payrollPaymentId: "", // Dummy value for preview
+      type: item.type,
+      description: item.description,
+      amount: item.amount,
+      hours: item.hours,
+      hourlyRate: item.hourlyRate,
+    }));
+
+    // Calculate deductions from items
+    let deductions = await this.calculateDeductionsFromItems(employeeId, items);
+
+    // Apply cumulative ALV limit
+    deductions = await this.applyCumulativeAlvLimit(
+      employeeId,
+      paymentYear,
+      paymentMonth,
+      deductions
+    );
+
+    // Apply cumulative NBU limit
+    deductions = await this.applyCumulativeNbuLimit(
+      employeeId,
+      paymentYear,
+      paymentMonth,
+      deductions
+    );
+
+    return deductions;
   }
 }
 
