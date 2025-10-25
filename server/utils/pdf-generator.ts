@@ -199,3 +199,11 @@ export function formatPercentage(rate: number | string): string {
   const num = typeof rate === "string" ? parseFloat(rate) : rate;
   return `${num.toFixed(2)}%`;
 }
+
+export function formatAddress(street: string, postalCode: string, city: string): string {
+  return `${street}, ${postalCode} ${city}`;
+}
+
+export function formatAddressMultiline(street: string, postalCode: string, city: string): string {
+  return `${street}\n${postalCode} ${city}`;
+}

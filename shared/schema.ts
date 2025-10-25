@@ -10,7 +10,9 @@ import { z } from "zod";
 export const companies = pgTable("companies", {
   id: varchar("id").primaryKey().default(sql`gen_random_uuid()`),
   name: text("name").notNull(),
-  address: text("address").notNull(),
+  street: text("street").notNull(), // Strasse und Hausnummer
+  postalCode: text("postal_code").notNull(), // PLZ
+  city: text("city").notNull(), // Ort
   ahvAccountingNumber: text("ahv_accounting_number").notNull(), // AHV-Abrechnungsnummer
   suvaCustomerNumber: text("suva_customer_number"), // SUVA-Kundennummer
   
@@ -54,7 +56,9 @@ export const employees = pgTable("employees", {
   lastName: text("last_name").notNull(),
   gender: text("gender").notNull().default("Mann"), // Mann or Frau
   birthDate: date("birth_date").notNull(),
-  address: text("address").notNull(),
+  street: text("street").notNull(), // Strasse und Hausnummer
+  postalCode: text("postal_code").notNull(), // PLZ
+  city: text("city").notNull(), // Ort
   email: text("email").notNull(),
   
   // Employment dates

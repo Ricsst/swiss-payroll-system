@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertPayrollItemTypeSchema, insertDeductionSchema, insertPayrollTemplateSchema, insertPayrollItemWithoutPaymentIdSchema, insertDeductionWithoutPaymentIdSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
-import { PDFGenerator, formatCurrency, formatDate, formatPercentage } from "./utils/pdf-generator";
+import { PDFGenerator, formatCurrency, formatDate, formatPercentage, formatAddress, formatAddressMultiline } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 
@@ -448,7 +448,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Add employee address on the right (for window envelope)
         const employeeName = `${employee.firstName} ${employee.lastName}`;
-        pdf.addWindowEnvelopeAddress(employeeName, employee.address);
+        pdf.addWindowEnvelopeAddress(employeeName, formatAddressMultiline(employee.street, employee.postalCode, employee.city));
 
         // Add section header
         pdf.addSection("LOHNBESTANDTEILE");
@@ -557,7 +557,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       // Add employee address on the right (for window envelope)
       const employeeName = `${employee.firstName} ${employee.lastName}`;
-      pdf.addWindowEnvelopeAddress(employeeName, employee.address);
+      pdf.addWindowEnvelopeAddress(employeeName, formatAddressMultiline(employee.street, employee.postalCode, employee.city));
 
       // Add section header
       pdf.addSection("LOHNBESTANDTEILE");
@@ -670,7 +670,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (employeeData) {
             pdf.addWindowEnvelopeAddress(
               `${employeeData.firstName} ${employeeData.lastName}`,
-              employeeData.address
+              formatAddressMultiline(employeeData.street, employeeData.postalCode, employeeData.city)
             );
           }
 
@@ -929,7 +929,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           employmentFrom: formatDate(employee.entryDate),
           employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
           employeeName: `${employee.firstName} ${employee.lastName}`,
-          employeeAddress: employee.address,
+          employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
           
           // Salary information
           basicSalary: totalGross,
@@ -960,7 +960,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           
           // Employer information
           employerName: company.name,
-          employerAddress: company.address,
+          employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
           employerPhone: '', // Phone not tracked in current schema
           issueDate: formatDate(new Date()),
         };
@@ -1047,7 +1047,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         employmentFrom: formatDate(employee.entryDate),
         employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
         employeeName: `${employee.firstName} ${employee.lastName}`,
-        employeeAddress: employee.address,
+        employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
         
         // Salary information
         basicSalary: totalGross,
@@ -1078,7 +1078,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // Employer information
         employerName: company.name,
-        employerAddress: company.address,
+        employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
         employerPhone: '', // Phone not tracked in current schema
         issueDate: formatDate(new Date()),
       };
