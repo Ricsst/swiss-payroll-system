@@ -7,6 +7,7 @@ import { PDFGenerator, formatCurrency, formatDate, formatPercentage, formatAddre
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 import { sendPayslipEmail } from "./services/email";
+import { sendPayslipEmailViaOutlook } from "./services/email-outlook";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -446,8 +447,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const pdfBlob = pdf.getBlob();
           const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
 
-          // Send email
-          await sendPayslipEmail(
+          // Send email via Outlook
+          await sendPayslipEmailViaOutlook(
             employee.email,
             employeeName,
             payment.paymentMonth,
