@@ -995,6 +995,7 @@ export class DatabaseStorage implements IStorage {
         bvgBasis: bvgBasis.toFixed(2),
       },
       employeeSummary,
+      uvgMaxIncome: uvgMaxIncome.toFixed(2),
       wageSummary: {
         male: {
           ahvSubject: wageSummary.male.ahvSubject.toFixed(2),
