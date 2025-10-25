@@ -103,6 +103,7 @@ export default function Employees() {
       bvgDeductionPercentage: undefined,
       childAllowanceAmount: undefined,
       childAllowanceNote: "",
+      annualFlatExpenses: undefined,
       isActive: true,
       companyId: "",
     },
@@ -247,6 +248,7 @@ export default function Employees() {
       bvgDeductionPercentage: employee.bvgDeductionPercentage || undefined,
       childAllowanceAmount: employee.childAllowanceAmount || undefined,
       childAllowanceNote: employee.childAllowanceNote || "",
+      annualFlatExpenses: employee.annualFlatExpenses || undefined,
       isActive: employee.isActive,
       companyId: employee.companyId,
     });
@@ -908,6 +910,33 @@ export default function Employees() {
                               data-testid="input-childallowancenote"
                             />
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+
+                  <div className="grid grid-cols-1 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="annualFlatExpenses"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Jährliche Pauschalspesen (CHF)</FormLabel>
+                          <FormControl>
+                            <Input
+                              type="number"
+                              step="0.01"
+                              {...field}
+                              value={field.value || ""}
+                              onChange={(e) => field.onChange(e.target.value || undefined)}
+                              placeholder="0.00"
+                              data-testid="input-annualflatexpenses"
+                            />
+                          </FormControl>
+                          <p className="text-xs text-muted-foreground">
+                            Ziffer 13.2.3 im Lohnausweis (Übrige Pauschalspesen)
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
