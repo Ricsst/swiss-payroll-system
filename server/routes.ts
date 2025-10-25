@@ -347,6 +347,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payroll/send-payslips", async (req, res) => {
     try {
       const { paymentIds } = req.body;
+      console.log('[Send Payslips] Received request with paymentIds:', paymentIds);
 
       if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
         return res.status(400).json({ error: "paymentIds array is required" });
@@ -357,9 +358,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       for (const paymentId of paymentIds) {
         try {
+          console.log('[Send Payslips] Processing payment:', paymentId);
+          
           // Get payment details
           const payment = await storage.getPayrollPayment(paymentId);
           if (!payment) {
+            console.log('[Send Payslips] Payment not found:', paymentId);
             results.push({ paymentId, success: false, error: "Payment not found" });
             continue;
           }
@@ -367,12 +371,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
           // Get employee details
           const employee = await storage.getEmployee(payment.employee.id);
           if (!employee) {
+            console.log('[Send Payslips] Employee not found:', payment.employee.id);
             results.push({ paymentId, success: false, error: "Employee not found" });
             continue;
           }
 
+          console.log('[Send Payslips] Employee:', employee.firstName, employee.lastName, 'Email:', employee.email);
+
           // Check if employee has email
           if (!employee.email) {
+            console.log('[Send Payslips] Employee has no email:', employee.firstName, employee.lastName);
             results.push({ 
               paymentId, 
               success: false, 
