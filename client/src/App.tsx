@@ -18,6 +18,7 @@ import EmployeePayroll from "@/pages/employee-payroll";
 import EmployeePayrollOverview from "@/pages/employee-payroll-overview";
 import MonthlyReport from "@/pages/monthly-report";
 import YearlyReport from "@/pages/yearly-report";
+import Lohnausweise from "@/pages/lohnausweise";
 import PayrollItemTypes from "@/pages/payroll-item-types";
 import Templates from "@/pages/templates";
 import NotFound from "@/pages/not-found";
@@ -36,6 +37,7 @@ function Router() {
       <Route path="/employee-payroll-overview" component={EmployeePayrollOverview} />
       <Route path="/monthly-report" component={MonthlyReport} />
       <Route path="/yearly-report" component={YearlyReport} />
+      <Route path="/lohnausweise" component={Lohnausweise} />
       <Route path="/payroll-item-types" component={PayrollItemTypes} />
       <Route path="/templates" component={Templates} />
       <Route component={NotFound} />

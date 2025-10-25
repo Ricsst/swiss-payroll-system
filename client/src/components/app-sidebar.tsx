@@ -1,4 +1,4 @@
-import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck } from "lucide-react";
+import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck, FileBarChart } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -57,6 +57,11 @@ const menuItems = [
     title: "Jahresabrechnung",
     url: "/yearly-report",
     icon: FileText,
+  },
+  {
+    title: "Lohnausweise",
+    url: "/lohnausweise",
+    icon: FileBarChart,
   },
   {
     title: "Lohnvorlagen",
