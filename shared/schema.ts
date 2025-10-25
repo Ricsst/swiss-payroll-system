@@ -89,6 +89,9 @@ export const employees = pgTable("employees", {
   childAllowanceAmount: numeric("child_allowance_amount", { precision: 10, scale: 2 }), // Kinderzulagen in CHF
   childAllowanceNote: text("child_allowance_note"), // Bemerkung für Kinderzulagen
   
+  // Expenses for Lohnausweis (Ziffer 13.2.3 - Übrige Pauschalspesen)
+  annualFlatExpenses: numeric("annual_flat_expenses", { precision: 10, scale: 2 }), // Jährliche Pauschalspesen in CHF
+  
   // Status
   isActive: boolean("is_active").notNull().default(true),
   
