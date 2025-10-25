@@ -1199,6 +1199,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add wage summary by gender worksheet
       if (report.wageSummary) {
+        const uvgMaxIncomeFormatted = formatExcelCurrency(parseFloat(report.uvgMaxIncome));
+        
         const wageSummaryColumns = [
           { header: "Kategorie", key: "category", width: 60 },
           { header: "Lohn Männer (CHF)", key: "male", width: 20 },
@@ -1222,7 +1224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.totalRelevant))}`,
           },
           {
-            category: "Total Überschusslohnsumme (ab CHF 148'200)",
+            category: `Total Überschusslohnsumme (ab ${uvgMaxIncomeFormatted})`,
             male: `= ${formatExcelCurrency(parseFloat(report.wageSummary.male.excessWage))}`,
             female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.excessWage))}`,
           },
@@ -1232,7 +1234,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             female: report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatExcelCurrency(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-",
           },
           {
-            category: "= Total UVG-Lohnsumme (bis CHF 148'200)",
+            category: `= Total UVG-Lohnsumme (bis ${uvgMaxIncomeFormatted})`,
             male: `= ${formatExcelCurrency(parseFloat(report.wageSummary.male.uvgWage))}`,
             female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.uvgWage))}`,
           },
