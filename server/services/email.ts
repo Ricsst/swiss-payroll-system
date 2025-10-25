@@ -61,34 +61,43 @@ export async function sendPayslipEmail(
   periodYear: number,
   pdfBuffer: Buffer
 ): Promise<void> {
-  const { client, fromEmail } = await getUncachableResendClient();
+  try {
+    console.log('[Email Service] Starting email send to:', toEmail);
+    const { client, fromEmail } = await getUncachableResendClient();
+    console.log('[Email Service] Got Resend client, fromEmail:', fromEmail);
 
-  const monthNames = [
-    'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
-    'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
-  ];
+    const monthNames = [
+      'Januar', 'Februar', 'März', 'April', 'Mai', 'Juni',
+      'Juli', 'August', 'September', 'Oktober', 'November', 'Dezember'
+    ];
 
-  const periodText = `${monthNames[periodMonth - 1]} ${periodYear}`;
+    const periodText = `${monthNames[periodMonth - 1]} ${periodYear}`;
 
-  await client.emails.send({
-    from: fromEmail,
-    to: toEmail,
-    subject: `Lohnabrechnung ${periodText}`,
-    html: `
-      <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
-        <h2>Lohnabrechnung</h2>
-        <p>Guten Tag ${employeeName},</p>
-        <p>Anbei erhalten Sie Ihre Lohnabrechnung für den Monat <strong>${periodText}</strong>.</p>
-        <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
-        <br>
-        <p>Freundliche Grüsse<br>Ihr Payroll Team</p>
-      </div>
-    `,
-    attachments: [
-      {
-        filename: `Lohnabrechnung_${periodYear}_${periodMonth.toString().padStart(2, '0')}_${employeeName.replace(/\s+/g, '_')}.pdf`,
-        content: pdfBuffer,
-      }
-    ]
-  });
+    const result = await client.emails.send({
+      from: fromEmail,
+      to: toEmail,
+      subject: `Lohnabrechnung ${periodText}`,
+      html: `
+        <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+          <h2>Lohnabrechnung</h2>
+          <p>Guten Tag ${employeeName},</p>
+          <p>Anbei erhalten Sie Ihre Lohnabrechnung für den Monat <strong>${periodText}</strong>.</p>
+          <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
+          <br>
+          <p>Freundliche Grüsse<br>Ihr Payroll Team</p>
+        </div>
+      `,
+      attachments: [
+        {
+          filename: `Lohnabrechnung_${periodYear}_${periodMonth.toString().padStart(2, '0')}_${employeeName.replace(/\s+/g, '_')}.pdf`,
+          content: pdfBuffer,
+        }
+      ]
+    });
+    
+    console.log('[Email Service] Email sent successfully:', result);
+  } catch (error: any) {
+    console.error('[Email Service] Error sending email:', error);
+    throw error;
+  }
 }
