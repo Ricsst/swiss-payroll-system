@@ -874,9 +874,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate Lohnausweis for each active employee
       for (let i = 0; i < activeEmployees.length; i++) {
         const employee = activeEmployees[i];
-        const employeePayments = payments.filter((p: any) => p.employeeId === employee.id);
+        const employeePayments = payments.filter((p: any) => p.employee.id === employee.id);
 
-        // Calculate totals
+        // Calculate totals - get full payment details including deductions
         let totalGross = 0;
         let totalAHV = 0;
         let totalALV = 0;
@@ -885,11 +885,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         let totalTax = 0;
         let totalOther = 0;
 
-        employeePayments.forEach((payment: any) => {
+        for (const payment of employeePayments) {
           totalGross += Number(payment.grossSalary);
           
-          if (payment.deductions) {
-            payment.deductions.forEach((d: any) => {
+          // Get full payment details with deductions
+          const fullPayment = await storage.getPayrollPayment(payment.id);
+          if (fullPayment && fullPayment.deductions) {
+            fullPayment.deductions.forEach((d: any) => {
               const amount = Number(d.amount);
               if (d.type === "AHV") totalAHV += amount;
               else if (d.type === "ALV") totalALV += amount;
@@ -899,7 +901,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
               else totalOther += amount;
             });
           }
-        });
+        }
 
         const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
         const totalNet = totalGross - totalDeductions;
@@ -989,9 +991,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Get all payments for this employee in the year
       const payments = await storage.getPayrollPayments(year);
-      const employeePayments = payments.filter((p: any) => p.employeeId === employeeId);
+      const employeePayments = payments.filter((p: any) => p.employee.id === employeeId);
 
-      // Calculate totals
+      // Calculate totals - get full payment details including deductions
       let totalGross = 0;
       let totalAHV = 0;
       let totalALV = 0;
@@ -1000,11 +1002,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       let totalTax = 0;
       let totalOther = 0;
 
-      employeePayments.forEach((payment: any) => {
+      for (const payment of employeePayments) {
         totalGross += Number(payment.grossSalary);
         
-        if (payment.deductions) {
-          payment.deductions.forEach((d: any) => {
+        // Get full payment details with deductions
+        const fullPayment = await storage.getPayrollPayment(payment.id);
+        if (fullPayment && fullPayment.deductions) {
+          fullPayment.deductions.forEach((d: any) => {
             const amount = Number(d.amount);
             if (d.type === "AHV") totalAHV += amount;
             else if (d.type === "ALV") totalALV += amount;
@@ -1014,7 +1018,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             else totalOther += amount;
           });
         }
-      });
+      }
 
       const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
       const totalNet = totalGross - totalDeductions;
