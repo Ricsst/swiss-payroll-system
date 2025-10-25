@@ -1070,12 +1070,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         netSalary: totalNet,
         taxWithheld: totalTax,
         
-        // Expenses (not currently tracked)
+        // Expenses
         travelExpenses: 0,
         otherActualExpenses: 0,
         representationExpenses: 0,
         carExpenses: 0,
-        otherFlatExpenses: 0,
+        otherFlatExpenses: Number(employee.annualFlatExpenses || 0), // Ziffer 13.2.3
         trainingContributions: 0,
         
         // Employer information
