@@ -774,6 +774,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       pdf.addSeparatorLine();
       pdf.addPayrollLine("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
 
+      // Add wage summary by gender section
+      if (report.wageSummary) {
+        pdf.addSection("Lohnsummen-Zusammenstellung nach Geschlecht");
+        pdf.addText("Hinweis", "Höchstlohn pro Person und Jahr CHF 300'000");
+        
+        const wageSummaryRows = [
+          [
+            "AHV-pflichtige Löhne gemäss Lohnbescheinigung",
+            formatCurrency(parseFloat(report.wageSummary.male.ahvSubject)),
+            formatCurrency(parseFloat(report.wageSummary.female.ahvSubject))
+          ],
+          [
+            "+ Nicht AHV-pflichtige Löhne",
+            report.wageSummary.male.nonAhvSubject !== "0.00" ? `+ ${formatCurrency(parseFloat(report.wageSummary.male.nonAhvSubject))}` : "-",
+            report.wageSummary.female.nonAhvSubject !== "0.00" ? `+ ${formatCurrency(parseFloat(report.wageSummary.female.nonAhvSubject))}` : "-"
+          ],
+          [
+            "= Total massgebende Lohnsummen",
+            `= ${formatCurrency(parseFloat(report.wageSummary.male.totalRelevant))}`,
+            `= ${formatCurrency(parseFloat(report.wageSummary.female.totalRelevant))}`
+          ],
+          [
+            "Total Überschusslohnsumme (ab CHF 148'200)",
+            `= ${formatCurrency(parseFloat(report.wageSummary.male.excessWage))}`,
+            `= ${formatCurrency(parseFloat(report.wageSummary.female.excessWage))}`
+          ],
+          [
+            "- nicht UVG-prämienpflichtige Löhne",
+            report.wageSummary.male.nonUvgPremium !== "0.00" ? `- ${formatCurrency(parseFloat(report.wageSummary.male.nonUvgPremium))}` : "-",
+            report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatCurrency(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-"
+          ],
+          [
+            "= Total UVG-Lohnsumme (bis CHF 148'200)",
+            `= ${formatCurrency(parseFloat(report.wageSummary.male.uvgWage))}`,
+            `= ${formatCurrency(parseFloat(report.wageSummary.female.uvgWage))}`
+          ],
+          [
+            "",
+            "",
+            ""
+          ],
+          [
+            "UVGO-Lohnsummen Personen 70+ (BU)",
+            formatCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_BU)),
+            formatCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_BU))
+          ],
+          [
+            "UVGO-Lohnsummen Personen 70+ (NBU)",
+            formatCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_NBU)),
+            formatCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_NBU))
+          ]
+        ];
+        
+        pdf.addTable(
+          ["Kategorie", "Lohn Männer", "Lohn Frauen"],
+          wageSummaryRows
+        );
+      }
+
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
       const pdfBlob = pdf.getBlob();
@@ -1135,6 +1194,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       excel.addWorksheet(`Jahresabrechnung ${year}`, columns, data);
+
+      // Add wage summary by gender worksheet
+      if (report.wageSummary) {
+        const wageSummaryColumns = [
+          { header: "Kategorie", key: "category", width: 60 },
+          { header: "Lohn Männer (CHF)", key: "male", width: 20 },
+          { header: "Lohn Frauen (CHF)", key: "female", width: 20 },
+        ];
+
+        const wageSummaryData = [
+          {
+            category: "AHV-pflichtige Löhne gemäss Lohnbescheinigung",
+            male: formatExcelCurrency(parseFloat(report.wageSummary.male.ahvSubject)),
+            female: formatExcelCurrency(parseFloat(report.wageSummary.female.ahvSubject)),
+          },
+          {
+            category: "+ Nicht AHV-pflichtige Löhne (Rentner, etc.)",
+            male: report.wageSummary.male.nonAhvSubject !== "0.00" ? `+ ${formatExcelCurrency(parseFloat(report.wageSummary.male.nonAhvSubject))}` : "-",
+            female: report.wageSummary.female.nonAhvSubject !== "0.00" ? `+ ${formatExcelCurrency(parseFloat(report.wageSummary.female.nonAhvSubject))}` : "-",
+          },
+          {
+            category: "= Total massgebende Lohnsummen",
+            male: `= ${formatExcelCurrency(parseFloat(report.wageSummary.male.totalRelevant))}`,
+            female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.totalRelevant))}`,
+          },
+          {
+            category: "Total Überschusslohnsumme (ab CHF 148'200)",
+            male: `= ${formatExcelCurrency(parseFloat(report.wageSummary.male.excessWage))}`,
+            female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.excessWage))}`,
+          },
+          {
+            category: "- nicht UVG-prämienpflichtige Löhne",
+            male: report.wageSummary.male.nonUvgPremium !== "0.00" ? `- ${formatExcelCurrency(parseFloat(report.wageSummary.male.nonUvgPremium))}` : "-",
+            female: report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatExcelCurrency(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-",
+          },
+          {
+            category: "= Total UVG-Lohnsumme (bis CHF 148'200)",
+            male: `= ${formatExcelCurrency(parseFloat(report.wageSummary.male.uvgWage))}`,
+            female: `= ${formatExcelCurrency(parseFloat(report.wageSummary.female.uvgWage))}`,
+          },
+          {
+            category: "",
+            male: "",
+            female: "",
+          },
+          {
+            category: "UVGO-Lohnsummen Personen 70+ (BU)",
+            male: formatExcelCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_BU)),
+            female: formatExcelCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_BU)),
+          },
+          {
+            category: "UVGO-Lohnsummen Personen 70+ (NBU)",
+            male: formatExcelCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_NBU)),
+            female: formatExcelCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_NBU)),
+          },
+        ];
+
+        excel.addWorksheet(`Lohnsummen-Zusammenstellung`, wageSummaryColumns, wageSummaryData);
+      }
 
       let buffer: Buffer;
       let contentType: string;

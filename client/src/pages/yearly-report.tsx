@@ -29,6 +29,18 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 
+interface WageSummaryByGender {
+  ahvSubject: string;
+  nonAhvSubject: string;
+  totalRelevant: string;
+  excessWage: string;
+  nonUvgPremium: string;
+  uvgWage: string;
+  lessThan8Hours: string;
+  uvgo70Plus_BU: string;
+  uvgo70Plus_NBU: string;
+}
+
 interface YearlyReportData {
   year: number;
   months: Array<{
@@ -65,6 +77,10 @@ interface YearlyReportData {
     ahvWage: string;
     alvWage: string;
   }>;
+  wageSummary: {
+    male: WageSummaryByGender;
+    female: WageSummaryByGender;
+  };
   totals: {
     grossSalary: string;
     deductions: string;
@@ -420,6 +436,181 @@ export default function YearlyReport() {
                         </TableCell>
                       </TableRow>
                     ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Lohnsummen-Zusammenstellung nach Geschlecht */}
+          {report.wageSummary && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Lohnsummen-Zusammenstellung nach Geschlecht</CardTitle>
+                <p className="text-sm text-muted-foreground mt-1">
+                  Höchstlohn pro Person und Jahr CHF 300'000
+                </p>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead className="w-[50%]">Kategorie</TableHead>
+                      <TableHead className="text-right">Lohn Männer</TableHead>
+                      <TableHead className="text-right">Lohn Frauen</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    <TableRow>
+                      <TableCell className="font-medium">AHV-pflichtige Löhne gemäss Lohnbescheinigung</TableCell>
+                      <TableCell className="text-right font-mono" data-testid="male-ahv-subject">
+                        {Number(report.wageSummary.male.ahvSubject).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono" data-testid="female-ahv-subject">
+                        {Number(report.wageSummary.female.ahvSubject).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="pl-8 text-sm text-muted-foreground">
+                        + Nicht AHV-pflichtige Löhne<br />
+                        <span className="text-xs">(Jugendlicher, AHV-Rentner, Praktikanten, Volontäre, Schnupperlehrlinge etc.)</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.male.nonAhvSubject) > 0 ? '+' : ''} {Number(report.wageSummary.male.nonAhvSubject).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.female.nonAhvSubject) > 0 ? '+' : ''} {Number(report.wageSummary.female.nonAhvSubject).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-muted/50">
+                      <TableCell className="font-semibold">
+                        Total massgebende Lohnsummen<br />
+                        <span className="text-xs font-normal text-muted-foreground">(Krankentaggeldversicherung und AHV-Lohnsumme für Unfallversicherung in Ergänzung)</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        = {Number(report.wageSummary.male.totalRelevant).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        = {Number(report.wageSummary.female.totalRelevant).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">
+                        Total Überschusslohnsumme (AHV-Lohn / UVG-Lohn)<br />
+                        <span className="text-xs text-muted-foreground">(Löhne ab CHF 148'200 pro Person und Jahr)</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        = {Number(report.wageSummary.male.excessWage).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        = {Number(report.wageSummary.female.excessWage).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="pl-8 text-sm text-muted-foreground">
+                        - nicht UVG-prämienpflichtige Löhne<br />
+                        <span className="text-xs">(z.B. EO-Entschädigungen, IV-/MV-Taggelder)</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.male.nonUvgPremium) > 0 ? '-' : ''} {Number(report.wageSummary.male.nonUvgPremium).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.female.nonUvgPremium) > 0 ? '-' : ''} {Number(report.wageSummary.female.nonUvgPremium).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow className="bg-muted/50">
+                      <TableCell className="font-semibold">
+                        Total UVG-Lohnsumme<br />
+                        <span className="text-xs font-normal text-muted-foreground">(Löhne bis CHF 148'200 pro Person und Jahr)</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        = {Number(report.wageSummary.male.uvgWage).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono font-semibold">
+                        = {Number(report.wageSummary.female.uvgWage).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="font-medium">
+                        Davon Lohnsumme von Personal mit weniger als 8 Stunden pro Woche<br />
+                        <span className="text-xs font-semibold">Nur Berufsunfallversicherte</span>
+                      </TableCell>
+                      <TableCell className="text-right font-mono"></TableCell>
+                      <TableCell className="text-right font-mono"></TableCell>
+                    </TableRow>
+                    <TableRow className="border-t-2 border-primary">
+                      <TableCell className="font-semibold pt-4">
+                        UVGO-Lohnsummen von Personen, die das 70. Altersjahr vollendet haben
+                      </TableCell>
+                      <TableCell></TableCell>
+                      <TableCell></TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="pl-8">BU-Lohnsumme</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.male.uvgo70Plus_BU).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.female.uvgo70Plus_BU).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
+                    <TableRow>
+                      <TableCell className="pl-8">NBU-Lohnsumme</TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.male.uvgo70Plus_NBU).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        {Number(report.wageSummary.female.uvgo70Plus_NBU).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </CardContent>

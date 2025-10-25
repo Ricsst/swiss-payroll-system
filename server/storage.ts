@@ -894,6 +894,95 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    // ============================================================================
+    // Lohnsummen-Zusammenstellung nach Geschlecht (Wage Summary by Gender)
+    // ============================================================================
+    const uvgMaxIncome = company ? parseFloat(company.suvaMaxIncomePerYear) : 148200;
+    
+    // Initialize accumulators for men and women
+    const wageSummary = {
+      male: {
+        ahvSubject: 0,           // AHV-pflichtige Löhne
+        nonAhvSubject: 0,        // Nicht AHV-pflichtige Löhne (Rentner)
+        totalRelevant: 0,        // Total massgebende Lohnsummen
+        excessWage: 0,           // Überschusslohn (ab CHF 148'200)
+        nonUvgPremium: 0,        // Nicht UVG-prämienpflichtige Löhne
+        uvgWage: 0,              // UVG-Lohnsumme (bis CHF 148'200)
+        lessThan8Hours: 0,       // Personal mit weniger als 8 Stunden/Woche
+        uvgo70Plus_BU: 0,        // UVGO Personen 70+ BU-Lohnsumme
+        uvgo70Plus_NBU: 0,       // UVGO Personen 70+ NBU-Lohnsumme
+      },
+      female: {
+        ahvSubject: 0,
+        nonAhvSubject: 0,
+        totalRelevant: 0,
+        excessWage: 0,
+        nonUvgPremium: 0,
+        uvgWage: 0,
+        lessThan8Hours: 0,
+        uvgo70Plus_BU: 0,
+        uvgo70Plus_NBU: 0,
+      },
+    };
+
+    // Get all employees with their annual wages
+    const employeeAnnualWages = new Map<string, { employee: any; totalWage: number }>();
+    
+    for (const payment of allPayments) {
+      const employee = await db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
+      if (employee.length === 0) continue;
+
+      const emp = employee[0];
+      const wage = parseFloat(payment.grossSalary);
+
+      if (!employeeAnnualWages.has(emp.id)) {
+        employeeAnnualWages.set(emp.id, { employee: emp, totalWage: 0 });
+      }
+      employeeAnnualWages.get(emp.id)!.totalWage += wage;
+    }
+
+    // Calculate summary by gender
+    for (const [empId, data] of Array.from(employeeAnnualWages.entries())) {
+      const emp = data.employee;
+      const annualWage = data.totalWage;
+      const gender = emp.gender.toLowerCase();
+      const isMale = gender === 'mann' || gender === 'male' || gender === 'm';
+      const summary = isMale ? wageSummary.male : wageSummary.female;
+
+      // Check if person is over 70 years old
+      const birthDate = new Date(emp.birthDate);
+      const endOfYear = new Date(year, 11, 31);
+      const age = endOfYear.getFullYear() - birthDate.getFullYear();
+      const isOver70 = age >= 70;
+
+      // 1. AHV-pflichtige / Nicht AHV-pflichtige Löhne
+      if (emp.isRentner) {
+        summary.nonAhvSubject += annualWage;
+      } else {
+        summary.ahvSubject += annualWage;
+      }
+
+      // 2. Total massgebende Lohnsummen (sum of both)
+      summary.totalRelevant += annualWage;
+
+      // 3. Überschusslohn (wages above UVG limit per person)
+      if (annualWage > uvgMaxIncome) {
+        summary.excessWage += (annualWage - uvgMaxIncome);
+      }
+
+      // 4. UVG-Lohnsumme (wages up to UVG limit per person)
+      const uvgWageForEmployee = Math.min(annualWage, uvgMaxIncome);
+      summary.uvgWage += uvgWageForEmployee;
+
+      // 5. UVGO für Personen 70+
+      if (isOver70) {
+        summary.uvgo70Plus_BU += uvgWageForEmployee;  // BU (Berufsunfall)
+        if (emp.isNbuInsured) {
+          summary.uvgo70Plus_NBU += uvgWageForEmployee;  // NBU (Nichtberufsunfall)
+        }
+      }
+    }
+
     return {
       year,
       months: allMonths,
@@ -906,6 +995,30 @@ export class DatabaseStorage implements IStorage {
         bvgBasis: bvgBasis.toFixed(2),
       },
       employeeSummary,
+      wageSummary: {
+        male: {
+          ahvSubject: wageSummary.male.ahvSubject.toFixed(2),
+          nonAhvSubject: wageSummary.male.nonAhvSubject.toFixed(2),
+          totalRelevant: wageSummary.male.totalRelevant.toFixed(2),
+          excessWage: wageSummary.male.excessWage.toFixed(2),
+          nonUvgPremium: wageSummary.male.nonUvgPremium.toFixed(2),
+          uvgWage: wageSummary.male.uvgWage.toFixed(2),
+          lessThan8Hours: wageSummary.male.lessThan8Hours.toFixed(2),
+          uvgo70Plus_BU: wageSummary.male.uvgo70Plus_BU.toFixed(2),
+          uvgo70Plus_NBU: wageSummary.male.uvgo70Plus_NBU.toFixed(2),
+        },
+        female: {
+          ahvSubject: wageSummary.female.ahvSubject.toFixed(2),
+          nonAhvSubject: wageSummary.female.nonAhvSubject.toFixed(2),
+          totalRelevant: wageSummary.female.totalRelevant.toFixed(2),
+          excessWage: wageSummary.female.excessWage.toFixed(2),
+          nonUvgPremium: wageSummary.female.nonUvgPremium.toFixed(2),
+          uvgWage: wageSummary.female.uvgWage.toFixed(2),
+          lessThan8Hours: wageSummary.female.lessThan8Hours.toFixed(2),
+          uvgo70Plus_BU: wageSummary.female.uvgo70Plus_BU.toFixed(2),
+          uvgo70Plus_NBU: wageSummary.female.uvgo70Plus_NBU.toFixed(2),
+        },
+      },
       totals: {
         grossSalary: totalGross.toFixed(2),
         deductions: totalDeductions.toFixed(2),
