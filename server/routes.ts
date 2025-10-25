@@ -879,8 +879,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "No active employees found" });
       }
 
-      const pdf = new PDFGenerator();
       const payments = await storage.getPayrollPayments(year);
+      
+      // Import PDFDocument for merging
+      const { PDFDocument } = await import('pdf-lib');
+      const mergedPdf = await PDFDocument.create();
 
       // Generate Lohnausweis for each active employee
       for (let i = 0; i < activeEmployees.length; i++) {
@@ -917,95 +920,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
         const totalNet = totalGross - totalDeductions;
 
-        // Add page break between employees (except for the first one)
-        if (i > 0) {
-          pdf.addPageBreak();
-        }
+        // Prepare data for official Swiss form
+        const formData: LohnausweisData = {
+          // Header information
+          ahvNumber: employee.ahvNumber,
+          birthDate: formatDate(employee.birthDate),
+          year: year.toString(),
+          employmentFrom: formatDate(employee.entryDate),
+          employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          employeeAddress: employee.address,
+          
+          // Salary information
+          basicSalary: totalGross,
+          mealAllowance: 0,
+          carBenefit: 0,
+          otherBenefits: 0,
+          irregularPayments: 0,
+          capitalPayments: 0,
+          participationRights: 0,
+          boardFees: 0,
+          otherPayments: 0,
+          grossSalary: totalGross,
+          
+          // Deductions
+          socialInsurance: totalAHV + totalALV + totalSUVA,
+          pensionOrdinary: totalBVG,
+          pensionBuyIn: 0,
+          netSalary: totalNet,
+          taxWithheld: totalTax,
+          
+          // Expenses (not currently tracked)
+          travelExpenses: 0,
+          otherActualExpenses: 0,
+          representationExpenses: 0,
+          carExpenses: 0,
+          otherFlatExpenses: 0,
+          trainingContributions: 0,
+          
+          // Employer information
+          employerName: company.name,
+          employerAddress: company.address,
+          employerPhone: '', // Phone not tracked in current schema
+          issueDate: formatDate(new Date()),
+        };
 
-        // Kompakter Header
-        pdf.addHeader({
-          title: "LOHNAUSWEIS",
-          subtitle: `Gemäss Art. 125 DBG / Steuerjahr ${year}`,
-        });
-
-        // 1. Arbeitgeber - kompakt
-        pdf.addCompactSection("1. ARBEITGEBER");
-        pdf.addTable(
-          ["", ""],
-          [
-            ["Name/Firma", company.name],
-            ["Adresse", company.address],
-            ["AHV-Nr.", company.ahvAccountingNumber],
-            ["SUVA-Nr.", company.suvaCustomerNumber || "-"],
-          ],
-          { compact: true }
-        );
-
-        // 2. Arbeitnehmer - kompakt
-        pdf.addCompactSection("2. ARBEITNEHMER/IN");
-        const employeeRows = [
-          ["Name, Vorname", `${employee.lastName}, ${employee.firstName}`],
-          ["Geburtsdatum", formatDate(employee.birthDate)],
-          ["AHV-Nr.", employee.ahvNumber],
-          ["Adresse", employee.address],
-          ["Eintritt", formatDate(employee.entryDate)],
-        ];
-        if (employee.exitDate) {
-          employeeRows.push(["Austritt", formatDate(employee.exitDate)]);
-        }
-        pdf.addTable(["", ""], employeeRows, { compact: true });
-
-        // 3. Lohnangaben - kompakt
-        pdf.addCompactSection("3. LOHNANGABEN");
-        pdf.addTable(
-          ["Beschreibung", "Betrag"],
-          [
-            ["Bruttolohn (inkl. 13. Monatslohn)", formatCurrency(totalGross)],
-          ],
-          { compact: true }
-        );
+        // Fill the official Swiss form for this employee
+        const pdfBytes = await fillLohnausweisForm(formData);
+        const employeePdf = await PDFDocument.load(pdfBytes);
         
-        // 4. Sozialversicherungen - kompakt
-        pdf.addCompactSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
-        pdf.addTable(
-          ["Abzugsart", "Betrag"],
-          [
-            ["AHV/IV/EO", formatCurrency(totalAHV)],
-            ["ALV", formatCurrency(totalALV)],
-            ["NBU/SUVA", formatCurrency(totalSUVA)],
-            ["BVG", formatCurrency(totalBVG)],
-          ],
-          { compact: true }
-        );
-
-        // 5. Weitere Abzüge - kompakt
-        pdf.addCompactSection("5. WEITERE ABZÜGE");
-        pdf.addTable(
-          ["Abzugsart", "Betrag"],
-          [
-            ["Quellensteuer", formatCurrency(totalTax)],
-            ["Sonstige", formatCurrency(totalOther)],
-          ],
-          { compact: true }
-        );
-
-        // 6. Zusammenfassung - kompakt
-        pdf.addCompactSection("6. ZUSAMMENFASSUNG");
-        pdf.addTable(
-          ["", "Betrag"],
-          [
-            ["Bruttolohn", formatCurrency(totalGross)],
-            ["Total Abzüge", formatCurrency(totalDeductions)],
-            ["Nettolohn", formatCurrency(totalNet)],
-          ],
-          { compact: true }
-        );
-
-        pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
+        // Copy pages to merged document
+        const copiedPages = await mergedPdf.copyPages(employeePdf, employeePdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
       }
 
-      const pdfBlob = pdf.getBlob();
-      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+      const mergedPdfBytes = await mergedPdf.save();
+      const buffer = Buffer.from(mergedPdfBytes);
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=Lohnausweise_${year}.pdf`);
@@ -1068,91 +1038,54 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
       const totalNet = totalGross - totalDeductions;
 
-      const pdf = new PDFGenerator();
-      
-      // Kompakter Header
-      pdf.addHeader({
-        title: "LOHNAUSWEIS",
-        subtitle: `Gemäss Art. 125 DBG / Steuerjahr ${year}`,
-      });
+      // Prepare data for official Swiss form
+      const formData: LohnausweisData = {
+        // Header information
+        ahvNumber: employee.ahvNumber,
+        birthDate: formatDate(employee.birthDate),
+        year: year.toString(),
+        employmentFrom: formatDate(employee.entryDate),
+        employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
+        employeeName: `${employee.firstName} ${employee.lastName}`,
+        employeeAddress: employee.address,
+        
+        // Salary information
+        basicSalary: totalGross,
+        mealAllowance: 0,
+        carBenefit: 0,
+        otherBenefits: 0,
+        irregularPayments: 0,
+        capitalPayments: 0,
+        participationRights: 0,
+        boardFees: 0,
+        otherPayments: 0,
+        grossSalary: totalGross,
+        
+        // Deductions
+        socialInsurance: totalAHV + totalALV + totalSUVA,
+        pensionOrdinary: totalBVG,
+        pensionBuyIn: 0,
+        netSalary: totalNet,
+        taxWithheld: totalTax,
+        
+        // Expenses (not currently tracked)
+        travelExpenses: 0,
+        otherActualExpenses: 0,
+        representationExpenses: 0,
+        carExpenses: 0,
+        otherFlatExpenses: 0,
+        trainingContributions: 0,
+        
+        // Employer information
+        employerName: company.name,
+        employerAddress: company.address,
+        employerPhone: '', // Phone not tracked in current schema
+        issueDate: formatDate(new Date()),
+      };
 
-      // 1. Arbeitgeber - kompakt
-      pdf.addCompactSection("1. ARBEITGEBER");
-      pdf.addTable(
-        ["", ""],
-        [
-          ["Name/Firma", company.name],
-          ["Adresse", company.address],
-          ["AHV-Nr.", company.ahvAccountingNumber],
-          ["SUVA-Nr.", company.suvaCustomerNumber || "-"],
-        ],
-        { compact: true }
-      );
-
-      // 2. Arbeitnehmer - kompakt
-      pdf.addCompactSection("2. ARBEITNEHMER/IN");
-      const employeeRows = [
-        ["Name, Vorname", `${employee.lastName}, ${employee.firstName}`],
-        ["Geburtsdatum", formatDate(employee.birthDate)],
-        ["AHV-Nr.", employee.ahvNumber],
-        ["Adresse", employee.address],
-        ["Eintritt", formatDate(employee.entryDate)],
-      ];
-      if (employee.exitDate) {
-        employeeRows.push(["Austritt", formatDate(employee.exitDate)]);
-      }
-      pdf.addTable(["", ""], employeeRows, { compact: true });
-
-      // 3. Lohnangaben - kompakt
-      pdf.addCompactSection("3. LOHNANGABEN");
-      pdf.addTable(
-        ["Beschreibung", "Betrag"],
-        [
-          ["Bruttolohn (inkl. 13. Monatslohn)", formatCurrency(totalGross)],
-        ],
-        { compact: true }
-      );
-      
-      // 4. Sozialversicherungen - kompakt
-      pdf.addCompactSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
-      pdf.addTable(
-        ["Abzugsart", "Betrag"],
-        [
-          ["AHV/IV/EO", formatCurrency(totalAHV)],
-          ["ALV", formatCurrency(totalALV)],
-          ["NBU/SUVA", formatCurrency(totalSUVA)],
-          ["BVG", formatCurrency(totalBVG)],
-        ],
-        { compact: true }
-      );
-
-      // 5. Weitere Abzüge - kompakt
-      pdf.addCompactSection("5. WEITERE ABZÜGE");
-      pdf.addTable(
-        ["Abzugsart", "Betrag"],
-        [
-          ["Quellensteuer", formatCurrency(totalTax)],
-          ["Sonstige", formatCurrency(totalOther)],
-        ],
-        { compact: true }
-      );
-
-      // 6. Zusammenfassung - kompakt
-      pdf.addCompactSection("6. ZUSAMMENFASSUNG");
-      pdf.addTable(
-        ["", "Betrag"],
-        [
-          ["Bruttolohn", formatCurrency(totalGross)],
-          ["Total Abzüge", formatCurrency(totalDeductions)],
-          ["Nettolohn", formatCurrency(totalNet)],
-        ],
-        { compact: true }
-      );
-
-      pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
-
-      const pdfBlob = pdf.getBlob();
-      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+      // Fill the official Swiss form
+      const pdfBytes = await fillLohnausweisForm(formData);
+      const buffer = Buffer.from(pdfBytes);
 
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=Lohnausweis_${year}_${employee.lastName}_${employee.firstName}.pdf`);
