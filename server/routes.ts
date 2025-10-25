@@ -5,6 +5,7 @@ import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, 
 import { fromError } from "zod-validation-error";
 import { PDFGenerator, formatCurrency, formatDate, formatPercentage } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
+import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -843,6 +844,16 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Type", "application/pdf");
       res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_${year}.pdf`);
       res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // DEBUG: Inspect PDF form fields
+  app.get("/api/pdf/inspect-form-fields", async (req, res) => {
+    try {
+      const fieldNames = await inspectFormFields();
+      res.json({ fieldNames });
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
