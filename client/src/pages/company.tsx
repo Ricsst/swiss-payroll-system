@@ -21,7 +21,9 @@ import { Skeleton } from "@/components/ui/skeleton";
 
 const defaultFormValues: InsertCompany = {
   name: "",
-  address: "",
+  street: "",
+  postalCode: "",
+  city: "",
   ahvAccountingNumber: "",
   suvaCustomerNumber: "",
   ahvEmployeeRate: "5.3000",
@@ -55,7 +57,9 @@ export default function CompanyPage() {
       // Convert all numeric fields to strings for form compatibility
       const formData: InsertCompany = {
         name: company.name,
-        address: company.address,
+        street: company.street,
+        postalCode: company.postalCode,
+        city: company.city,
         ahvAccountingNumber: company.ahvAccountingNumber,
         suvaCustomerNumber: company.suvaCustomerNumber || "",
         ahvEmployeeRate: String(company.ahvEmployeeRate),
@@ -164,17 +168,45 @@ export default function CompanyPage() {
               />
               <FormField
                 control={form.control}
-                name="address"
+                name="street"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Adresse *</FormLabel>
+                    <FormLabel>Strasse *</FormLabel>
                     <FormControl>
-                      <Input {...field} data-testid="input-company-address" />
+                      <Input {...field} data-testid="input-company-street" />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
                 )}
               />
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="postalCode"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>PLZ *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-company-postalcode" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="city"
+                  render={({ field }) => (
+                    <FormItem className="col-span-2">
+                      <FormLabel>Ort *</FormLabel>
+                      <FormControl>
+                        <Input {...field} data-testid="input-company-city" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
               <div className="grid grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
