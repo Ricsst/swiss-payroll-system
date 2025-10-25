@@ -67,11 +67,24 @@ export async function fillLohnausweisForm(data: LohnausweisData): Promise<Uint8A
     }
   };
   
+  // Helper function to check a checkbox
+  const checkBox = (fieldName: string) => {
+    try {
+      const checkbox = form.getCheckBox(fieldName);
+      checkbox.check();
+    } catch (error) {
+      console.warn(`Checkbox "${fieldName}" not found in PDF form`);
+    }
+  };
+  
   // Helper to format currency (whole CHF amounts only)
   const formatAmount = (amount: number): string => {
     if (amount === 0) return '';
     return Math.round(amount).toString();
   };
+  
+  // Check box "A" for Lohnausweis (not Rentenbescheinigung)
+  checkBox('OptionKreuzOhneRahmen_A');
   
   // Fill header information (Sections C-H)
   // AHV number
