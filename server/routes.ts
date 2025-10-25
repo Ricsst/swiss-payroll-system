@@ -999,10 +999,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: "Employee not found" });
       }
 
+      console.log('Employee data:', {
+        id: employee.id,
+        name: `${employee.firstName} ${employee.lastName}`,
+        street: employee.street,
+        postalCode: employee.postalCode,
+        city: employee.city
+      });
+
       const company = await storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
+
+      console.log('Company data:', {
+        name: company.name,
+        street: company.street,
+        postalCode: company.postalCode,
+        city: company.city
+      });
 
       // Get all payments for this employee in the year
       const payments = await storage.getPayrollPayments(year);
@@ -1084,6 +1099,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       };
 
       // Fill the official Swiss form
+      console.log('Calling fillLohnausweisForm with formData:', {
+        employeeName: formData.employeeName,
+        employeeAddress: formData.employeeAddress,
+        employerName: formData.employerName,
+        employerAddress: formData.employerAddress
+      });
       const pdfBytes = await fillLohnausweisForm(formData);
       const buffer = Buffer.from(pdfBytes);
 
@@ -1091,6 +1112,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Disposition", `attachment; filename=Lohnausweis_${year}_${employee.lastName}_${employee.firstName}.pdf`);
       res.send(buffer);
     } catch (error: any) {
+      console.error('Error generating Lohnausweis:', error);
+      console.error('Error stack:', error.stack);
       res.status(500).json({ error: error.message });
     }
   });
