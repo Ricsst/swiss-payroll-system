@@ -81,7 +81,9 @@ export default function Employees() {
       lastName: "",
       gender: "Mann",
       birthDate: "",
-      address: "",
+      street: "",
+      postalCode: "",
+      city: "",
       email: "",
       entryDate: "",
       exitDate: undefined,
@@ -223,7 +225,9 @@ export default function Employees() {
       lastName: employee.lastName,
       gender: employee.gender || "Mann",
       birthDate: employee.birthDate,
-      address: employee.address,
+      street: employee.street,
+      postalCode: employee.postalCode,
+      city: employee.city,
       email: employee.email,
       entryDate: employee.entryDate,
       exitDate: employee.exitDate || undefined,
@@ -491,17 +495,45 @@ export default function Employees() {
                   </div>
                   <FormField
                     control={form.control}
-                    name="address"
+                    name="street"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>Adresse *</FormLabel>
+                        <FormLabel>Strasse *</FormLabel>
                         <FormControl>
-                          <Input {...field} data-testid="input-address" />
+                          <Input {...field} data-testid="input-street" />
                         </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
+                  <div className="grid grid-cols-3 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="postalCode"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>PLZ *</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-postalcode" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="city"
+                      render={({ field }) => (
+                        <FormItem className="col-span-2">
+                          <FormLabel>Ort *</FormLabel>
+                          <FormControl>
+                            <Input {...field} data-testid="input-city" />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
                 </div>
 
                 <div className="space-y-4">
