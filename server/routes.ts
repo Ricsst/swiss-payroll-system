@@ -6,6 +6,7 @@ import { fromError } from "zod-validation-error";
 import { PDFGenerator, formatCurrency, formatDate, formatPercentage, formatAddress, formatAddressMultiline } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
+import { sendPayslipEmail } from "./services/email";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -339,6 +340,140 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: error.message });
       }
+    }
+  });
+
+  // Send payslips via email
+  app.post("/api/payroll/send-payslips", async (req, res) => {
+    try {
+      const { paymentIds } = req.body;
+
+      if (!paymentIds || !Array.isArray(paymentIds) || paymentIds.length === 0) {
+        return res.status(400).json({ error: "paymentIds array is required" });
+      }
+
+      const results = [];
+      const payrollItemTypes = await storage.getPayrollItemTypes();
+
+      for (const paymentId of paymentIds) {
+        try {
+          // Get payment details
+          const payment = await storage.getPayrollPayment(paymentId);
+          if (!payment) {
+            results.push({ paymentId, success: false, error: "Payment not found" });
+            continue;
+          }
+
+          // Get employee details
+          const employee = await storage.getEmployee(payment.employee.id);
+          if (!employee) {
+            results.push({ paymentId, success: false, error: "Employee not found" });
+            continue;
+          }
+
+          // Check if employee has email
+          if (!employee.email) {
+            results.push({ 
+              paymentId, 
+              success: false, 
+              error: `Employee ${employee.firstName} ${employee.lastName} has no email address` 
+            });
+            continue;
+          }
+
+          // Generate PDF
+          const monthNames = [
+            "Januar", "Februar", "März", "April", "Mai", "Juni",
+            "Juli", "August", "September", "Oktober", "November", "Dezember"
+          ];
+          const monthName = monthNames[payment.paymentMonth - 1];
+
+          const pdf = new PDFGenerator();
+          pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`);
+          const employeeName = `${employee.firstName} ${employee.lastName}`;
+          pdf.addWindowEnvelopeAddress(employeeName, formatAddressMultiline(employee.street, employee.postalCode, employee.city));
+          pdf.addSection("LOHNBESTANDTEILE");
+          
+          if (payment.payrollItems && payment.payrollItems.length > 0) {
+            payment.payrollItems.forEach((item: any) => {
+              const itemType = payrollItemTypes.find(t => t.code === item.type);
+              const typeName = itemType ? itemType.name : item.type;
+              let label = `${item.type} - ${typeName}`;
+              if (item.description) {
+                label += ` (${item.description})`;
+              }
+              if (item.hours && item.hourlyRate) {
+                label += ` - ${item.hours}h à ${formatCurrency(parseFloat(item.hourlyRate))}`;
+              }
+              pdf.addPayrollLine(label, formatCurrency(parseFloat(item.amount)), false, false);
+            });
+          }
+
+          pdf.addSeparatorLine();
+          pdf.addPayrollLine("BRUTTOLOHN", formatCurrency(parseFloat(payment.grossSalary)), true, false);
+          pdf.addSeparatorLine();
+          
+          if (payment.deductions && payment.deductions.length > 0) {
+            pdf.addSection("ABZÜGE");
+            payment.deductions.forEach((d: any) => {
+              let label = `${d.type}`;
+              if (d.description) {
+                label = `${d.type} - ${d.description}`;
+              }
+              if (d.percentage && d.baseAmount) {
+                label += ` (${formatPercentage(parseFloat(d.percentage))} von ${formatCurrency(parseFloat(d.baseAmount))})`;
+              } else if (d.percentage && !d.baseAmount) {
+                label += ` (${formatPercentage(parseFloat(d.percentage))})`;
+              }
+              pdf.addPayrollLine(label, formatCurrency(parseFloat(d.amount)), false, true);
+            });
+            pdf.addSeparatorLine();
+          }
+
+          pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(payment.totalDeductions)), true, true);
+          pdf.addSeparatorLine();
+          pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
+          pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+
+          const pdfBlob = pdf.getBlob();
+          const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+          // Send email
+          await sendPayslipEmail(
+            employee.email,
+            employeeName,
+            payment.paymentMonth,
+            payment.paymentYear,
+            pdfBuffer
+          );
+
+          results.push({ 
+            paymentId, 
+            success: true, 
+            employeeName,
+            email: employee.email 
+          });
+        } catch (error: any) {
+          results.push({ 
+            paymentId, 
+            success: false, 
+            error: error.message 
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+
+      res.json({
+        success: failureCount === 0,
+        totalProcessed: results.length,
+        successCount,
+        failureCount,
+        results
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
     }
   });
 
