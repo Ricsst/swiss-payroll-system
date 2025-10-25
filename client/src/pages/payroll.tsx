@@ -214,7 +214,7 @@ export default function Payroll() {
     mutationFn: (paymentIds: string[]) => 
       apiRequest("POST", "/api/payroll/send-payslips", { paymentIds }),
     onSuccess: (data: any) => {
-      const { successCount, failureCount, results } = data;
+      const { successCount = 0, failureCount = 0, results = [] } = data || {};
       
       if (failureCount === 0) {
         toast({
