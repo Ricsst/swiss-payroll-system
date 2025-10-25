@@ -77,6 +77,7 @@ interface YearlyReportData {
     ahvWage: string;
     alvWage: string;
   }>;
+  uvgMaxIncome: string;
   wageSummary: {
     male: WageSummaryByGender;
     female: WageSummaryByGender;
@@ -515,7 +516,12 @@ export default function YearlyReport() {
                     <TableRow>
                       <TableCell className="font-medium">
                         Total Überschusslohnsumme (AHV-Lohn / UVG-Lohn)<br />
-                        <span className="text-xs text-muted-foreground">(Löhne ab CHF 148'200 pro Person und Jahr)</span>
+                        <span className="text-xs text-muted-foreground">
+                          (Löhne ab CHF {Number(report.uvgMaxIncome).toLocaleString("de-CH", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })} pro Person und Jahr)
+                        </span>
                       </TableCell>
                       <TableCell className="text-right font-mono">
                         = {Number(report.wageSummary.male.excessWage).toLocaleString("de-CH", {
@@ -551,7 +557,12 @@ export default function YearlyReport() {
                     <TableRow className="bg-muted/50">
                       <TableCell className="font-semibold">
                         Total UVG-Lohnsumme<br />
-                        <span className="text-xs font-normal text-muted-foreground">(Löhne bis CHF 148'200 pro Person und Jahr)</span>
+                        <span className="text-xs font-normal text-muted-foreground">
+                          (Löhne bis CHF {Number(report.uvgMaxIncome).toLocaleString("de-CH", {
+                            minimumFractionDigits: 0,
+                            maximumFractionDigits: 0,
+                          })} pro Person und Jahr)
+                        </span>
                       </TableCell>
                       <TableCell className="text-right font-mono font-semibold">
                         = {Number(report.wageSummary.male.uvgWage).toLocaleString("de-CH", {
