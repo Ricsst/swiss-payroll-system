@@ -12,7 +12,7 @@ import {
   TableRow,
 } from "@/components/ui/table";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Pencil } from "lucide-react";
+import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowDown, Pencil, Mail } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
@@ -209,6 +209,60 @@ export default function Payroll() {
     });
   };
 
+  // Email sending mutation
+  const sendEmailsMutation = useMutation({
+    mutationFn: (paymentIds: string[]) => 
+      apiRequest("POST", "/api/payroll/send-payslips", { paymentIds }),
+    onSuccess: (data: any) => {
+      const { successCount, failureCount, results } = data;
+      
+      if (failureCount === 0) {
+        toast({
+          title: "E-Mails versendet",
+          description: `${successCount} Lohnabrechnung(en) wurden erfolgreich versendet`,
+        });
+      } else {
+        const failedResults = results.filter((r: any) => !r.success);
+        const errorMessages = failedResults.map((r: any) => r.error).join(', ');
+        toast({
+          title: "Teilweise erfolgreich",
+          description: `${successCount} erfolgreich, ${failureCount} fehlgeschlagen: ${errorMessages}`,
+          variant: "destructive",
+        });
+      }
+      
+      // Clear selection after sending
+      setSelectedPayments([]);
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Fehler",
+        description: error.message || "E-Mails konnten nicht versendet werden",
+        variant: "destructive",
+      });
+    },
+  });
+
+  // Handle bulk email sending
+  const handleSendEmails = () => {
+    if (selectedPayments.length === 0) {
+      toast({
+        title: "Keine Auswahl",
+        description: "Bitte wählen Sie mindestens eine Auszahlung aus",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    const message = selectedPayments.length === 1
+      ? "Möchten Sie die Lohnabrechnung per E-Mail versenden?"
+      : `Möchten Sie ${selectedPayments.length} Lohnabrechnungen per E-Mail versenden?`;
+
+    if (confirm(message)) {
+      sendEmailsMutation.mutate(selectedPayments);
+    }
+  };
+
   // Handle delete with confirmation
   const handleDelete = (paymentId: string, employeeName: string) => {
     if (confirm(`Möchten Sie die Lohnauszahlung für ${employeeName} wirklich löschen? Diese Aktion kann nicht rückgängig gemacht werden.`)) {
@@ -294,14 +348,27 @@ export default function Payroll() {
         </div>
         <div className="flex gap-2">
           {selectedPayments.length > 0 && (
-            <Button 
-              variant="outline"
-              onClick={handleBulkPdfExport}
-              data-testid="button-bulk-pdf-export"
-            >
-              <Download className="h-4 w-4 mr-2" />
-              {selectedPayments.length} als PDF
-            </Button>
+            <>
+              <Button 
+                variant="outline"
+                onClick={handleSendEmails}
+                disabled={sendEmailsMutation.isPending}
+                data-testid="button-send-emails"
+              >
+                <Mail className="h-4 w-4 mr-2" />
+                {sendEmailsMutation.isPending 
+                  ? "Sende..." 
+                  : `${selectedPayments.length} versenden`}
+              </Button>
+              <Button 
+                variant="outline"
+                onClick={handleBulkPdfExport}
+                data-testid="button-bulk-pdf-export"
+              >
+                <Download className="h-4 w-4 mr-2" />
+                {selectedPayments.length} als PDF
+              </Button>
+            </>
           )}
           <Link href="/payroll/new">
             <Button data-testid="button-new-payment">
