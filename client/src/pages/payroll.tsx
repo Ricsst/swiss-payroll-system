@@ -214,19 +214,28 @@ export default function Payroll() {
     mutationFn: (paymentIds: string[]) => 
       apiRequest("POST", "/api/payroll/send-payslips", { paymentIds }),
     onSuccess: (data: any) => {
+      console.log('[Email Success] Received data:', data);
       const { successCount = 0, failureCount = 0, results = [] } = data || {};
+      console.log('[Email Success] Parsed:', { successCount, failureCount, resultsLength: results.length });
       
-      if (failureCount === 0) {
+      if (failureCount === 0 && successCount > 0) {
         toast({
           title: "E-Mails versendet",
           description: `${successCount} Lohnabrechnung(en) wurden erfolgreich versendet`,
         });
-      } else {
+      } else if (failureCount > 0) {
         const failedResults = results.filter((r: any) => !r.success);
         const errorMessages = failedResults.map((r: any) => r.error).join(', ');
         toast({
           title: "Teilweise erfolgreich",
           description: `${successCount} erfolgreich, ${failureCount} fehlgeschlagen: ${errorMessages}`,
+          variant: "destructive",
+        });
+      } else {
+        // No success and no failure - something went wrong
+        toast({
+          title: "Unbekannter Fehler",
+          description: "E-Mail-Versand hat keine Ergebnisse zurückgegeben",
           variant: "destructive",
         });
       }
