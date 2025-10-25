@@ -54,18 +54,40 @@ export class PDFGenerator {
     this.yPosition += 6;
   }
 
-  addTable(headers: string[], rows: any[][]) {
+  addTable(headers: string[], rows: any[][], options?: { compact?: boolean }) {
+    const compact = options?.compact || false;
+    
     autoTable(this.doc, {
       head: [headers],
       body: rows,
       startY: this.yPosition,
-      theme: "striped",
-      headStyles: { fillColor: [41, 128, 185] },
+      theme: compact ? "plain" : "striped",
+      headStyles: { 
+        fillColor: compact ? [240, 240, 240] : [41, 128, 185],
+        textColor: compact ? [0, 0, 0] : [255, 255, 255],
+        fontStyle: "bold",
+        fontSize: compact ? 9 : 10,
+      },
+      bodyStyles: {
+        fontSize: compact ? 8 : 10,
+      },
       margin: { left: 20, right: 20 },
+      styles: {
+        cellPadding: compact ? 2 : 3,
+        lineWidth: compact ? 0.1 : 0.2,
+      },
     });
 
     // @ts-ignore - autoTable updates finalY
-    this.yPosition = this.doc.lastAutoTable.finalY + 10;
+    this.yPosition = this.doc.lastAutoTable.finalY + (compact ? 4 : 10);
+  }
+  
+  addCompactSection(title: string) {
+    this.yPosition += 3;
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(title, 20, this.yPosition);
+    this.yPosition += 5;
   }
 
   addFooter(text: string) {

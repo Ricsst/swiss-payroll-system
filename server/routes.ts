@@ -911,77 +911,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdf.addPageBreak();
         }
 
+        // Kompakter Header
         pdf.addHeader({
           title: "LOHNAUSWEIS",
           subtitle: `Gemäss Art. 125 DBG / Steuerjahr ${year}`,
         });
 
-        // Arbeitgeber section
-        pdf.addSection("1. ARBEITGEBER");
+        // 1. Arbeitgeber - kompakt
+        pdf.addCompactSection("1. ARBEITGEBER");
         pdf.addTable(
-          ["Feld", "Angabe"],
+          ["", ""],
           [
             ["Name/Firma", company.name],
             ["Adresse", company.address],
-            ["AHV-Abrechnungsnummer", company.ahvAccountingNumber],
-            ["SUVA-Kundennummer", company.suvaCustomerNumber || "-"],
-          ]
+            ["AHV-Nr.", company.ahvAccountingNumber],
+            ["SUVA-Nr.", company.suvaCustomerNumber || "-"],
+          ],
+          { compact: true }
         );
 
-        // Arbeitnehmer section
-        pdf.addSection("2. ARBEITNEHMER/IN");
+        // 2. Arbeitnehmer - kompakt
+        pdf.addCompactSection("2. ARBEITNEHMER/IN");
         const employeeRows = [
           ["Name, Vorname", `${employee.lastName}, ${employee.firstName}`],
           ["Geburtsdatum", formatDate(employee.birthDate)],
-          ["AHV-Nummer", employee.ahvNumber],
+          ["AHV-Nr.", employee.ahvNumber],
           ["Adresse", employee.address],
-          ["Eintrittsdatum", formatDate(employee.entryDate)],
+          ["Eintritt", formatDate(employee.entryDate)],
         ];
         if (employee.exitDate) {
-          employeeRows.push(["Austrittsdatum", formatDate(employee.exitDate)]);
+          employeeRows.push(["Austritt", formatDate(employee.exitDate)]);
         }
-        pdf.addTable(["Feld", "Angabe"], employeeRows);
+        pdf.addTable(["", ""], employeeRows, { compact: true });
 
-        // Lohnangaben section
-        pdf.addSection("3. LOHNANGABEN");
+        // 3. Lohnangaben - kompakt
+        pdf.addCompactSection("3. LOHNANGABEN");
         pdf.addTable(
           ["Beschreibung", "Betrag"],
           [
             ["Bruttolohn (inkl. 13. Monatslohn)", formatCurrency(totalGross)],
-          ]
+          ],
+          { compact: true }
         );
         
-        // Sozialversicherungsbeiträge section
-        pdf.addSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
+        // 4. Sozialversicherungen - kompakt
+        pdf.addCompactSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
         pdf.addTable(
           ["Abzugsart", "Betrag"],
           [
             ["AHV/IV/EO", formatCurrency(totalAHV)],
-            ["ALV (Arbeitslosenversicherung)", formatCurrency(totalALV)],
-            ["NBU/SUVA (Unfallversicherung)", formatCurrency(totalSUVA)],
-            ["BVG (Berufliche Vorsorge)", formatCurrency(totalBVG)],
-          ]
+            ["ALV", formatCurrency(totalALV)],
+            ["NBU/SUVA", formatCurrency(totalSUVA)],
+            ["BVG", formatCurrency(totalBVG)],
+          ],
+          { compact: true }
         );
 
-        // Weitere Abzüge section
-        pdf.addSection("5. WEITERE ABZÜGE");
+        // 5. Weitere Abzüge - kompakt
+        pdf.addCompactSection("5. WEITERE ABZÜGE");
         pdf.addTable(
           ["Abzugsart", "Betrag"],
           [
             ["Quellensteuer", formatCurrency(totalTax)],
-            ["Sonstige Abzüge", formatCurrency(totalOther)],
-          ]
+            ["Sonstige", formatCurrency(totalOther)],
+          ],
+          { compact: true }
         );
 
-        // Zusammenfassung section
-        pdf.addSection("6. ZUSAMMENFASSUNG");
+        // 6. Zusammenfassung - kompakt
+        pdf.addCompactSection("6. ZUSAMMENFASSUNG");
         pdf.addTable(
-          ["Beschreibung", "Betrag"],
+          ["", "Betrag"],
           [
             ["Bruttolohn", formatCurrency(totalGross)],
             ["Total Abzüge", formatCurrency(totalDeductions)],
-            ["Nettolohn (ausbezahlt)", formatCurrency(totalNet)],
-          ]
+            ["Nettolohn", formatCurrency(totalNet)],
+          ],
+          { compact: true }
         );
 
         pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
@@ -1053,77 +1059,83 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pdf = new PDFGenerator();
       
+      // Kompakter Header
       pdf.addHeader({
         title: "LOHNAUSWEIS",
         subtitle: `Gemäss Art. 125 DBG / Steuerjahr ${year}`,
       });
 
-      // Arbeitgeber section
-      pdf.addSection("1. ARBEITGEBER");
+      // 1. Arbeitgeber - kompakt
+      pdf.addCompactSection("1. ARBEITGEBER");
       pdf.addTable(
-        ["Feld", "Angabe"],
+        ["", ""],
         [
           ["Name/Firma", company.name],
           ["Adresse", company.address],
-          ["AHV-Abrechnungsnummer", company.ahvAccountingNumber],
-          ["SUVA-Kundennummer", company.suvaCustomerNumber || "-"],
-        ]
+          ["AHV-Nr.", company.ahvAccountingNumber],
+          ["SUVA-Nr.", company.suvaCustomerNumber || "-"],
+        ],
+        { compact: true }
       );
 
-      // Arbeitnehmer section
-      pdf.addSection("2. ARBEITNEHMER/IN");
+      // 2. Arbeitnehmer - kompakt
+      pdf.addCompactSection("2. ARBEITNEHMER/IN");
       const employeeRows = [
         ["Name, Vorname", `${employee.lastName}, ${employee.firstName}`],
         ["Geburtsdatum", formatDate(employee.birthDate)],
-        ["AHV-Nummer", employee.ahvNumber],
+        ["AHV-Nr.", employee.ahvNumber],
         ["Adresse", employee.address],
-        ["Eintrittsdatum", formatDate(employee.entryDate)],
+        ["Eintritt", formatDate(employee.entryDate)],
       ];
       if (employee.exitDate) {
-        employeeRows.push(["Austrittsdatum", formatDate(employee.exitDate)]);
+        employeeRows.push(["Austritt", formatDate(employee.exitDate)]);
       }
-      pdf.addTable(["Feld", "Angabe"], employeeRows);
+      pdf.addTable(["", ""], employeeRows, { compact: true });
 
-      // Lohnangaben section
-      pdf.addSection("3. LOHNANGABEN");
+      // 3. Lohnangaben - kompakt
+      pdf.addCompactSection("3. LOHNANGABEN");
       pdf.addTable(
         ["Beschreibung", "Betrag"],
         [
           ["Bruttolohn (inkl. 13. Monatslohn)", formatCurrency(totalGross)],
-        ]
+        ],
+        { compact: true }
       );
       
-      // Sozialversicherungsbeiträge section
-      pdf.addSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
+      // 4. Sozialversicherungen - kompakt
+      pdf.addCompactSection("4. SOZIALVERSICHERUNGSBEITRÄGE (Arbeitnehmeranteil)");
       pdf.addTable(
         ["Abzugsart", "Betrag"],
         [
           ["AHV/IV/EO", formatCurrency(totalAHV)],
-          ["ALV (Arbeitslosenversicherung)", formatCurrency(totalALV)],
-          ["NBU/SUVA (Unfallversicherung)", formatCurrency(totalSUVA)],
-          ["BVG (Berufliche Vorsorge)", formatCurrency(totalBVG)],
-        ]
+          ["ALV", formatCurrency(totalALV)],
+          ["NBU/SUVA", formatCurrency(totalSUVA)],
+          ["BVG", formatCurrency(totalBVG)],
+        ],
+        { compact: true }
       );
 
-      // Weitere Abzüge section
-      pdf.addSection("5. WEITERE ABZÜGE");
+      // 5. Weitere Abzüge - kompakt
+      pdf.addCompactSection("5. WEITERE ABZÜGE");
       pdf.addTable(
         ["Abzugsart", "Betrag"],
         [
           ["Quellensteuer", formatCurrency(totalTax)],
-          ["Sonstige Abzüge", formatCurrency(totalOther)],
-        ]
+          ["Sonstige", formatCurrency(totalOther)],
+        ],
+        { compact: true }
       );
 
-      // Zusammenfassung section
-      pdf.addSection("6. ZUSAMMENFASSUNG");
+      // 6. Zusammenfassung - kompakt
+      pdf.addCompactSection("6. ZUSAMMENFASSUNG");
       pdf.addTable(
-        ["Beschreibung", "Betrag"],
+        ["", "Betrag"],
         [
           ["Bruttolohn", formatCurrency(totalGross)],
           ["Total Abzüge", formatCurrency(totalDeductions)],
-          ["Nettolohn (ausbezahlt)", formatCurrency(totalNet)],
-        ]
+          ["Nettolohn", formatCurrency(totalNet)],
+        ],
+        { compact: true }
       );
 
       pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
