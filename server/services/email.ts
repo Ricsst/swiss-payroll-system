@@ -95,7 +95,14 @@ export async function sendPayslipEmail(
       ]
     });
     
-    console.log('[Email Service] Email sent successfully:', result);
+    console.log('[Email Service] Resend response:', result);
+    
+    // Check if Resend returned an error
+    if (result.error) {
+      throw new Error(`Email sending failed: ${result.error.message || JSON.stringify(result.error)}`);
+    }
+    
+    console.log('[Email Service] Email sent successfully, ID:', result.data?.id);
   } catch (error: any) {
     console.error('[Email Service] Error sending email:', error);
     throw error;
