@@ -104,7 +104,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch("/api/employees/:id", async (req, res) => {
     try {
-      const result = insertEmployeeSchema.safeParse(req.body);
+      // Allow partial updates
+      const partialSchema = insertEmployeeSchema.partial();
+      const result = partialSchema.safeParse(req.body);
       if (!result.success) {
         return res.status(400).json({
           error: fromError(result.error).toString(),

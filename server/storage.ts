@@ -34,7 +34,7 @@ export interface IStorage {
   getEmployees(): Promise<Employee[]>;
   getEmployee(id: string): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
-  updateEmployee(id: string, employee: InsertEmployee): Promise<Employee>;
+  updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: string): Promise<void>;
 
   // Payroll Payments
@@ -136,7 +136,7 @@ export class DatabaseStorage implements IStorage {
 
   async updateEmployee(
     id: string,
-    insertEmployee: InsertEmployee
+    insertEmployee: Partial<InsertEmployee>
   ): Promise<Employee> {
     const [employee] = await db
       .update(employees)
