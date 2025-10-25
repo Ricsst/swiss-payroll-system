@@ -211,8 +211,10 @@ export default function Payroll() {
 
   // Email sending mutation
   const sendEmailsMutation = useMutation({
-    mutationFn: (paymentIds: string[]) => 
-      apiRequest("POST", "/api/payroll/send-payslips", { paymentIds }),
+    mutationFn: async (paymentIds: string[]) => {
+      const res = await apiRequest("POST", "/api/payroll/send-payslips", { paymentIds });
+      return res.json();
+    },
     onSuccess: (data: any) => {
       console.log('[Email Success] Received data:', data);
       const { successCount = 0, failureCount = 0, results = [] } = data || {};
