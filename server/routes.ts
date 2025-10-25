@@ -1046,8 +1046,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ahvNumber: employee.ahvNumber,
         birthDate: formatDate(employee.birthDate),
         year: year.toString(),
-        employmentFrom: formatDate(employee.entryDate),
-        employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
+        employmentFrom: formatDate(new Date(year, 0, 1)), // 1.1.YYYY
+        employmentTo: formatDate(new Date(year, 11, 31)), // 31.12.YYYY
         employeeName: `${employee.firstName} ${employee.lastName}`,
         employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
         
