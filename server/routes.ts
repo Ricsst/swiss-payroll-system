@@ -848,6 +848,126 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/pdf/lohnausweise-bulk", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const allEmployees = await storage.getEmployees();
+      const activeEmployees = allEmployees.filter((e: any) => e.isActive);
+
+      if (activeEmployees.length === 0) {
+        return res.status(404).json({ error: "No active employees found" });
+      }
+
+      const pdf = new PDFGenerator();
+      const payments = await storage.getPayrollPayments(year);
+
+      // Generate Lohnausweis for each active employee
+      for (let i = 0; i < activeEmployees.length; i++) {
+        const employee = activeEmployees[i];
+        const employeePayments = payments.filter((p: any) => p.employeeId === employee.id);
+
+        // Calculate totals
+        let totalGross = 0;
+        let totalAHV = 0;
+        let totalALV = 0;
+        let totalSUVA = 0;
+        let totalBVG = 0;
+        let totalTax = 0;
+        let totalOther = 0;
+
+        employeePayments.forEach((payment: any) => {
+          totalGross += Number(payment.grossSalary);
+          
+          if (payment.deductions) {
+            payment.deductions.forEach((d: any) => {
+              const amount = Number(d.amount);
+              if (d.type === "AHV") totalAHV += amount;
+              else if (d.type === "ALV") totalALV += amount;
+              else if (d.type === "SUVA" || d.type === "NBU") totalSUVA += amount;
+              else if (d.type === "BVG") totalBVG += amount;
+              else if (d.type === "Quellensteuer") totalTax += amount;
+              else totalOther += amount;
+            });
+          }
+        });
+
+        const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
+        const totalNet = totalGross - totalDeductions;
+
+        // Add page break between employees (except for the first one)
+        if (i > 0) {
+          pdf.addPageBreak();
+        }
+
+        pdf.addHeader({
+          title: "LOHNAUSWEIS",
+          subtitle: `Gemäss Art. 125 DBG / Steuerjahr ${year}`,
+        });
+
+        pdf.addSection("Arbeitgeber");
+        pdf.addText("Firma", company.name);
+        pdf.addText("Adresse", company.address);
+        pdf.addText("AHV-Abrechnungsnummer", company.ahvAccountingNumber);
+        if (company.suvaCustomerNumber) {
+          pdf.addText("SUVA-Kundennummer", company.suvaCustomerNumber);
+        }
+
+        pdf.addSection("Arbeitnehmer");
+        pdf.addText("Name, Vorname", `${employee.lastName}, ${employee.firstName}`);
+        pdf.addText("Geburtsdatum", formatDate(employee.birthDate));
+        pdf.addText("AHV-Nummer", employee.ahvNumber);
+        pdf.addText("Adresse", employee.address);
+        pdf.addText("Eintrittsdatum", formatDate(employee.entryDate));
+        if (employee.exitDate) {
+          pdf.addText("Austrittsdatum", formatDate(employee.exitDate));
+        }
+
+        pdf.addSection("Lohnangaben für das Jahr " + year);
+        pdf.addText("Bruttolohn (inkl. 13. Monatslohn)", formatCurrency(totalGross));
+        
+        pdf.addSection("Sozialversicherungsbeiträge (Arbeitnehmeranteil)");
+        pdf.addText("AHV/IV/EO", formatCurrency(totalAHV));
+        pdf.addText("ALV", formatCurrency(totalALV));
+        pdf.addText("NBU / SUVA", formatCurrency(totalSUVA));
+        pdf.addText("Berufliche Vorsorge (BVG)", formatCurrency(totalBVG));
+        
+        pdf.addSection("Quellensteuer und weitere Abzüge");
+        pdf.addText("Quellensteuer", formatCurrency(totalTax));
+        pdf.addText("Sonstige Abzüge", formatCurrency(totalOther));
+
+        pdf.addSection("Zusammenfassung");
+        pdf.addText("Total Bruttolohn", formatCurrency(totalGross));
+        pdf.addText("Total Abzüge", formatCurrency(totalDeductions));
+        pdf.addText("Nettolohn", formatCurrency(totalNet));
+
+        pdf.addSection("Bankverbindung");
+        pdf.addText("Bank", employee.bankName || "-");
+        pdf.addText("IBAN", employee.bankIban || "-");
+
+        pdf.addFooter(`Ausgestellt am ${formatDate(new Date())} durch ${company.name}`);
+      }
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Lohnausweise_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/pdf/lohnausweis/:employeeId", async (req, res) => {
     try {
       const employeeId = req.params.employeeId;
