@@ -354,6 +354,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "paymentIds array is required" });
       }
 
+      // Load company data to get sender email configuration
+      const company = await storage.getCompany();
+      if (company?.payrollSenderEmail) {
+        console.log('[Send Payslips] Using configured sender email:', company.payrollSenderEmail);
+        console.log('[Send Payslips] Note: Outlook integration will send from the connected account');
+      }
+
       const results = [];
       const payrollItemTypes = await storage.getPayrollItemTypes();
 

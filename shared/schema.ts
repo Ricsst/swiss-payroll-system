@@ -15,6 +15,7 @@ export const companies = pgTable("companies", {
   city: text("city").notNull(), // Ort
   ahvAccountingNumber: text("ahv_accounting_number").notNull(), // AHV-Abrechnungsnummer
   suvaCustomerNumber: text("suva_customer_number"), // SUVA-Kundennummer
+  payrollSenderEmail: text("payroll_sender_email"), // E-Mail-Adresse für Lohnabrechnung-Versand
   
   // Social insurance contribution rates (Beiträge Sozialversicherung)
   ahvEmployeeRate: numeric("ahv_employee_rate", { precision: 5, scale: 4 }).notNull().default("5.3000"), // 5.3%

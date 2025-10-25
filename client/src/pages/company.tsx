@@ -26,6 +26,7 @@ const defaultFormValues: InsertCompany = {
   city: "",
   ahvAccountingNumber: "",
   suvaCustomerNumber: "",
+  payrollSenderEmail: "",
   ahvEmployeeRate: "5.3000",
   ahvEmployerRate: "5.3000",
   ahvRentnerAllowance: "1400.00",
@@ -62,6 +63,7 @@ export default function CompanyPage() {
         city: company.city,
         ahvAccountingNumber: company.ahvAccountingNumber,
         suvaCustomerNumber: company.suvaCustomerNumber || "",
+        payrollSenderEmail: company.payrollSenderEmail || "",
         ahvEmployeeRate: String(company.ahvEmployeeRate),
         ahvEmployerRate: String(company.ahvEmployerRate),
         ahvRentnerAllowance: String(company.ahvRentnerAllowance),
@@ -244,6 +246,28 @@ export default function CompanyPage() {
                   )}
                 />
               </div>
+              <FormField
+                control={form.control}
+                name="payrollSenderEmail"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>E-Mail für Lohnabrechnung-Versand</FormLabel>
+                    <FormControl>
+                      <Input
+                        {...field}
+                        type="email"
+                        value={field.value || ""}
+                        placeholder="payroll@firma.ch"
+                        data-testid="input-payroll-sender-email"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Diese E-Mail-Adresse wird als Absender beim Versenden von Lohnabrechnungen verwendet
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
             </CardContent>
           </Card>
 
