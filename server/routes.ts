@@ -776,6 +776,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Add wage summary by gender section
       if (report.wageSummary) {
+        const uvgMaxIncomeFormatted = formatCurrency(parseFloat(report.uvgMaxIncome));
+        
         pdf.addSection("Lohnsummen-Zusammenstellung nach Geschlecht");
         pdf.addText("Hinweis", "Höchstlohn pro Person und Jahr CHF 300'000");
         
@@ -796,7 +798,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             `= ${formatCurrency(parseFloat(report.wageSummary.female.totalRelevant))}`
           ],
           [
-            "Total Überschusslohnsumme (ab CHF 148'200)",
+            `Total Überschusslohnsumme (ab ${uvgMaxIncomeFormatted})`,
             `= ${formatCurrency(parseFloat(report.wageSummary.male.excessWage))}`,
             `= ${formatCurrency(parseFloat(report.wageSummary.female.excessWage))}`
           ],
@@ -806,7 +808,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatCurrency(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-"
           ],
           [
-            "= Total UVG-Lohnsumme (bis CHF 148'200)",
+            `= Total UVG-Lohnsumme (bis ${uvgMaxIncomeFormatted})`,
             `= ${formatCurrency(parseFloat(report.wageSummary.male.uvgWage))}`,
             `= ${formatCurrency(parseFloat(report.wageSummary.female.uvgWage))}`
           ],
