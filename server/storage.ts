@@ -1699,8 +1699,14 @@ export class DatabaseStorage implements IStorage {
     // Calculate current ALV-subject amount from items
     let currentAlvSubjectAmount = 0;
     for (const item of items) {
-      const itemType = payrollItemTypesData.find(t => t.code === item.type);
-      if (itemType && itemType.subjectToAlv) {
+      // Try to find by code first, then by name (for QCS imports)
+      let itemType = payrollItemTypesData.find(t => t.code === item.type);
+      if (!itemType) {
+        itemType = payrollItemTypesData.find(t => t.name === item.type);
+      }
+      
+      // If no itemType found, assume all deductions apply (for backwards compatibility)
+      if (!itemType || itemType.subjectToAlv) {
         currentAlvSubjectAmount += parseFloat(item.amount);
       }
     }
@@ -1790,8 +1796,14 @@ export class DatabaseStorage implements IStorage {
     // Calculate current NBU-subject amount from items
     let currentNbuSubjectAmount = 0;
     for (const item of items) {
-      const itemType = payrollItemTypesData.find(t => t.code === item.type);
-      if (itemType && itemType.subjectToNbu) {
+      // Try to find by code first, then by name (for QCS imports)
+      let itemType = payrollItemTypesData.find(t => t.code === item.type);
+      if (!itemType) {
+        itemType = payrollItemTypesData.find(t => t.name === item.type);
+      }
+      
+      // If no itemType found, assume all deductions apply (for backwards compatibility)
+      if (!itemType || itemType.subjectToNbu) {
         currentNbuSubjectAmount += parseFloat(item.amount);
       }
     }
