@@ -78,7 +78,7 @@ interface YearlyReportData {
     alvWage: string;
     alv1Wage: string;
     alv2Wage: string;
-    bvgWage: string;
+    nbuWage: string;
     childAllowance: string;
   }>;
   childAllowanceEmployees: Array<{
@@ -422,7 +422,7 @@ export default function YearlyReport() {
                       <TableHead className="text-right">AHV Lohn</TableHead>
                       <TableHead className="text-right">ALV1 Lohn</TableHead>
                       <TableHead className="text-right">ALV2 Lohn</TableHead>
-                      <TableHead className="text-right">BVG Lohn</TableHead>
+                      <TableHead className="text-right">NBU Lohn</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -457,7 +457,7 @@ export default function YearlyReport() {
                           })}
                         </TableCell>
                         <TableCell className="text-right font-mono">
-                          CHF {Number(emp.bvgWage).toLocaleString("de-CH", {
+                          CHF {Number(emp.nbuWage).toLocaleString("de-CH", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
@@ -485,7 +485,7 @@ export default function YearlyReport() {
                         })}
                       </TableCell>
                       <TableCell className="text-right font-mono">
-                        CHF {report.employeeSummary.reduce((sum, emp) => sum + Number(emp.bvgWage), 0).toLocaleString("de-CH", {
+                        CHF {report.employeeSummary.reduce((sum, emp) => sum + Number(emp.nbuWage), 0).toLocaleString("de-CH", {
                           minimumFractionDigits: 2,
                           maximumFractionDigits: 2,
                         })}
