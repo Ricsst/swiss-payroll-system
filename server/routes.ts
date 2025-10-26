@@ -455,7 +455,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
             otherActualExpenses: 0,
             representationExpenses: 0,
             carExpenses: 0,
-            otherFlatExpenses: employee.annualFlatExpenses || 0,
+            otherFlatExpenses: employee.annualFlatExpenses ? Number(employee.annualFlatExpenses) : 0,
             trainingContributions: 0,
             employerName: company.name,
             employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
@@ -1276,7 +1276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           otherActualExpenses: 0,
           representationExpenses: 0,
           carExpenses: 0,
-          otherFlatExpenses: employee.annualFlatExpenses || 0,
+          otherFlatExpenses: employee.annualFlatExpenses ? Number(employee.annualFlatExpenses) : 0,
           trainingContributions: 0,
           
           // Employer information
