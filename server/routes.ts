@@ -2386,6 +2386,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validation.changes.push(`KTG GAV Prozentsatz geändert zu ${pdfData.ktgGavRate}%`);
         }
         
+        // Set hasKtgGav flag if KTG amount is present in PDF
+        if (pdfData.ktgGavAmount > 0 && !employee.hasKtgGav) {
+          updates.hasKtgGav = true;
+          validation.changes.push("KTG GAV Häkchen aktiviert");
+        }
+        
         const berufsbeitragMatches = employee.berufsbeitragGavPercentage
           ? Math.abs(parseFloat(employee.berufsbeitragGavPercentage) - pdfData.berufsbeitragGavRate) < 0.01
           : false;
@@ -2393,6 +2399,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (!berufsbeitragMatches) {
           updates.berufsbeitragGavPercentage = pdfData.berufsbeitragGavRate.toFixed(4);
           validation.changes.push(`Berufsbeitrag GAV Prozentsatz geändert zu ${pdfData.berufsbeitragGavRate}%`);
+        }
+        
+        // Set hasBerufsbeitragGav flag if Berufsbeitrag amount is present in PDF
+        if (pdfData.berufsbeitragGavAmount > 0 && !employee.hasBerufsbeitragGav) {
+          updates.hasBerufsbeitragGav = true;
+          validation.changes.push("Berufsbeitrag GAV Häkchen aktiviert");
         }
         
         if (Object.keys(updates).length > 0) {
@@ -2421,6 +2433,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hasAlv: true,
           isNbuInsured: true,
           isRentner: false,
+          hasKtgGav: pdfData.ktgGavAmount > 0, // Set flag if amount present
+          hasBerufsbeitragGav: pdfData.berufsbeitragGavAmount > 0, // Set flag if amount present
           bankName: "Bank (bitte aktualisieren)",
           bankIban: "CH00 0000 0000 0000 0000 0",
           hourlyRate: pdfData.hourlyRate.toFixed(2),
