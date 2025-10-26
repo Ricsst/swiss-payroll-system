@@ -7,7 +7,7 @@ import { PDFGenerator, formatCurrency, formatDate, formatPercentage, formatAddre
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 import { sendPayslipEmail } from "./services/email";
-import { sendPayslipEmailViaOutlook } from "./services/email-outlook";
+import { sendPayslipEmailViaOutlook, sendLohnausweisEmailViaOutlook } from "./services/email-outlook";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -341,6 +341,170 @@ export async function registerRoutes(app: Express): Promise<Server> {
       } else {
         res.status(500).json({ error: error.message });
       }
+    }
+  });
+
+  // Send Lohnausweise via email
+  app.post("/api/lohnausweise/send-emails", async (req, res) => {
+    try {
+      const { employeeIds, year } = req.body;
+      console.log('[Send Lohnausweise] Received request with employeeIds:', employeeIds, 'year:', year);
+
+      if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+        return res.status(400).json({ error: "employeeIds array is required" });
+      }
+
+      if (!year) {
+        return res.status(400).json({ error: "year is required" });
+      }
+
+      const yearNum = typeof year === 'string' ? parseInt(year) : year;
+
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      if (company.payrollSenderEmail) {
+        console.log('[Send Lohnausweise] Using configured sender email:', company.payrollSenderEmail);
+        console.log('[Send Lohnausweise] Note: Outlook integration will send from the connected account');
+      }
+
+      const results = [];
+      const payments = await storage.getPayrollPayments(yearNum);
+
+      for (const employeeId of employeeIds) {
+        try {
+          console.log('[Send Lohnausweise] Processing employee:', employeeId);
+          
+          const employee = await storage.getEmployee(employeeId);
+          if (!employee) {
+            console.log('[Send Lohnausweise] Employee not found:', employeeId);
+            results.push({ employeeId, success: false, error: "Employee not found" });
+            continue;
+          }
+
+          console.log('[Send Lohnausweise] Employee:', employee.firstName, employee.lastName, 'Email:', employee.email);
+
+          if (!employee.email) {
+            console.log('[Send Lohnausweise] Employee has no email:', employee.firstName, employee.lastName);
+            results.push({ 
+              employeeId, 
+              success: false, 
+              error: `Employee ${employee.firstName} ${employee.lastName} has no email address` 
+            });
+            continue;
+          }
+
+          const employeePayments = payments.filter((p: any) => p.employee.id === employeeId);
+
+          // Calculate totals
+          let totalGross = 0;
+          let totalAHV = 0;
+          let totalALV = 0;
+          let totalSUVA = 0;
+          let totalBVG = 0;
+          let totalTax = 0;
+          let totalOther = 0;
+
+          for (const payment of employeePayments) {
+            totalGross += Number(payment.grossSalary);
+            
+            const fullPayment = await storage.getPayrollPayment(payment.id);
+            if (fullPayment && fullPayment.deductions) {
+              fullPayment.deductions.forEach((d: any) => {
+                const amount = Number(d.amount);
+                if (d.type === "AHV") totalAHV += amount;
+                else if (d.type === "ALV") totalALV += amount;
+                else if (d.type === "SUVA" || d.type === "NBU") totalSUVA += amount;
+                else if (d.type === "BVG") totalBVG += amount;
+                else if (d.type === "Quellensteuer") totalTax += amount;
+                else totalOther += amount;
+              });
+            }
+          }
+
+          const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
+          const totalNet = totalGross - totalDeductions;
+
+          // Prepare data for official Swiss form
+          const formData: LohnausweisData = {
+            ahvNumber: employee.ahvNumber,
+            birthDate: formatDate(employee.birthDate),
+            year: yearNum.toString(),
+            employmentFrom: `1.1.${yearNum}`,
+            employmentTo: `31.12.${yearNum}`,
+            employeeName: `${employee.firstName} ${employee.lastName}`,
+            employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
+            basicSalary: totalGross,
+            mealAllowance: 0,
+            carBenefit: 0,
+            otherBenefits: 0,
+            irregularPayments: 0,
+            capitalPayments: 0,
+            participationRights: 0,
+            boardFees: 0,
+            otherPayments: 0,
+            grossSalary: totalGross,
+            socialInsurance: totalAHV + totalALV + totalSUVA,
+            pensionOrdinary: totalBVG,
+            pensionBuyIn: 0,
+            netSalary: totalNet,
+            taxWithheld: totalTax,
+            travelExpenses: 0,
+            otherActualExpenses: 0,
+            representationExpenses: 0,
+            carExpenses: 0,
+            otherFlatExpenses: employee.annualFlatExpenses || 0,
+            trainingContributions: 0,
+            employerName: company.name,
+            employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
+            employerPhone: '',
+            issueDate: formatDate(new Date()),
+          };
+
+          // Generate PDF
+          const pdfBytes = await fillLohnausweisForm(formData);
+          const pdfBuffer = Buffer.from(pdfBytes);
+
+          // Send email via Outlook
+          const employeeName = `${employee.firstName} ${employee.lastName}`;
+          await sendLohnausweisEmailViaOutlook(
+            employee.email,
+            employeeName,
+            yearNum,
+            pdfBuffer
+          );
+
+          results.push({ 
+            employeeId, 
+            success: true, 
+            employeeName,
+            email: employee.email 
+          });
+        } catch (error: any) {
+          console.error('[Send Lohnausweise] Error processing employee:', error);
+          results.push({ 
+            employeeId, 
+            success: false, 
+            error: error.message 
+          });
+        }
+      }
+
+      const successCount = results.filter(r => r.success).length;
+      const failureCount = results.filter(r => !r.success).length;
+
+      res.json({
+        success: failureCount === 0,
+        totalProcessed: results.length,
+        successCount,
+        failureCount,
+        results
+      });
+    } catch (error: any) {
+      console.error('[Send Lohnausweise] Error:', error);
+      res.status(500).json({ error: error.message });
     }
   });
 
@@ -1007,6 +1171,136 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const fieldNames = await inspectFormFields();
       res.json({ fieldNames });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Generate Lohnausweise for selected employees
+  app.post("/api/pdf/lohnausweise-selected", async (req, res) => {
+    try {
+      const { employeeIds, year } = req.body;
+
+      if (!employeeIds || !Array.isArray(employeeIds) || employeeIds.length === 0) {
+        return res.status(400).json({ error: "employeeIds array is required" });
+      }
+
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const payments = await storage.getPayrollPayments(year);
+      
+      // Import PDFDocument for merging
+      const { PDFDocument } = await import('pdf-lib');
+      const mergedPdf = await PDFDocument.create();
+
+      // Generate Lohnausweis for each selected employee
+      for (let i = 0; i < employeeIds.length; i++) {
+        const employeeId = employeeIds[i];
+        const employee = await storage.getEmployee(employeeId);
+        
+        if (!employee) {
+          continue; // Skip if employee not found
+        }
+
+        const employeePayments = payments.filter((p: any) => p.employee.id === employeeId);
+
+        // Calculate totals - get full payment details including deductions
+        let totalGross = 0;
+        let totalAHV = 0;
+        let totalALV = 0;
+        let totalSUVA = 0;
+        let totalBVG = 0;
+        let totalTax = 0;
+        let totalOther = 0;
+
+        for (const payment of employeePayments) {
+          totalGross += Number(payment.grossSalary);
+          
+          // Get full payment details with deductions
+          const fullPayment = await storage.getPayrollPayment(payment.id);
+          if (fullPayment && fullPayment.deductions) {
+            fullPayment.deductions.forEach((d: any) => {
+              const amount = Number(d.amount);
+              if (d.type === "AHV") totalAHV += amount;
+              else if (d.type === "ALV") totalALV += amount;
+              else if (d.type === "SUVA" || d.type === "NBU") totalSUVA += amount;
+              else if (d.type === "BVG") totalBVG += amount;
+              else if (d.type === "Quellensteuer") totalTax += amount;
+              else totalOther += amount;
+            });
+          }
+        }
+
+        const totalDeductions = totalAHV + totalALV + totalSUVA + totalBVG + totalTax + totalOther;
+        const totalNet = totalGross - totalDeductions;
+
+        // Prepare data for official Swiss form
+        const formData: LohnausweisData = {
+          // Header information
+          ahvNumber: employee.ahvNumber,
+          birthDate: formatDate(employee.birthDate),
+          year: year.toString(),
+          employmentFrom: `1.1.${year}`,
+          employmentTo: `31.12.${year}`,
+          employeeName: `${employee.firstName} ${employee.lastName}`,
+          employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
+          
+          // Salary information
+          basicSalary: totalGross,
+          mealAllowance: 0,
+          carBenefit: 0,
+          otherBenefits: 0,
+          irregularPayments: 0,
+          capitalPayments: 0,
+          participationRights: 0,
+          boardFees: 0,
+          otherPayments: 0,
+          grossSalary: totalGross,
+          
+          // Deductions
+          socialInsurance: totalAHV + totalALV + totalSUVA,
+          pensionOrdinary: totalBVG,
+          pensionBuyIn: 0,
+          netSalary: totalNet,
+          taxWithheld: totalTax,
+          
+          // Expenses
+          travelExpenses: 0,
+          otherActualExpenses: 0,
+          representationExpenses: 0,
+          carExpenses: 0,
+          otherFlatExpenses: employee.annualFlatExpenses || 0,
+          trainingContributions: 0,
+          
+          // Employer information
+          employerName: company.name,
+          employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
+          employerPhone: '',
+          issueDate: formatDate(new Date()),
+        };
+
+        // Fill the official Swiss form for this employee
+        const pdfBytes = await fillLohnausweisForm(formData);
+        const employeePdf = await PDFDocument.load(pdfBytes);
+        
+        // Copy pages to merged document
+        const copiedPages = await mergedPdf.copyPages(employeePdf, employeePdf.getPageIndices());
+        copiedPages.forEach((page) => mergedPdf.addPage(page));
+      }
+
+      const mergedPdfBytes = await mergedPdf.save();
+      const buffer = Buffer.from(mergedPdfBytes);
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Lohnausweise_Auswahl_${year}.pdf`);
+      res.send(buffer);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
     }

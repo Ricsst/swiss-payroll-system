@@ -111,3 +111,60 @@ export async function sendPayslipEmailViaOutlook(
     throw error;
   }
 }
+
+export async function sendLohnausweisEmailViaOutlook(
+  toEmail: string,
+  employeeName: string,
+  year: number,
+  pdfBuffer: Buffer
+): Promise<void> {
+  try {
+    console.log('[Email Service Outlook] Starting Lohnausweis email send to:', toEmail);
+    const client = await getUncachableOutlookClient();
+
+    const filename = `Lohnausweis_${year}_${employeeName.replace(/\s+/g, '_')}.pdf`;
+
+    const message = {
+      subject: `Lohnausweis ${year}`,
+      body: {
+        contentType: 'HTML',
+        content: `
+          <div style="font-family: Arial, sans-serif; max-width: 600px; margin: 0 auto;">
+            <h2>Lohnausweis ${year}</h2>
+            <p>Guten Tag ${employeeName},</p>
+            <p>Anbei erhalten Sie Ihren Lohnausweis für das Jahr <strong>${year}</strong> gemäss Art. 125 DBG.</p>
+            <p>Dieser Lohnausweis dient als offizielle Bescheinigung für Ihre Steuererklärung.</p>
+            <p>Bei Fragen stehen wir Ihnen gerne zur Verfügung.</p>
+            <br>
+            <p>Freundliche Grüsse<br>Ihr Payroll Team</p>
+          </div>
+        `
+      },
+      toRecipients: [
+        {
+          emailAddress: {
+            address: toEmail
+          }
+        }
+      ],
+      attachments: [
+        {
+          '@odata.type': '#microsoft.graph.fileAttachment',
+          name: filename,
+          contentType: 'application/pdf',
+          contentBytes: pdfBuffer.toString('base64')
+        }
+      ]
+    };
+
+    await client.api('/me/sendMail').post({
+      message,
+      saveToSentItems: true
+    });
+
+    console.log('[Email Service Outlook] Lohnausweis email sent successfully to:', toEmail);
+  } catch (error: any) {
+    console.error('[Email Service Outlook] Error sending Lohnausweis email:', error);
+    throw error;
+  }
+}
