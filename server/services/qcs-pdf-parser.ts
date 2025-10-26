@@ -1,4 +1,7 @@
-import PDFParser from 'pdf-parse';
+// Using dynamic import for pdf-parse due to ESM/CJS compatibility
+import { createRequire } from 'module';
+const require = createRequire(import.meta.url);
+const pdf = require('pdf-parse');
 
 export interface QCSPayrollData {
   // Employee data
@@ -74,7 +77,7 @@ const MONTH_MAP: Record<string, number> = {
 };
 
 export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollData> {
-  const data = await PDFParser(pdfBuffer);
+  const data = await pdf(pdfBuffer);
   const text = data.text;
   
   // Extract employee name
