@@ -93,6 +93,8 @@ export default function Employees() {
       hasAlv: true,
       isNbuInsured: true,
       isRentner: false,
+      hasKtgGav: false,
+      hasBerufsbeitragGav: false,
       bankName: "",
       bankIban: "",
       bankBic: "",
@@ -238,6 +240,8 @@ export default function Employees() {
       hasAlv: employee.hasAlv,
       isNbuInsured: employee.isNbuInsured,
       isRentner: employee.isRentner,
+      hasKtgGav: employee.hasKtgGav,
+      hasBerufsbeitragGav: employee.hasBerufsbeitragGav,
       bankName: employee.bankName,
       bankIban: employee.bankIban,
       bankBic: employee.bankBic || "",
@@ -682,6 +686,42 @@ export default function Employees() {
                           </FormControl>
                           <div className="space-y-1 leading-none">
                             <FormLabel>Rentner</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="hasKtgGav"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-hasktggav"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>KTG GAV Personalverleih</FormLabel>
+                          </div>
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name="hasBerufsbeitragGav"
+                      render={({ field }) => (
+                        <FormItem className="flex flex-row items-start space-x-3 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid="checkbox-hasberufsbeitraggav"
+                            />
+                          </FormControl>
+                          <div className="space-y-1 leading-none">
+                            <FormLabel>Berufsbeitrag GAV Personalverleih</FormLabel>
                           </div>
                         </FormItem>
                       )}
