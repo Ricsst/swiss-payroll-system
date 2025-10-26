@@ -21,6 +21,7 @@ import YearlyReport from "@/pages/yearly-report";
 import Lohnausweise from "@/pages/lohnausweise";
 import PayrollItemTypes from "@/pages/payroll-item-types";
 import Templates from "@/pages/templates";
+import QcsImport from "@/pages/qcs-import";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -40,6 +41,7 @@ function Router() {
       <Route path="/lohnausweise" component={Lohnausweise} />
       <Route path="/payroll-item-types" component={PayrollItemTypes} />
       <Route path="/templates" component={Templates} />
+      <Route path="/qcs-import" component={QcsImport} />
       <Route component={NotFound} />
     </Switch>
   );

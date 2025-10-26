@@ -1,4 +1,4 @@
-import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck, FileBarChart } from "lucide-react";
+import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck, FileBarChart, Upload } from "lucide-react";
 import { Link, useLocation } from "wouter";
 import {
   Sidebar,
@@ -67,6 +67,11 @@ const menuItems = [
     title: "Lohnvorlagen",
     url: "/templates",
     icon: FileCheck,
+  },
+  {
+    title: "QCS Import",
+    url: "/qcs-import",
+    icon: Upload,
   },
 ];
 
