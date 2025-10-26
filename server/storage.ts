@@ -1602,6 +1602,40 @@ export class DatabaseStorage implements IStorage {
       });
     }
 
+    // KTG GAV - only if employee has KTG GAV flag
+    if (employee.hasKtgGav) {
+      const ktgGavRate = parseFloat(company.ktgGavRate) || 1.515;
+      const ktgGavBaseAmount = calculateBaseAmount('subjectToAhv'); // Use same base as AHV
+      if (ktgGavBaseAmount > 0) {
+        deductions.push({
+          payrollPaymentId: "", // Dummy value, will be set when payment is created
+          type: "KTG GAV",
+          description: "KTG GAV Personalverleih",
+          percentage: ktgGavRate.toString(),
+          baseAmount: ktgGavBaseAmount.toFixed(2),
+          amount: (ktgGavBaseAmount * (ktgGavRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
+    // Berufsbeitrag GAV - only if employee has Berufsbeitrag GAV flag
+    if (employee.hasBerufsbeitragGav) {
+      const berufsbeitragGavRate = parseFloat(company.berufsbeitragGavRate) || 0.4;
+      const berufsbeitragGavBaseAmount = calculateBaseAmount('subjectToAhv'); // Use same base as AHV
+      if (berufsbeitragGavBaseAmount > 0) {
+        deductions.push({
+          payrollPaymentId: "", // Dummy value, will be set when payment is created
+          type: "Berufsbeitrag GAV",
+          description: "Berufsbeitrag GAV Personalverleih",
+          percentage: berufsbeitragGavRate.toString(),
+          baseAmount: berufsbeitragGavBaseAmount.toFixed(2),
+          amount: (berufsbeitragGavBaseAmount * (berufsbeitragGavRate / 100)).toFixed(2),
+          isAutoCalculated: true,
+        });
+      }
+    }
+
     // QST - only if employee is subject to Quellensteuer
     // NOTE: isQstSubject and qstRate are not yet implemented in Employee schema
     // if (employee.isQstSubject) {
