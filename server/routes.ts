@@ -2445,9 +2445,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       
       const payrollData = {
         employeeId: employee!.id,
-        period: periodStart.toISOString().split('T')[0],
         periodStart: periodStart.toISOString().split('T')[0],
         periodEnd: periodEnd.toISOString().split('T')[0],
+        paymentDate: periodEnd.toISOString().split('T')[0], // Set payment date to end of period
+        paymentMonth: monthNum,
+        paymentYear: pdfData.year,
         isLocked: false,
       };
       
