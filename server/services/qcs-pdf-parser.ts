@@ -1,7 +1,9 @@
 // Using dynamic import for pdf-parse due to ESM/CJS compatibility
 import { createRequire } from 'module';
 const require = createRequire(import.meta.url);
-const pdf = require('pdf-parse');
+const pdfParse = require('pdf-parse');
+// Handle both default and named exports
+const pdf = pdfParse.default || pdfParse;
 
 export interface QCSPayrollData {
   // Employee data
