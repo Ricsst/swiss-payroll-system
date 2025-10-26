@@ -146,23 +146,39 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
   // Extract period dates from Zeitraum field
   // Possible formats:
   // - "1.10.2025 - 31.10.2025" (two dates with hyphen)
-  // - "22.10.2025" (single date)
+  // - "22.10.2025" (single date in DD.MM.YYYY format)
+  // - "Mittwoch, 22. Oktober 2025" (weekday, DD. Month YYYY format)
   let periodStartDate: string | null = null;
   let periodEndDate: string | null = null;
   
   if (workDate) {
-    // Try to extract two dates separated by hyphen or dash
+    // Try to extract two dates separated by hyphen or dash (DD.MM.YYYY - DD.MM.YYYY)
     const dateRangeMatch = workDate.match(/(\d{1,2}\.\d{1,2}\.\d{4})\s*[-–]\s*(\d{1,2}\.\d{1,2}\.\d{4})/);
     if (dateRangeMatch) {
       // Two dates found
       periodStartDate = dateRangeMatch[1].trim();
       periodEndDate = dateRangeMatch[2].trim();
     } else {
-      // Try to extract single date
+      // Try to extract single date in DD.MM.YYYY format
       const singleDateMatch = workDate.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
       if (singleDateMatch) {
         periodStartDate = singleDateMatch[1].trim();
         periodEndDate = singleDateMatch[1].trim(); // Use same date for both
+      } else {
+        // Try to extract date in "Wochentag, DD. Monat YYYY" format
+        const germanDateMatch = workDate.match(/(\d{1,2})\.\s+(Januar|Februar|März|April|Mai|Juni|Juli|August|September|Oktober|November|Dezember)\s+(\d{4})/);
+        if (germanDateMatch) {
+          const day = germanDateMatch[1];
+          const monthName = germanDateMatch[2];
+          const yearStr = germanDateMatch[3];
+          const monthNum = MONTH_MAP[monthName];
+          if (monthNum) {
+            // Convert to DD.MM.YYYY format
+            const formattedDate = `${day.padStart(2, '0')}.${monthNum.toString().padStart(2, '0')}.${yearStr}`;
+            periodStartDate = formattedDate;
+            periodEndDate = formattedDate; // Use same date for both
+          }
+        }
       }
     }
   }
