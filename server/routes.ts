@@ -1264,6 +1264,74 @@ export async function registerRoutes(app: Express): Promise<Server> {
       pdf.addSeparatorLine();
       pdf.addPayrollLine("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
 
+      // Add Lohnarten Rekapitulation
+      if (report.payrollItemSummary && report.payrollItemSummary.length > 0) {
+        pdf.addSection("Lohnarten Rekapitulation - Ganzes Jahr " + year);
+        
+        const payrollItemRows = report.payrollItemSummary.map((item: any) => [
+          item.code,
+          item.type,
+          item.quantity,
+          "+ " + formatCurrency(parseFloat(item.amount)),
+        ]);
+        
+        // Add total row
+        payrollItemRows.push([
+          "",
+          "BRUTTOLOHN",
+          "",
+          formatCurrency(parseFloat(report.totals.grossSalary)),
+        ]);
+        
+        pdf.addTable(
+          ["Nr", "Legende", "Menge", "Betrag"],
+          payrollItemRows
+        );
+      }
+
+      // Add Abzüge Details
+      if (report.deductionSummary && report.deductionSummary.length > 0) {
+        pdf.addSection("Abzüge - Details");
+        
+        const deductionRows = report.deductionSummary.map((ded: any) => [
+          ded.type,
+          "- " + formatCurrency(parseFloat(ded.amount)),
+        ]);
+        
+        // Add totals
+        deductionRows.push([
+          "TOTAL ABZÜGE",
+          "- " + formatCurrency(parseFloat(report.totals.deductions)),
+        ]);
+        
+        deductionRows.push([
+          "NETTOLOHN",
+          formatCurrency(parseFloat(report.totals.netSalary)),
+        ]);
+        
+        pdf.addTable(
+          ["Abzugstyp", "Betrag"],
+          deductionRows
+        );
+      }
+
+      // Add Basis-Beträge
+      if (report.basisAmounts) {
+        pdf.addSection("Basis-Beträge");
+        
+        const basisRows = [
+          ["AHV-Basis", formatCurrency(parseFloat(report.basisAmounts.ahvBasis))],
+          ["ALV-Basis", formatCurrency(parseFloat(report.basisAmounts.alvBasis))],
+          ["NBU-Basis", formatCurrency(parseFloat(report.basisAmounts.nbuBasis))],
+          ["BVG-Basis", formatCurrency(parseFloat(report.basisAmounts.bvgBasis))],
+        ];
+        
+        pdf.addTable(
+          ["Typ", "Betrag"],
+          basisRows
+        );
+      }
+
       pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
 
       const pdfBlob = pdf.getBlob();
