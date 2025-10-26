@@ -825,8 +825,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Net salary - highlighted
         pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
 
-        // Add footer with additional info
-        pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+        // Add footer with period, employee info, and company details
+        const companyAddress = formatAddress(company.street, company.postalCode, company.city);
+        pdf.addFooter([
+          `Zeitraum: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlungsdatum: ${formatDate(payment.paymentDate)}`,
+          `${company.name} | ${companyAddress}`
+        ]);
       }
 
       const pdfBlob = pdf.getBlob();
@@ -934,8 +938,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Net salary - highlighted
       pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
 
-      // Add footer with additional info
-      pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+      // Add footer with period, employee info, and company details
+      const companyAddress = formatAddress(company.street, company.postalCode, company.city);
+      pdf.addFooter([
+        `Zeitraum: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlungsdatum: ${formatDate(payment.paymentDate)}`,
+        `${company.name} | ${companyAddress}`
+      ]);
 
       const pdfBlob = pdf.getBlob();
       const buffer = Buffer.from(await pdfBlob.arrayBuffer());

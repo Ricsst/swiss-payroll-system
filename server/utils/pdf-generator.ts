@@ -118,11 +118,21 @@ export class PDFGenerator {
     this.yPosition += 5;
   }
 
-  addFooter(text: string) {
+  addFooter(text: string | string[]) {
     const pageHeight = this.doc.internal.pageSize.height;
     this.doc.setFontSize(8);
     this.doc.setFont("helvetica", "italic");
-    this.doc.text(text, 20, pageHeight - 10);
+    
+    if (Array.isArray(text)) {
+      // Multiple lines - start from bottom and work up
+      // Clone array to avoid mutating the original
+      [...text].reverse().forEach((line, index) => {
+        this.doc.text(line, 20, pageHeight - 10 - (index * 4));
+      });
+    } else {
+      // Single line
+      this.doc.text(text, 20, pageHeight - 10);
+    }
   }
 
   addPageBreak() {
