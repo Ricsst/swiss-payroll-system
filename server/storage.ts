@@ -1376,7 +1376,7 @@ export class DatabaseStorage implements IStorage {
         firstName: employee.firstName,
         lastName: employee.lastName,
         ahvNumber: employee.ahvNumber,
-        birthDate: employee.birthDate,
+        birthDate: employee.birthDate || null,
         entryDate: employee.entryDate,
         exitDate: employee.exitDate,
         isNbuInsured: employee.isNbuInsured,
