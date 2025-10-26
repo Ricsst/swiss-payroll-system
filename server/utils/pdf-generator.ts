@@ -12,8 +12,36 @@ export class PDFGenerator {
   private doc: jsPDF;
   private yPosition: number = 20;
 
-  constructor() {
-    this.doc = new jsPDF();
+  constructor(orientation: 'portrait' | 'landscape' = 'portrait') {
+    this.doc = new jsPDF({ orientation });
+  }
+
+  addCompanyHeader(companyName: string, companyAddress: string, ahvAccountingNumber: string, title: string, year: number) {
+    // Company info at top left
+    this.doc.setFontSize(10);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text(companyName, 20, this.yPosition);
+    this.yPosition += 5;
+    
+    const addressLines = companyAddress.split('\n');
+    addressLines.forEach(line => {
+      this.doc.text(line, 20, this.yPosition);
+      this.yPosition += 5;
+    });
+    
+    this.doc.text(`AHV-Abrechnungsnummer: ${ahvAccountingNumber}`, 20, this.yPosition);
+    this.yPosition += 10;
+    
+    // Document title
+    this.doc.setFontSize(16);
+    this.doc.setFont("helvetica", "bold");
+    this.doc.text(title, 20, this.yPosition);
+    this.yPosition += 8;
+    
+    this.doc.setFontSize(12);
+    this.doc.setFont("helvetica", "normal");
+    this.doc.text(`Jahr ${year}`, 20, this.yPosition);
+    this.yPosition += 10;
   }
 
   addHeader(options: PDFOptions) {
