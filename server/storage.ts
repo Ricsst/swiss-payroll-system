@@ -14,6 +14,7 @@ import {
   type InsertPayrollPayment,
   type PayrollItem,
   type InsertPayrollItem,
+  type InsertPayrollItemWithoutPaymentId,
   type PayrollItemType,
   type InsertPayrollItemType,
   type Deduction,
@@ -43,13 +44,13 @@ export interface IStorage {
   getPayrollPayment(id: string): Promise<any>;
   createPayrollPayment(
     payment: InsertPayrollPayment,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment>;
   updatePayrollPayment(
     id: string,
     payment: Partial<InsertPayrollPayment>,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment>;
   
@@ -256,7 +257,7 @@ export class DatabaseStorage implements IStorage {
 
   async createPayrollPayment(
     payment: InsertPayrollPayment,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment> {
     // Apply cumulative ALV calculation
@@ -328,7 +329,7 @@ export class DatabaseStorage implements IStorage {
   async updatePayrollPayment(
     id: string,
     payment: Partial<InsertPayrollPayment>,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment> {
     // Check if payment is locked
@@ -364,7 +365,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(payrollItems.payrollPaymentId, id));
       
       effectiveItems = existingItems.map(item => ({
-        payrollPaymentId: item.payrollPaymentId,
         type: item.type,
         description: item.description || "",
         amount: item.amount,
@@ -1492,7 +1492,7 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   private async calculateDeductionsFromItems(
     employeeId: string,
-    items: InsertPayrollItem[]
+    items: InsertPayrollItemWithoutPaymentId[]
   ): Promise<InsertDeduction[]> {
     const company = await this.getCompany();
     const employee = await this.getEmployee(employeeId);
@@ -1664,7 +1664,7 @@ export class DatabaseStorage implements IStorage {
     employeeId: string,
     year: number,
     paymentMonth: number,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[],
     periodEnd?: string, // Format: "YYYY-MM-DD" - used for prorated calculation
     excludePaymentId?: string
@@ -1755,7 +1755,7 @@ export class DatabaseStorage implements IStorage {
     employeeId: string,
     year: number,
     paymentMonth: number,
-    items: InsertPayrollItem[],
+    items: InsertPayrollItemWithoutPaymentId[],
     deductionsList: InsertDeduction[],
     periodEnd?: string, // Format: "YYYY-MM-DD" - used for prorated calculation
     excludePaymentId?: string
