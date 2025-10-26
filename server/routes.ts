@@ -1092,6 +1092,62 @@ export async function registerRoutes(app: Express): Promise<Server> {
       pdf.addSeparatorLine();
       pdf.addPayrollLine("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
 
+      // Add employee summary section
+      if (report.employeeSummary && report.employeeSummary.length > 0) {
+        pdf.addSection("Mitarbeiter-Übersicht");
+        
+        const employeeRows = report.employeeSummary.map((emp: any) => [
+          emp.ahvNumber,
+          formatDate(emp.birthDate),
+          `${emp.firstName} ${emp.lastName}`,
+          `${emp.employedFrom}-${emp.employedTo}`,
+          formatCurrency(parseFloat(emp.ahvWage)),
+          formatCurrency(parseFloat(emp.alvWage)),
+          formatCurrency(parseFloat(emp.alv1Wage)),
+          formatCurrency(parseFloat(emp.alv2Wage)),
+          formatCurrency(parseFloat(emp.nbuWage)),
+          formatCurrency(parseFloat(emp.childAllowance)),
+        ]);
+        
+        pdf.addTable(
+          ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "AHV-Lohn", "ALV-Lohn", "ALV1-Lohn", "ALV2-Lohn", "NBU-Lohn", "Kinder"],
+          employeeRows
+        );
+      }
+
+      // Add child allowance summary section
+      if (report.childAllowanceEmployees && report.childAllowanceEmployees.length > 0) {
+        pdf.addSection("Kinderzulagen");
+        
+        const childAllowanceRows = report.childAllowanceEmployees.map((emp: any) => [
+          emp.ahvNumber,
+          formatDate(emp.birthDate),
+          `${emp.firstName} ${emp.lastName}`,
+          `${emp.employedFrom}-${emp.employedTo}`,
+          formatCurrency(parseFloat(emp.childAllowance)),
+        ]);
+        
+        // Calculate total
+        const totalChildAllowance = report.childAllowanceEmployees.reduce(
+          (sum: number, emp: any) => sum + parseFloat(emp.childAllowance),
+          0
+        );
+        
+        // Add total row
+        childAllowanceRows.push([
+          "",
+          "",
+          "",
+          "TOTAL",
+          formatCurrency(totalChildAllowance),
+        ]);
+        
+        pdf.addTable(
+          ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "Kindergeld"],
+          childAllowanceRows
+        );
+      }
+
       // Add wage summary by gender section
       if (report.wageSummary) {
         const uvgMaxIncomeFormatted = formatCurrency(parseFloat(report.uvgMaxIncome));
@@ -1779,6 +1835,78 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
 
       excel.addWorksheet(`Jahresabrechnung ${year}`, columns, data);
+
+      // Add employee summary worksheet
+      if (report.employeeSummary && report.employeeSummary.length > 0) {
+        const employeeColumns = [
+          { header: "AHV-Nr.", key: "ahvNumber", width: 18 },
+          { header: "Geb.datum", key: "birthDate", width: 12 },
+          { header: "Vorname", key: "firstName", width: 15 },
+          { header: "Nachname", key: "lastName", width: 15 },
+          { header: "Zeitraum", key: "period", width: 12 },
+          { header: "AHV-Lohn (CHF)", key: "ahvWage", width: 16 },
+          { header: "ALV-Lohn (CHF)", key: "alvWage", width: 16 },
+          { header: "ALV1-Lohn (CHF)", key: "alv1Wage", width: 16 },
+          { header: "ALV2-Lohn (CHF)", key: "alv2Wage", width: 16 },
+          { header: "NBU-Lohn (CHF)", key: "nbuWage", width: 16 },
+          { header: "Kindergeld (CHF)", key: "childAllowance", width: 16 },
+        ];
+
+        const employeeData = report.employeeSummary.map((emp: any) => ({
+          ahvNumber: emp.ahvNumber,
+          birthDate: formatExcelDate(emp.birthDate),
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          period: `${emp.employedFrom}-${emp.employedTo}`,
+          ahvWage: formatExcelCurrency(parseFloat(emp.ahvWage)),
+          alvWage: formatExcelCurrency(parseFloat(emp.alvWage)),
+          alv1Wage: formatExcelCurrency(parseFloat(emp.alv1Wage)),
+          alv2Wage: formatExcelCurrency(parseFloat(emp.alv2Wage)),
+          nbuWage: formatExcelCurrency(parseFloat(emp.nbuWage)),
+          childAllowance: formatExcelCurrency(parseFloat(emp.childAllowance)),
+        }));
+
+        excel.addWorksheet(`Mitarbeiter-Übersicht`, employeeColumns, employeeData);
+      }
+
+      // Add child allowance summary worksheet
+      if (report.childAllowanceEmployees && report.childAllowanceEmployees.length > 0) {
+        const childAllowanceColumns = [
+          { header: "AHV-Nr.", key: "ahvNumber", width: 18 },
+          { header: "Geb.datum", key: "birthDate", width: 12 },
+          { header: "Vorname", key: "firstName", width: 15 },
+          { header: "Nachname", key: "lastName", width: 15 },
+          { header: "Zeitraum", key: "period", width: 12 },
+          { header: "Kindergeld (CHF)", key: "childAllowance", width: 16 },
+        ];
+
+        const childAllowanceData = report.childAllowanceEmployees.map((emp: any) => ({
+          ahvNumber: emp.ahvNumber,
+          birthDate: formatExcelDate(emp.birthDate),
+          firstName: emp.firstName,
+          lastName: emp.lastName,
+          period: `${emp.employedFrom}-${emp.employedTo}`,
+          childAllowance: formatExcelCurrency(parseFloat(emp.childAllowance)),
+        }));
+
+        // Calculate total
+        const totalChildAllowance = report.childAllowanceEmployees.reduce(
+          (sum: number, emp: any) => sum + parseFloat(emp.childAllowance),
+          0
+        );
+
+        // Add total row
+        childAllowanceData.push({
+          ahvNumber: "",
+          birthDate: "",
+          firstName: "",
+          lastName: "",
+          period: "TOTAL",
+          childAllowance: formatExcelCurrency(totalChildAllowance),
+        });
+
+        excel.addWorksheet(`Kinderzulagen`, childAllowanceColumns, childAllowanceData);
+      }
 
       // Add wage summary by gender worksheet
       if (report.wageSummary) {
