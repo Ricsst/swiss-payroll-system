@@ -3,7 +3,7 @@ import { createServer, type Server } from "http";
 import { storage } from "./storage";
 import { insertCompanySchema, insertEmployeeSchema, insertPayrollPaymentSchema, insertPayrollItemSchema, insertPayrollItemTypeSchema, insertDeductionSchema, insertPayrollTemplateSchema, insertPayrollItemWithoutPaymentIdSchema, insertDeductionWithoutPaymentIdSchema } from "@shared/schema";
 import { fromError } from "zod-validation-error";
-import { PDFGenerator, formatCurrency, formatDate, formatPercentage, formatAddress, formatAddressMultiline } from "./utils/pdf-generator";
+import { PDFGenerator, formatCurrency, formatCurrencyNumber, formatDate, formatPercentage, formatAddress, formatAddressMultiline } from "./utils/pdf-generator";
 import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/excel-generator";
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 import { sendPayslipEmail } from "./services/email";
@@ -1101,17 +1101,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           formatDate(emp.birthDate),
           `${emp.firstName} ${emp.lastName}`,
           `${emp.employedFrom}-${emp.employedTo}`,
-          formatCurrency(parseFloat(emp.ahvWage)),
-          formatCurrency(parseFloat(emp.alvWage)),
-          formatCurrency(parseFloat(emp.alv1Wage)),
-          formatCurrency(parseFloat(emp.alv2Wage)),
-          formatCurrency(parseFloat(emp.nbuWage)),
-          formatCurrency(parseFloat(emp.childAllowance)),
+          formatCurrencyNumber(parseFloat(emp.ahvWage)),
+          formatCurrencyNumber(parseFloat(emp.alvWage)),
+          formatCurrencyNumber(parseFloat(emp.alv1Wage)),
+          formatCurrencyNumber(parseFloat(emp.alv2Wage)),
+          formatCurrencyNumber(parseFloat(emp.nbuWage)),
+          formatCurrencyNumber(parseFloat(emp.childAllowance)),
         ]);
         
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "AHV-Lohn", "ALV-Lohn", "ALV1-Lohn", "ALV2-Lohn", "NBU-Lohn", "Kinder"],
-          employeeRows
+          employeeRows,
+          { compact: true }
         );
       }
 

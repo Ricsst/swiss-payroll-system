@@ -186,6 +186,11 @@ export function formatCurrency(amount: number | string): string {
   return `CHF ${num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, "'")}`;
 }
 
+export function formatCurrencyNumber(amount: number | string): string {
+  const num = typeof amount === "string" ? parseFloat(amount) : amount;
+  return num.toFixed(2).replace(/\B(?=(\d{3})+(?!\d))/g, "'");
+}
+
 export function formatDate(date: Date | string): string {
   const d = typeof date === "string" ? new Date(date) : date;
   return d.toLocaleDateString("de-CH", {
