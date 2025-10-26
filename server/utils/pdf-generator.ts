@@ -82,7 +82,7 @@ export class PDFGenerator {
     this.yPosition += 6;
   }
 
-  addTable(headers: string[], rows: any[][], options?: { compact?: boolean }) {
+  addTable(headers: string[], rows: any[][], options?: { compact?: boolean; columnStyles?: any }) {
     const compact = options?.compact || false;
     
     autoTable(this.doc, {
@@ -99,6 +99,7 @@ export class PDFGenerator {
       bodyStyles: {
         fontSize: compact ? 8 : 10,
       },
+      columnStyles: options?.columnStyles || {},
       margin: { left: 20, right: 20 },
       styles: {
         cellPadding: compact ? 2 : 3,

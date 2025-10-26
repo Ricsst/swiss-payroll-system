@@ -1093,7 +1093,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         pdf.addTable(
           ["Monat", "Anzahl", "Bruttolohn", "Abzüge", "Nettolohn"],
-          monthRows
+          monthRows,
+          { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } } }
         );
       }
 
@@ -1125,7 +1126,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "AHV-Lohn", "ALV-Lohn", "ALV1-Lohn", "ALV2-Lohn", "NBU-Lohn", "Kinder"],
           employeeRows,
-          { compact: true }
+          { compact: true, columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' } } }
         );
       }
 
@@ -1159,7 +1160,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "Kindergeld"],
           childAllowanceRows,
-          { compact: true }
+          { compact: true, columnStyles: { 4: { halign: 'right' } } }
         );
       }
 
@@ -1221,7 +1222,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["Kategorie", "Lohn Männer", "Lohn Frauen"],
           wageSummaryRows,
-          { compact: true }
+          { compact: true, columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } }
         );
       }
 
@@ -1285,7 +1286,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         pdf.addTable(
           ["Nr", "Legende", "Menge", "Betrag"],
-          payrollItemRows
+          payrollItemRows,
+          { columnStyles: { 2: { halign: 'right' }, 3: { halign: 'right' } } }
         );
       }
 
@@ -1311,7 +1313,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         pdf.addTable(
           ["Abzugstyp", "Betrag"],
-          deductionRows
+          deductionRows,
+          { columnStyles: { 1: { halign: 'right' } } }
         );
       }
 
@@ -1328,7 +1331,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         pdf.addTable(
           ["Typ", "Betrag"],
-          basisRows
+          basisRows,
+          { columnStyles: { 1: { halign: 'right' } } }
         );
       }
 
@@ -1377,7 +1381,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         pdf.addTable(
           ["Monat", "Anzahl", "Bruttolohn", "Abzüge", "Nettolohn"],
-          monthRows
+          monthRows,
+          { columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' }, 3: { halign: 'right' }, 4: { halign: 'right' } } }
         );
       }
 
@@ -1430,7 +1435,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "AHV-Lohn", "ALV-Lohn", "ALV1-Lohn", "ALV2-Lohn", "NBU-Lohn", "Kinder"],
           employeeRows,
-          { compact: true }
+          { compact: true, columnStyles: { 4: { halign: 'right' }, 5: { halign: 'right' }, 6: { halign: 'right' }, 7: { halign: 'right' }, 8: { halign: 'right' }, 9: { halign: 'right' } } }
         );
       }
 
@@ -1493,7 +1498,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "Kindergeld"],
           childAllowanceRows,
-          { compact: true }
+          { compact: true, columnStyles: { 4: { halign: 'right' } } }
         );
       }
 
@@ -1585,7 +1590,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addTable(
           ["Kategorie", "Lohn Männer", "Lohn Frauen"],
           wageSummaryRows,
-          { compact: true }
+          { compact: true, columnStyles: { 1: { halign: 'right' }, 2: { halign: 'right' } } }
         );
       }
 
