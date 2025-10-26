@@ -104,8 +104,10 @@ function parseSwissNumber(value: string): number {
 }
 
 export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollData> {
-  const data = await pdf(pdfBuffer);
-  const text = data.text;
+  // pdf-parse v2 uses class-based API
+  const parser = new pdf({ data: pdfBuffer });
+  const result = await parser.getText();
+  const text = result.text;
   
   // Extract employee name
   const nameMatch = text.match(/Vertraulich\s+([^\n]+)\s+([^\n]+)\s+(\d{4})/);
