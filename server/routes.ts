@@ -2453,28 +2453,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isLocked: false,
       };
       
-      // Get payroll item types
-      const itemTypes = await storage.getPayrollItemTypes();
-      const lohnType = itemTypes.find(t => t.name.toLowerCase().includes('stundenlohn') || t.name.toLowerCase() === 'lohn');
-      const zuschlagType = itemTypes.find(t => t.name.toLowerCase().includes('zuschlag') || t.name.toLowerCase().includes('zulage'));
-      
       // Prepare payroll items (Lohn + Sonntagszulage)
       const payrollItems = [];
       
-      if (lohnType) {
-        payrollItems.push({
-          payrollItemTypeId: lohnType.id,
-          quantity: pdfData.hoursWorked.toFixed(2),
-          rate: pdfData.hourlyRate.toFixed(2),
-          amount: pdfData.wageAmount.toFixed(2),
-        });
-      }
+      // Add base wage item
+      payrollItems.push({
+        type: "Stundenlohn",
+        description: "Lohn",
+        hours: pdfData.hoursWorked.toFixed(2),
+        hourlyRate: pdfData.hourlyRate.toFixed(2),
+        amount: pdfData.wageAmount.toFixed(2),
+      });
       
-      if (zuschlagType && pdfData.sundayAmount > 0) {
+      // Add Sunday supplement if applicable
+      if (pdfData.sundayAmount > 0) {
         payrollItems.push({
-          payrollItemTypeId: zuschlagType.id,
-          quantity: pdfData.sundayHours.toFixed(2),
-          rate: pdfData.sundaySupplement.toFixed(2),
+          type: "Sonntagszulage",
+          description: "Sonntagszulage",
+          hours: pdfData.sundayHours.toFixed(2),
+          hourlyRate: pdfData.sundaySupplement.toFixed(2),
           amount: pdfData.sundayAmount.toFixed(2),
         });
       }
