@@ -32,6 +32,9 @@ export const companies = pgTable("companies", {
   suvaNbuFemaleRate: numeric("suva_nbu_female_rate", { precision: 5, scale: 4 }).notNull().default("1.1680"), // 1.168%
   suvaMaxIncomePerYear: numeric("suva_max_income_per_year", { precision: 10, scale: 2 }).notNull().default("148200.00"), // CHF pro Jahr
   
+  ktgGavRate: numeric("ktg_gav_rate", { precision: 5, scale: 4 }).notNull().default("1.5150"), // 1.515% KTG GAV Personalverleih
+  berufsbeitragGavRate: numeric("berufsbeitrag_gav_rate", { precision: 5, scale: 4 }).notNull().default("0.4000"), // 0.4% Berufsbeitrag GAV Personalverleih
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
@@ -75,6 +78,8 @@ export const employees = pgTable("employees", {
   hasAlv: boolean("has_alv").notNull().default(true), // ALV
   isNbuInsured: boolean("is_nbu_insured").notNull().default(true), // NBU (Nichtbetriebs-Unfallversicherung)
   isRentner: boolean("is_rentner").notNull().default(false), // Rentner (AHV-Freibetrag)
+  hasKtgGav: boolean("has_ktg_gav").notNull().default(false), // KTG GAV Personalverleih
+  hasBerufsbeitragGav: boolean("has_berufsbeitrag_gav").notNull().default(false), // Berufsbeitrag GAV Personalverleih
   
   // Banking information
   bankName: text("bank_name").notNull(), // Name Bank und Ort
