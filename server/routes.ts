@@ -2478,14 +2478,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Create payroll payment
       const monthNum = getMonthNumber(pdfData.month);
-      const periodStart = new Date(pdfData.year, monthNum - 1, 1);
-      const periodEnd = new Date(pdfData.year, monthNum, 0);
+      
+      // Helper function to convert Swiss date format (DD.MM.YYYY) to ISO format (YYYY-MM-DD)
+      const convertSwissDateToISO = (swissDate: string): string => {
+        const [day, month, year] = swissDate.split('.');
+        return `${year}-${month.padStart(2, '0')}-${day.padStart(2, '0')}`;
+      };
+      
+      // Use extracted dates from PDF if available, otherwise fallback to full month
+      let periodStart: string;
+      let periodEnd: string;
+      
+      if (pdfData.periodStartDate && pdfData.periodEndDate) {
+        periodStart = convertSwissDateToISO(pdfData.periodStartDate);
+        periodEnd = convertSwissDateToISO(pdfData.periodEndDate);
+      } else {
+        // Fallback to full month if no dates in PDF
+        const startDate = new Date(pdfData.year, monthNum - 1, 1);
+        const endDate = new Date(pdfData.year, monthNum, 0);
+        periodStart = startDate.toISOString().split('T')[0];
+        periodEnd = endDate.toISOString().split('T')[0];
+      }
       
       const payrollData = {
         employeeId: employee!.id,
-        periodStart: periodStart.toISOString().split('T')[0],
-        periodEnd: periodEnd.toISOString().split('T')[0],
-        paymentDate: periodEnd.toISOString().split('T')[0], // Set payment date to end of period
+        periodStart,
+        periodEnd,
+        paymentDate: periodEnd, // Set payment date to end of period
         paymentMonth: monthNum,
         paymentYear: pdfData.year,
         isLocked: false,

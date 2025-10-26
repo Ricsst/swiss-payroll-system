@@ -21,6 +21,8 @@ export interface QCSPayrollData {
   month: string; // e.g., "Oktober"
   year: number;
   workDate: string; // e.g., "Mittwoch, 22. Oktober 2025"
+  periodStartDate: string | null; // e.g., "01.10.2025" - extracted from Zeitraum
+  periodEndDate: string | null; // e.g., "31.10.2025" - extracted from Zeitraum
   
   // Wage items
   hourlyRate: number;
@@ -141,6 +143,30 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
   const workDateMatch = text.match(/Zeitraum:\s*([^\n]+)/);
   const workDate = workDateMatch ? workDateMatch[1].trim() : '';
   
+  // Extract period dates from Zeitraum field
+  // Possible formats:
+  // - "1.10.2025 - 31.10.2025" (two dates with hyphen)
+  // - "22.10.2025" (single date)
+  let periodStartDate: string | null = null;
+  let periodEndDate: string | null = null;
+  
+  if (workDate) {
+    // Try to extract two dates separated by hyphen or dash
+    const dateRangeMatch = workDate.match(/(\d{1,2}\.\d{1,2}\.\d{4})\s*[-–]\s*(\d{1,2}\.\d{1,2}\.\d{4})/);
+    if (dateRangeMatch) {
+      // Two dates found
+      periodStartDate = dateRangeMatch[1].trim();
+      periodEndDate = dateRangeMatch[2].trim();
+    } else {
+      // Try to extract single date
+      const singleDateMatch = workDate.match(/(\d{1,2}\.\d{1,2}\.\d{4})/);
+      if (singleDateMatch) {
+        periodStartDate = singleDateMatch[1].trim();
+        periodEndDate = singleDateMatch[1].trim(); // Use same date for both
+      }
+    }
+  }
+  
   // Extract wage data - Lohn
   // Note: Character class includes: digits, straight apostrophe ('), typographic apostrophe (U+2019), comma, dot
   const lohnMatch = text.match(/Lohn\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
@@ -217,6 +243,8 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
     month,
     year,
     workDate,
+    periodStartDate,
+    periodEndDate,
     hourlyRate,
     hoursWorked,
     wageAmount,
