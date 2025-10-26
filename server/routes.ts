@@ -2376,12 +2376,30 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validation.changes.push(`BVG-Prozentsatz geändert von ${employee.bvgDeductionPercentage}% zu ${pdfData.bvgRate}%`);
         }
         
+        // Set AHV checkbox if AHV amount is present in PDF
+        if (pdfData.ahvAmount > 0 && !employee.hasAhv) {
+          updates.hasAhv = true;
+          validation.changes.push("AHV Häkchen aktiviert");
+        }
+        
+        // Set ALV checkbox if ALV amount is present in PDF
+        if (pdfData.alvAmount > 0 && !employee.hasAlv) {
+          updates.hasAlv = true;
+          validation.changes.push("ALV Häkchen aktiviert");
+        }
+        
+        // Set NBU/UVG checkbox if UVG amount is present in PDF
+        if (pdfData.uvgAmount > 0 && !employee.isNbuInsured) {
+          updates.isNbuInsured = true;
+          validation.changes.push("NBU/UVG Häkchen aktiviert");
+        }
+        
         // Update KTG and Berufsbeitrag if they differ
         const ktgMatches = employee.ktgGavPercentage
           ? Math.abs(parseFloat(employee.ktgGavPercentage) - pdfData.ktgGavRate) < 0.01
           : false;
         
-        if (!ktgMatches) {
+        if (!ktgMatches && pdfData.ktgGavRate > 0) {
           updates.ktgGavPercentage = pdfData.ktgGavRate.toFixed(4);
           validation.changes.push(`KTG GAV Prozentsatz geändert zu ${pdfData.ktgGavRate}%`);
         }
@@ -2396,7 +2414,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ? Math.abs(parseFloat(employee.berufsbeitragGavPercentage) - pdfData.berufsbeitragGavRate) < 0.01
           : false;
         
-        if (!berufsbeitragMatches) {
+        if (!berufsbeitragMatches && pdfData.berufsbeitragGavRate > 0) {
           updates.berufsbeitragGavPercentage = pdfData.berufsbeitragGavRate.toFixed(4);
           validation.changes.push(`Berufsbeitrag GAV Prozentsatz geändert zu ${pdfData.berufsbeitragGavRate}%`);
         }
@@ -2429,18 +2447,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           entryDate: entryDate.toISOString().split('T')[0],
           ahvNumber: pdfData.ahvNumber,
           hasAccidentInsurance: true,
-          hasAhv: true,
-          hasAlv: true,
-          isNbuInsured: true,
+          hasAhv: pdfData.ahvAmount > 0, // Set flag if amount present in PDF
+          hasAlv: pdfData.alvAmount > 0, // Set flag if amount present in PDF
+          isNbuInsured: pdfData.uvgAmount > 0, // Set flag if amount present in PDF
           isRentner: false,
-          hasKtgGav: pdfData.ktgGavAmount > 0, // Set flag if amount present
-          hasBerufsbeitragGav: pdfData.berufsbeitragGavAmount > 0, // Set flag if amount present
+          hasKtgGav: pdfData.ktgGavAmount > 0, // Set flag if amount present in PDF
+          hasBerufsbeitragGav: pdfData.berufsbeitragGavAmount > 0, // Set flag if amount present in PDF
           bankName: "Bank (bitte aktualisieren)",
           bankIban: "CH00 0000 0000 0000 0000 0",
           hourlyRate: pdfData.hourlyRate.toFixed(2),
           bvgDeductionPercentage: pdfData.bvgRate.toFixed(4),
-          ktgGavPercentage: pdfData.ktgGavRate.toFixed(4),
-          berufsbeitragGavPercentage: pdfData.berufsbeitragGavRate.toFixed(4),
+          ktgGavPercentage: pdfData.ktgGavRate > 0 ? pdfData.ktgGavRate.toFixed(4) : "0.0000",
+          berufsbeitragGavPercentage: pdfData.berufsbeitragGavRate > 0 ? pdfData.berufsbeitragGavRate.toFixed(4) : "0.0000",
           isActive: true,
         };
         
