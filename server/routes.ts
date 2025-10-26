@@ -2376,53 +2376,59 @@ export async function registerRoutes(app: Express): Promise<Server> {
           validation.changes.push(`BVG-Prozentsatz geändert von ${employee.bvgDeductionPercentage}% zu ${pdfData.bvgRate}%`);
         }
         
-        // Set AHV checkbox if AHV amount is present in PDF
-        if (pdfData.ahvAmount > 0 && !employee.hasAhv) {
-          updates.hasAhv = true;
-          validation.changes.push("AHV Häkchen aktiviert");
+        // Check and update AHV checkbox based on PDF
+        const shouldHaveAhv = pdfData.ahvAmount > 0;
+        if (employee.hasAhv !== shouldHaveAhv) {
+          updates.hasAhv = shouldHaveAhv;
+          validation.changes.push(shouldHaveAhv ? "AHV Häkchen aktiviert" : "AHV Häkchen deaktiviert");
         }
         
-        // Set ALV checkbox if ALV amount is present in PDF
-        if (pdfData.alvAmount > 0 && !employee.hasAlv) {
-          updates.hasAlv = true;
-          validation.changes.push("ALV Häkchen aktiviert");
+        // Check and update ALV checkbox based on PDF
+        const shouldHaveAlv = pdfData.alvAmount > 0;
+        if (employee.hasAlv !== shouldHaveAlv) {
+          updates.hasAlv = shouldHaveAlv;
+          validation.changes.push(shouldHaveAlv ? "ALV Häkchen aktiviert" : "ALV Häkchen deaktiviert");
         }
         
-        // Set NBU/UVG checkbox if UVG amount is present in PDF
-        if (pdfData.uvgAmount > 0 && !employee.isNbuInsured) {
-          updates.isNbuInsured = true;
-          validation.changes.push("NBU/UVG Häkchen aktiviert");
+        // Check and update NBU/UVG checkbox based on PDF
+        const shouldHaveNbu = pdfData.uvgAmount > 0;
+        if (employee.isNbuInsured !== shouldHaveNbu) {
+          updates.isNbuInsured = shouldHaveNbu;
+          validation.changes.push(shouldHaveNbu ? "NBU/UVG Häkchen aktiviert" : "NBU/UVG Häkchen deaktiviert");
         }
         
-        // Update KTG and Berufsbeitrag if they differ
+        // Update KTG GAV percentage if needed
         const ktgMatches = employee.ktgGavPercentage
           ? Math.abs(parseFloat(employee.ktgGavPercentage) - pdfData.ktgGavRate) < 0.01
-          : false;
+          : pdfData.ktgGavRate === 0;
         
-        if (!ktgMatches && pdfData.ktgGavRate > 0) {
+        if (!ktgMatches) {
           updates.ktgGavPercentage = pdfData.ktgGavRate.toFixed(4);
           validation.changes.push(`KTG GAV Prozentsatz geändert zu ${pdfData.ktgGavRate}%`);
         }
         
-        // Set hasKtgGav flag if KTG amount is present in PDF
-        if (pdfData.ktgGavAmount > 0 && !employee.hasKtgGav) {
-          updates.hasKtgGav = true;
-          validation.changes.push("KTG GAV Häkchen aktiviert");
+        // Check and update KTG GAV checkbox based on PDF
+        const shouldHaveKtgGav = pdfData.ktgGavAmount > 0;
+        if (employee.hasKtgGav !== shouldHaveKtgGav) {
+          updates.hasKtgGav = shouldHaveKtgGav;
+          validation.changes.push(shouldHaveKtgGav ? "KTG GAV Häkchen aktiviert" : "KTG GAV Häkchen deaktiviert");
         }
         
+        // Update Berufsbeitrag GAV percentage if needed
         const berufsbeitragMatches = employee.berufsbeitragGavPercentage
           ? Math.abs(parseFloat(employee.berufsbeitragGavPercentage) - pdfData.berufsbeitragGavRate) < 0.01
-          : false;
+          : pdfData.berufsbeitragGavRate === 0;
         
-        if (!berufsbeitragMatches && pdfData.berufsbeitragGavRate > 0) {
+        if (!berufsbeitragMatches) {
           updates.berufsbeitragGavPercentage = pdfData.berufsbeitragGavRate.toFixed(4);
           validation.changes.push(`Berufsbeitrag GAV Prozentsatz geändert zu ${pdfData.berufsbeitragGavRate}%`);
         }
         
-        // Set hasBerufsbeitragGav flag if Berufsbeitrag amount is present in PDF
-        if (pdfData.berufsbeitragGavAmount > 0 && !employee.hasBerufsbeitragGav) {
-          updates.hasBerufsbeitragGav = true;
-          validation.changes.push("Berufsbeitrag GAV Häkchen aktiviert");
+        // Check and update Berufsbeitrag GAV checkbox based on PDF
+        const shouldHaveBerufsbeitragGav = pdfData.berufsbeitragGavAmount > 0;
+        if (employee.hasBerufsbeitragGav !== shouldHaveBerufsbeitragGav) {
+          updates.hasBerufsbeitragGav = shouldHaveBerufsbeitragGav;
+          validation.changes.push(shouldHaveBerufsbeitragGav ? "Berufsbeitrag GAV Häkchen aktiviert" : "Berufsbeitrag GAV Häkchen deaktiviert");
         }
         
         if (Object.keys(updates).length > 0) {
