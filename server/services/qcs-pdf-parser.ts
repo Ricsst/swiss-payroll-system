@@ -78,12 +78,26 @@ const MONTH_MAP: Record<string, number> = {
 
 /**
  * Parse Swiss formatted number to float
- * Swiss format uses apostrophe (') as thousand separator and dot (.) as decimal separator
- * Examples: "3'546.75" -> 3546.75, "1'234" -> 1234, "42.50" -> 42.50
+ * Swiss format can use:
+ * - Apostrophe (') or typographic apostrophe (') as thousand separator (U+0027 or U+2019)
+ * - Comma (,) or dot (.) as decimal separator
+ * Examples: "3'546.75" -> 3546.75, "3'546.75" -> 3546.75, "1'234" -> 1234, "42,50" -> 42.5, "5,30" -> 5.3
  */
 function parseSwissNumber(value: string): number {
-  // Remove apostrophes (thousand separators)
-  const cleaned = value.replace(/'/g, '');
+  // Remove whitespace
+  let cleaned = value.trim();
+  
+  // Remove thousand separators: straight apostrophe (U+0027) and typographic/curly apostrophe (U+2019)
+  // Also remove narrow no-break space (U+202F) which is sometimes used
+  cleaned = cleaned.replace(/[''\u2019\u202F]/g, '');
+  
+  // Replace comma decimal separator with dot
+  // Only replace the last comma (if any) as decimal separator
+  const lastCommaIndex = cleaned.lastIndexOf(',');
+  if (lastCommaIndex !== -1) {
+    cleaned = cleaned.substring(0, lastCommaIndex) + '.' + cleaned.substring(lastCommaIndex + 1);
+  }
+  
   return parseFloat(cleaned);
 }
 
@@ -124,65 +138,66 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
   const workDate = workDateMatch ? workDateMatch[1].trim() : '';
   
   // Extract wage data - Lohn
-  const lohnMatch = text.match(/Lohn\s+([\d',.]+)\s+([\d',.]+)\s+Std\.\s+([\d',.]+)/);
+  // Note: Character class includes: digits, straight apostrophe ('), typographic apostrophe (U+2019), comma, dot
+  const lohnMatch = text.match(/Lohn\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
   const hourlyRate = lohnMatch ? parseSwissNumber(lohnMatch[1]) : 0;
   const hoursWorked = lohnMatch ? parseSwissNumber(lohnMatch[2]) : 0;
   const wageAmount = lohnMatch ? parseSwissNumber(lohnMatch[3]) : 0;
   
   // Extract Sonntagszulage
-  const sundayMatch = text.match(/Sonntagszulage\s+([\d',.]+)\s+([\d',.]+)\s+Std\.\s+([\d',.]+)/);
+  const sundayMatch = text.match(/Sonntagszulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
   const sundaySupplement = sundayMatch ? parseSwissNumber(sundayMatch[1]) : 0;
   const sundayHours = sundayMatch ? parseSwissNumber(sundayMatch[2]) : 0;
   const sundayAmount = sundayMatch ? parseSwissNumber(sundayMatch[3]) : 0;
   
   // Extract Bruttolohn
-  const grossMatch = text.match(/Bruttolohn\s+([\d',.]+)/);
+  const grossMatch = text.match(/Bruttolohn\s+([\d'\u2019.,]+)/);
   const grossSalary = grossMatch ? parseSwissNumber(grossMatch[1]) : 0;
   
   // Extract AHV deduction
-  const ahvDeductionMatch = text.match(/AHV-Beitrag\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const ahvDeductionMatch = text.match(/AHV-Beitrag\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const ahvBasis = ahvDeductionMatch ? parseSwissNumber(ahvDeductionMatch[1]) : 0;
   const ahvRate = ahvDeductionMatch ? parseSwissNumber(ahvDeductionMatch[2]) : 0;
   const ahvAmount = ahvDeductionMatch ? parseSwissNumber(ahvDeductionMatch[3]) : 0;
   
   // Extract ALV deduction
-  const alvDeductionMatch = text.match(/ALV-Beitrag\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const alvDeductionMatch = text.match(/ALV-Beitrag\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const alvBasis = alvDeductionMatch ? parseSwissNumber(alvDeductionMatch[1]) : 0;
   const alvRate = alvDeductionMatch ? parseSwissNumber(alvDeductionMatch[2]) : 0;
   const alvAmount = alvDeductionMatch ? parseSwissNumber(alvDeductionMatch[3]) : 0;
   
   // Extract UVG deduction
-  const uvgDeductionMatch = text.match(/UVG-NBUV?\s+Betrieb\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const uvgDeductionMatch = text.match(/UVG-NBUV?\s+Betrieb\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const uvgBasis = uvgDeductionMatch ? parseSwissNumber(uvgDeductionMatch[1]) : 0;
   const uvgRate = uvgDeductionMatch ? parseSwissNumber(uvgDeductionMatch[2]) : 0;
   const uvgAmount = uvgDeductionMatch ? parseSwissNumber(uvgDeductionMatch[3]) : 0;
   
   // Extract BVG deduction
-  const bvgDeductionMatch = text.match(/BVG\s+Stundenlohn\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const bvgDeductionMatch = text.match(/BVG\s+Stundenlohn\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const bvgBasis = bvgDeductionMatch ? parseSwissNumber(bvgDeductionMatch[1]) : 0;
   const bvgRate = bvgDeductionMatch ? parseSwissNumber(bvgDeductionMatch[2]) : 0;
   const bvgAmount = bvgDeductionMatch ? parseSwissNumber(bvgDeductionMatch[3]) : 0;
   
   // Extract KTG GAV deduction
-  const ktgGavMatch = text.match(/KTG\s+GAV\s+Personalverleih\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const ktgGavMatch = text.match(/KTG\s+GAV\s+Personalverleih\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const ktgGavBasis = ktgGavMatch ? parseSwissNumber(ktgGavMatch[1]) : 0;
   const ktgGavRate = ktgGavMatch ? parseSwissNumber(ktgGavMatch[2]) : 0;
   const ktgGavAmount = ktgGavMatch ? parseSwissNumber(ktgGavMatch[3]) : 0;
   
   // Extract Berufsbeitrag GAV deduction
-  const berufsbeitragMatch = text.match(/Berufsbeitrag\s+GAV\s+Personalverleih\s+([\d',.]+)\s+([\d',.]+)%\s+([\d',.]+)/);
+  const berufsbeitragMatch = text.match(/Berufsbeitrag\s+GAV\s+Personalverleih\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)%\s+([\d'\u2019.,]+)/);
   const berufsbeitragGavBasis = berufsbeitragMatch ? parseSwissNumber(berufsbeitragMatch[1]) : 0;
   const berufsbeitragGavRate = berufsbeitragMatch ? parseSwissNumber(berufsbeitragMatch[2]) : 0;
   const berufsbeitragGavAmount = berufsbeitragMatch ? parseSwissNumber(berufsbeitragMatch[3]) : 0;
   
   // Extract totals
-  const deductionsMatch = text.match(/Sozialabzüge\s+([\d',.]+)/);
+  const deductionsMatch = text.match(/Sozialabzüge\s+([\d'\u2019.,]+)/);
   const totalDeductions = deductionsMatch ? parseSwissNumber(deductionsMatch[1]) : 0;
   
-  const netMatch = text.match(/Nettolohn\s+([\d',.]+)/);
+  const netMatch = text.match(/Nettolohn\s+([\d'\u2019.,]+)/);
   const netSalary = netMatch ? parseSwissNumber(netMatch[1]) : 0;
   
-  const paymentMatch = text.match(/Auszahlungsbetrag\s+auf\s+Ihr\s+Konto\s+([\d',.]+)\s+CHF/);
+  const paymentMatch = text.match(/Auszahlungsbetrag\s+auf\s+Ihr\s+Konto\s+([\d'\u2019.,]+)\s+CHF/);
   const paymentAmount = paymentMatch ? parseSwissNumber(paymentMatch[1]) : 0;
   
   return {
