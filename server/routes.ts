@@ -2494,19 +2494,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Prepare payroll items (Lohn + Sonntagszulage)
       const payrollItems = [];
       
-      // Add base wage item
+      // Add base wage item (use code "02" for Stundenlohn)
       payrollItems.push({
-        type: "Stundenlohn",
+        type: "02",
         description: "Lohn",
         hours: pdfData.hoursWorked.toFixed(2),
         hourlyRate: pdfData.hourlyRate.toFixed(2),
         amount: pdfData.wageAmount.toFixed(2),
       });
       
-      // Add Sunday supplement if applicable
+      // Add Sunday supplement if applicable (use code "06" for Zulagen)
       if (pdfData.sundayAmount > 0) {
         payrollItems.push({
-          type: "Sonntagszulage",
+          type: "06",
           description: "Sonntagszulage",
           hours: pdfData.sundayHours.toFixed(2),
           hourlyRate: pdfData.sundaySupplement.toFixed(2),
