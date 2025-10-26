@@ -814,11 +814,11 @@ export class DatabaseStorage implements IStorage {
     const totalDeductions = allPayments.reduce((sum, p) => sum + parseFloat(p.totalDeductions), 0);
     const totalNet = allPayments.reduce((sum, p) => sum + parseFloat(p.netSalary), 0);
 
-    // Calculate basis amounts (sum of gross salaries, as simple approximation for now)
-    // In a more complex system, this would check which items are subject to each deduction
+    // Calculate basis amounts
+    // NBU basis only includes employees who are NBU-insured
     let ahvBasis = totalGross;
     let alvBasis = totalGross;
-    let nbuBasis = totalGross;
+    let nbuBasis = 0;
     let bvgBasis = totalGross;
 
     // Get employee summary
@@ -865,6 +865,11 @@ export class DatabaseStorage implements IStorage {
       empData.ahvWage += grossSalary;
       empData.alvWage += grossSalary;
       empData.bvgWage += grossSalary;
+
+      // NBU basis only includes NBU-insured employees
+      if (emp.isNbuInsured) {
+        nbuBasis += grossSalary;
+      }
     }
 
     // Calculate ALV1/ALV2 split and child allowances per employee
