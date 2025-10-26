@@ -1510,9 +1510,21 @@ export class DatabaseStorage implements IStorage {
         const amount = parseFloat(item.amount) || 0;
         if (amount <= 0) return sum;
         
-        const itemType = payrollItemTypesData.find(t => t.code === item.type);
+        // Try to find by code first, then by name (for QCS imports)
+        let itemType = payrollItemTypesData.find(t => t.code === item.type);
+        if (!itemType) {
+          itemType = payrollItemTypesData.find(t => t.name === item.type);
+        }
+        
         console.log(`[calculateDeductionsFromItems] item.type=${item.type}, amount=${amount}, itemType=${JSON.stringify(itemType)}, deductionFlag=${deductionFlag}, itemType[deductionFlag]=${itemType?.[deductionFlag]}`);
-        if (!itemType || !itemType[deductionFlag]) return sum;
+        
+        // If no itemType found, assume all deductions apply (for backwards compatibility with QCS imports)
+        if (!itemType) {
+          console.log(`[calculateDeductionsFromItems] No itemType found for ${item.type}, assuming all deductions apply`);
+          return sum + amount;
+        }
+        
+        if (!itemType[deductionFlag]) return sum;
         
         return sum + amount;
       }, 0);
