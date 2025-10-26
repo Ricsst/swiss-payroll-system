@@ -1125,7 +1125,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           formatDate(emp.birthDate),
           `${emp.firstName} ${emp.lastName}`,
           `${emp.employedFrom}-${emp.employedTo}`,
-          formatCurrency(parseFloat(emp.childAllowance)),
+          formatCurrencyNumber(parseFloat(emp.childAllowance)),
         ]);
         
         // Calculate total
@@ -1140,18 +1140,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
           "",
           "",
           "TOTAL",
-          formatCurrency(totalChildAllowance),
+          formatCurrencyNumber(totalChildAllowance),
         ]);
         
         pdf.addTable(
           ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "Kindergeld"],
-          childAllowanceRows
+          childAllowanceRows,
+          { compact: true }
         );
       }
 
       // Add wage summary by gender section
       if (report.wageSummary) {
-        const uvgMaxIncomeFormatted = formatCurrency(parseFloat(report.uvgMaxIncome));
+        const uvgMaxIncomeFormatted = formatCurrencyNumber(parseFloat(report.uvgMaxIncome));
         
         pdf.addSection("Lohnsummen-Zusammenstellung nach Geschlecht");
         pdf.addText("Hinweis", "Höchstlohn pro Person und Jahr CHF 300'000");
@@ -1159,33 +1160,33 @@ export async function registerRoutes(app: Express): Promise<Server> {
         const wageSummaryRows = [
           [
             "AHV-pflichtige Löhne gemäss Lohnbescheinigung",
-            formatCurrency(parseFloat(report.wageSummary.male.ahvSubject)),
-            formatCurrency(parseFloat(report.wageSummary.female.ahvSubject))
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.ahvSubject)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.ahvSubject))
           ],
           [
             "+ Nicht AHV-pflichtige Löhne",
-            report.wageSummary.male.nonAhvSubject !== "0.00" ? `+ ${formatCurrency(parseFloat(report.wageSummary.male.nonAhvSubject))}` : "-",
-            report.wageSummary.female.nonAhvSubject !== "0.00" ? `+ ${formatCurrency(parseFloat(report.wageSummary.female.nonAhvSubject))}` : "-"
+            report.wageSummary.male.nonAhvSubject !== "0.00" ? `+ ${formatCurrencyNumber(parseFloat(report.wageSummary.male.nonAhvSubject))}` : "-",
+            report.wageSummary.female.nonAhvSubject !== "0.00" ? `+ ${formatCurrencyNumber(parseFloat(report.wageSummary.female.nonAhvSubject))}` : "-"
           ],
           [
             "= Total massgebende Lohnsummen",
-            `= ${formatCurrency(parseFloat(report.wageSummary.male.totalRelevant))}`,
-            `= ${formatCurrency(parseFloat(report.wageSummary.female.totalRelevant))}`
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.totalRelevant))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.totalRelevant))}`
           ],
           [
             `Total Überschusslohnsumme (ab ${uvgMaxIncomeFormatted})`,
-            `= ${formatCurrency(parseFloat(report.wageSummary.male.excessWage))}`,
-            `= ${formatCurrency(parseFloat(report.wageSummary.female.excessWage))}`
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.excessWage))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.excessWage))}`
           ],
           [
             "- nicht UVG-prämienpflichtige Löhne",
-            report.wageSummary.male.nonUvgPremium !== "0.00" ? `- ${formatCurrency(parseFloat(report.wageSummary.male.nonUvgPremium))}` : "-",
-            report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatCurrency(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-"
+            report.wageSummary.male.nonUvgPremium !== "0.00" ? `- ${formatCurrencyNumber(parseFloat(report.wageSummary.male.nonUvgPremium))}` : "-",
+            report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatCurrencyNumber(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-"
           ],
           [
             `= Total UVG-Lohnsumme (bis ${uvgMaxIncomeFormatted})`,
-            `= ${formatCurrency(parseFloat(report.wageSummary.male.uvgWage))}`,
-            `= ${formatCurrency(parseFloat(report.wageSummary.female.uvgWage))}`
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgWage))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgWage))}`
           ],
           [
             "",
@@ -1194,19 +1195,20 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ],
           [
             "UVGO-Lohnsummen Personen 70+ (BU)",
-            formatCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_BU)),
-            formatCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_BU))
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgo70Plus_BU)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgo70Plus_BU))
           ],
           [
             "UVGO-Lohnsummen Personen 70+ (NBU)",
-            formatCurrency(parseFloat(report.wageSummary.male.uvgo70Plus_NBU)),
-            formatCurrency(parseFloat(report.wageSummary.female.uvgo70Plus_NBU))
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgo70Plus_NBU)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgo70Plus_NBU))
           ]
         ];
         
         pdf.addTable(
           ["Kategorie", "Lohn Männer", "Lohn Frauen"],
-          wageSummaryRows
+          wageSummaryRows,
+          { compact: true }
         );
       }
 
