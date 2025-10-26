@@ -419,7 +419,6 @@ export default function YearlyReport() {
                       <TableHead>Name Vorname</TableHead>
                       <TableHead className="text-center">Beschäftigt</TableHead>
                       <TableHead className="text-right">AHV Lohn</TableHead>
-                      <TableHead className="text-right">ALV Lohn</TableHead>
                       <TableHead className="text-right">ALV1 Lohn</TableHead>
                       <TableHead className="text-right">ALV2 Lohn</TableHead>
                     </TableRow>
@@ -439,12 +438,6 @@ export default function YearlyReport() {
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           CHF {Number(emp.ahvWage).toLocaleString("de-CH", {
-                            minimumFractionDigits: 2,
-                            maximumFractionDigits: 2,
-                          })}
-                        </TableCell>
-                        <TableCell className="text-right font-mono">
-                          CHF {Number(emp.alvWage).toLocaleString("de-CH", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}
