@@ -27,6 +27,7 @@ interface EmployeePayrollOverview {
     ahvNumber: string;
     entryDate: string | null;
     exitDate: string | null;
+    isNbuInsured: boolean;
   };
   year: number;
   payrollItems: Array<{
@@ -44,6 +45,22 @@ interface EmployeePayrollOverview {
   deductionMonthlyTotals: Record<number, string>;
   totalGross: string;
   totalDeductions: string;
+  // Basis amounts and special wages
+  ahvBasis: Record<number, string>;
+  alv1Basis: Record<number, string>;
+  alv2Basis: Record<number, string>;
+  alv1Wage: Record<number, string>;
+  alv2Wage: Record<number, string>;
+  nbuBasis: Record<number, string>;
+  bvg: Record<number, string>;
+  // Totals
+  totalAhvBasis: string;
+  totalAlv1Basis: string;
+  totalAlv2Basis: string;
+  totalAlv1Wage: string;
+  totalAlv2Wage: string;
+  totalNbuBasis: string;
+  totalBvg: string;
 }
 
 export default function EmployeePayrollOverview() {
@@ -264,6 +281,103 @@ export default function EmployeePayrollOverview() {
                     })}
                     <TableCell className="text-right text-xs font-mono" data-testid="net-total">
                       {(parseFloat(overview.totalGross) - parseFloat(overview.totalDeductions)).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* Spacer Row */}
+                  <TableRow>
+                    <TableCell colSpan={15} className="h-4 bg-muted/20"></TableCell>
+                  </TableRow>
+
+                  {/* Basis Amounts Section Header */}
+                  <TableRow className="bg-muted/50">
+                    <TableCell colSpan={2} className="text-xs font-bold">BASISBETRÄGE</TableCell>
+                    <TableCell colSpan={14}></TableCell>
+                  </TableRow>
+
+                  {/* AHV Basis Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">AHV Basis</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.ahvBasis[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalAhvBasis).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* ALV1 Basis Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">ALV1 Basis (bis CHF 148'200)</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.alv1Basis[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalAlv1Basis).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* ALV2 Basis Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">ALV2 Basis (über CHF 148'200)</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.alv2Basis[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalAlv2Basis).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* ALV2 Lohn Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">ALV2 Lohn (über CHF 148'200)</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.alv2Wage[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalAlv2Wage).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* NBU Basis Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">
+                      NBU Basis {!overview.employee.isNbuInsured && "(nicht NBU-pflichtig)"}
+                    </TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.nbuBasis[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalNbuBasis).toFixed(2)}
+                    </TableCell>
+                  </TableRow>
+
+                  {/* BVG Row */}
+                  <TableRow>
+                    <TableCell className="text-xs font-mono"></TableCell>
+                    <TableCell className="text-xs font-medium">BVG</TableCell>
+                    {[1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13].map((month) => (
+                      <TableCell key={month} className="text-right text-xs font-mono">
+                        {parseFloat(overview.bvg[month] || "0").toFixed(2)}
+                      </TableCell>
+                    ))}
+                    <TableCell className="text-right text-xs font-mono font-semibold">
+                      {parseFloat(overview.totalBvg).toFixed(2)}
                     </TableCell>
                   </TableRow>
                 </TableBody>

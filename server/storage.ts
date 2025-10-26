@@ -1276,6 +1276,74 @@ export class DatabaseStorage implements IStorage {
       }, 0);
     }
 
+    // Calculate basis amounts and special wages (ALV1, ALV2, NBU, BVG)
+    const company = await this.getCompany();
+    const alvMaxIncome = company ? parseFloat(company.alvMaxIncomePerYear) : 148200;
+    const nbuMaxIncome = company ? parseFloat(company.suvaMaxIncomePerYear) : 148200;
+
+    // Initialize monthly basis amounts
+    const ahvBasisMonthly: Record<number, number> = {};
+    const alv1BasisMonthly: Record<number, number> = {};
+    const alv2BasisMonthly: Record<number, number> = {};
+    const alv1WageMonthly: Record<number, number> = {};
+    const alv2WageMonthly: Record<number, number> = {};
+    const nbuBasisMonthly: Record<number, number> = {};
+    const bvgMonthly: Record<number, number> = {};
+
+    // Track cumulative values for ALV/NBU limits
+    let cumulativeAlvWage = 0;
+    let cumulativeNbuWage = 0;
+
+    // Process deductions month by month (1-13)
+    for (let m = 1; m <= 13; m++) {
+      // Get all deductions for this month
+      const monthDeductions = allDeductions.filter(d => {
+        const payment = payments.find(p => p.id === d.payrollPaymentId);
+        return payment && payment.paymentMonth === m;
+      });
+
+      // AHV Basis
+      const ahvDeduction = monthDeductions.find(d => d.type === 'AHV');
+      const ahvBasis = ahvDeduction?.baseAmount ? parseFloat(ahvDeduction.baseAmount) : 0;
+      ahvBasisMonthly[m] = ahvBasis;
+
+      // ALV - split into ALV1 (up to limit) and ALV2 (above limit)
+      const alvDeduction = monthDeductions.find(d => d.type === 'ALV' || d.type === 'ALV2');
+      const alvBasis = alvDeduction?.baseAmount ? parseFloat(alvDeduction.baseAmount) : 0;
+      
+      // Calculate ALV1 and ALV2 based on cumulative
+      const remainingAlv1Capacity = Math.max(0, alvMaxIncome - cumulativeAlvWage);
+      const alv1Amount = Math.min(alvBasis, remainingAlv1Capacity);
+      const alv2Amount = Math.max(0, alvBasis - alv1Amount);
+
+      alv1BasisMonthly[m] = alv1Amount;
+      alv2BasisMonthly[m] = alv2Amount;
+      alv1WageMonthly[m] = alv1Amount;
+      alv2WageMonthly[m] = alv2Amount;
+
+      cumulativeAlvWage += alvBasis;
+
+      // NBU Basis - only if employee is NBU insured
+      if (employee.isNbuInsured) {
+        const nbuDeduction = monthDeductions.find(d => d.type === 'NBU');
+        const nbuBasis = nbuDeduction?.baseAmount ? parseFloat(nbuDeduction.baseAmount) : 0;
+        
+        // NBU also has a limit
+        const remainingNbuCapacity = Math.max(0, nbuMaxIncome - cumulativeNbuWage);
+        const nbuAmount = Math.min(nbuBasis, remainingNbuCapacity);
+        
+        nbuBasisMonthly[m] = nbuAmount;
+        cumulativeNbuWage += nbuBasis;
+      } else {
+        nbuBasisMonthly[m] = 0;
+      }
+
+      // BVG
+      const bvgDeduction = monthDeductions.find(d => d.type === 'BVG');
+      const bvgAmount = bvgDeduction ? parseFloat(bvgDeduction.amount) : 0;
+      bvgMonthly[m] = bvgAmount;
+    }
+
     return {
       employee: {
         id: employee.id,
@@ -1284,6 +1352,7 @@ export class DatabaseStorage implements IStorage {
         ahvNumber: employee.ahvNumber,
         entryDate: employee.entryDate,
         exitDate: employee.exitDate,
+        isNbuInsured: employee.isNbuInsured,
       },
       year,
       payrollItems: payrollItemsBreakdown,
@@ -1296,6 +1365,36 @@ export class DatabaseStorage implements IStorage {
       ),
       totalGross: Object.values(grossMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
       totalDeductions: Object.values(deductionMonthlyTotals).reduce((a, b) => a + b, 0).toFixed(2),
+      // Basis amounts and special wages
+      ahvBasis: Object.fromEntries(
+        Object.entries(ahvBasisMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      alv1Basis: Object.fromEntries(
+        Object.entries(alv1BasisMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      alv2Basis: Object.fromEntries(
+        Object.entries(alv2BasisMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      alv1Wage: Object.fromEntries(
+        Object.entries(alv1WageMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      alv2Wage: Object.fromEntries(
+        Object.entries(alv2WageMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      nbuBasis: Object.fromEntries(
+        Object.entries(nbuBasisMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      bvg: Object.fromEntries(
+        Object.entries(bvgMonthly).map(([m, v]) => [m, v.toFixed(2)])
+      ),
+      // Totals
+      totalAhvBasis: Object.values(ahvBasisMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalAlv1Basis: Object.values(alv1BasisMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalAlv2Basis: Object.values(alv2BasisMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalAlv1Wage: Object.values(alv1WageMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalAlv2Wage: Object.values(alv2WageMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalNbuBasis: Object.values(nbuBasisMonthly).reduce((a, b) => a + b, 0).toFixed(2),
+      totalBvg: Object.values(bvgMonthly).reduce((a, b) => a + b, 0).toFixed(2),
     };
   }
 
