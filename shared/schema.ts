@@ -89,6 +89,8 @@ export const employees = pgTable("employees", {
   bvgDeductionPercentage: numeric("bvg_deduction_percentage", { precision: 5, scale: 2 }), // BVG-Abzug in % (either this OR amount)
   childAllowanceAmount: numeric("child_allowance_amount", { precision: 10, scale: 2 }), // Kinderzulagen in CHF
   childAllowanceNote: text("child_allowance_note"), // Bemerkung für Kinderzulagen
+  ktgGavPercentage: numeric("ktg_gav_percentage", { precision: 5, scale: 4 }), // KTG GAV Personalverleih in % (e.g., 1.5150)
+  berufsbeitragGavPercentage: numeric("berufsbeitrag_gav_percentage", { precision: 5, scale: 4 }), // Berufsbeitrag GAV Personalverleih in % (e.g., 0.4000)
   
   // Expenses for Lohnausweis (Ziffer 13.2.3 - Übrige Pauschalspesen)
   annualFlatExpenses: numeric("annual_flat_expenses", { precision: 10, scale: 2 }), // Jährliche Pauschalspesen in CHF
