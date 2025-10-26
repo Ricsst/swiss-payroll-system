@@ -1429,8 +1429,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           ahvNumber: employee.ahvNumber,
           birthDate: formatDate(employee.birthDate),
           year: year.toString(),
-          employmentFrom: formatDate(employee.entryDate),
-          employmentTo: employee.exitDate ? formatDate(employee.exitDate) : formatDate(new Date(year, 11, 31)),
+          employmentFrom: `1.1.${year}`,
+          employmentTo: `31.12.${year}`,
           employeeName: `${employee.firstName} ${employee.lastName}`,
           employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
           
@@ -1453,18 +1453,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
           netSalary: totalNet,
           taxWithheld: totalTax,
           
-          // Expenses (not currently tracked)
+          // Expenses
           travelExpenses: 0,
           otherActualExpenses: 0,
           representationExpenses: 0,
           carExpenses: 0,
-          otherFlatExpenses: 0,
+          otherFlatExpenses: employee.annualFlatExpenses ? Number(employee.annualFlatExpenses) : 0,
           trainingContributions: 0,
           
           // Employer information
           employerName: company.name,
           employerAddress: formatAddressMultiline(company.street, company.postalCode, company.city),
-          employerPhone: '', // Phone not tracked in current schema
+          employerPhone: '',
           issueDate: formatDate(new Date()),
         };
 
@@ -1547,8 +1547,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         ahvNumber: employee.ahvNumber,
         birthDate: formatDate(employee.birthDate),
         year: year.toString(),
-        employmentFrom: formatDate(new Date(year, 0, 1)), // 1.1.YYYY
-        employmentTo: formatDate(new Date(year, 11, 31)), // 31.12.YYYY
+        employmentFrom: `1.1.${year}`,
+        employmentTo: `31.12.${year}`,
         employeeName: `${employee.firstName} ${employee.lastName}`,
         employeeAddress: formatAddressMultiline(employee.street, employee.postalCode, employee.city),
         
