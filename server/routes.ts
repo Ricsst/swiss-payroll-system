@@ -1225,6 +1225,302 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // 1. Yearly Report - Rekapitulation
+  app.get("/api/pdf/yearly-recap", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const report = await storage.getYearlyReport(year);
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const pdf = new PDFGenerator();
+      const companyAddress = formatAddressMultiline(company.street, company.postalCode, company.city);
+      pdf.addCompanyHeader(company.name, companyAddress, company.ahvAccountingNumber, "Rekapitulation Jahresabrechnung", year);
+
+      // Add totals section
+      pdf.addSection("Jahresgesamtsummen");
+      pdf.addPayrollLine("Anzahl Auszahlungen", report.totals.paymentsCount.toString(), false, false);
+      pdf.addPayrollLine("Gesamtbruttolohn", formatCurrency(parseFloat(report.totals.grossSalary)), false, false);
+      pdf.addPayrollLine("Gesamt Abzüge", formatCurrency(parseFloat(report.totals.deductions)), false, false);
+      pdf.addSeparatorLine();
+      pdf.addPayrollLine("Gesamtnettolohn", formatCurrency(parseFloat(report.totals.netSalary)), true, false);
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_Rekapitulation_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 2. Yearly Report - Monthly Overview
+  app.get("/api/pdf/yearly-months", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const report = await storage.getYearlyReport(year);
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const pdf = new PDFGenerator();
+      const companyAddress = formatAddressMultiline(company.street, company.postalCode, company.city);
+      pdf.addCompanyHeader(company.name, companyAddress, company.ahvAccountingNumber, "Monatsübersicht", year);
+
+      // Add monthly breakdown table
+      if (report.months && report.months.length > 0) {
+        const monthsWithPayments = report.months.filter((m: any) => m.paymentsCount > 0);
+        
+        const monthRows = monthsWithPayments.map((m: any) => [
+          m.monthName,
+          m.paymentsCount.toString(),
+          formatCurrency(parseFloat(m.grossSalary)),
+          formatCurrency(parseFloat(m.deductions)),
+          formatCurrency(parseFloat(m.netSalary)),
+        ]);
+        
+        pdf.addTable(
+          ["Monat", "Anzahl", "Bruttolohn", "Abzüge", "Nettolohn"],
+          monthRows
+        );
+      }
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_Monatsuebersicht_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 3. Yearly Report - Employee Overview (A4 Landscape)
+  app.get("/api/pdf/yearly-employees", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const report = await storage.getYearlyReport(year);
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const pdf = new PDFGenerator('landscape');
+      const companyAddress = formatAddressMultiline(company.street, company.postalCode, company.city);
+      pdf.addCompanyHeader(company.name, companyAddress, company.ahvAccountingNumber, "Mitarbeiterübersicht", year);
+
+      // Add employee summary section
+      if (report.employeeSummary && report.employeeSummary.length > 0) {
+        const employeeRows = report.employeeSummary.map((emp: any) => [
+          emp.ahvNumber,
+          formatDate(emp.birthDate),
+          `${emp.firstName} ${emp.lastName}`,
+          `${emp.employedFrom}-${emp.employedTo}`,
+          formatCurrencyNumber(parseFloat(emp.ahvWage)),
+          formatCurrencyNumber(parseFloat(emp.alvWage)),
+          formatCurrencyNumber(parseFloat(emp.alv1Wage)),
+          formatCurrencyNumber(parseFloat(emp.alv2Wage)),
+          formatCurrencyNumber(parseFloat(emp.nbuWage)),
+          formatCurrencyNumber(parseFloat(emp.childAllowance)),
+        ]);
+        
+        pdf.addTable(
+          ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "AHV-Lohn", "ALV-Lohn", "ALV1-Lohn", "ALV2-Lohn", "NBU-Lohn", "Kinder"],
+          employeeRows,
+          { compact: true }
+        );
+      }
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_Mitarbeiterliste_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 4. Yearly Report - Child Allowances
+  app.get("/api/pdf/yearly-childallowances", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const report = await storage.getYearlyReport(year);
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const pdf = new PDFGenerator();
+      const companyAddress = formatAddressMultiline(company.street, company.postalCode, company.city);
+      pdf.addCompanyHeader(company.name, companyAddress, company.ahvAccountingNumber, "Kinderzulagen", year);
+
+      // Add child allowance summary section
+      if (report.childAllowanceEmployees && report.childAllowanceEmployees.length > 0) {
+        const childAllowanceRows = report.childAllowanceEmployees.map((emp: any) => [
+          emp.ahvNumber,
+          formatDate(emp.birthDate),
+          `${emp.firstName} ${emp.lastName}`,
+          `${emp.employedFrom}-${emp.employedTo}`,
+          formatCurrencyNumber(parseFloat(emp.childAllowance)),
+        ]);
+        
+        // Calculate total
+        const totalChildAllowance = report.childAllowanceEmployees.reduce(
+          (sum: number, emp: any) => sum + parseFloat(emp.childAllowance),
+          0
+        );
+        
+        // Add total row
+        childAllowanceRows.push([
+          "",
+          "",
+          "",
+          "TOTAL",
+          formatCurrencyNumber(totalChildAllowance),
+        ]);
+        
+        pdf.addTable(
+          ["AHV-Nr.", "Geb.datum", "Name", "Zeitraum", "Kindergeld"],
+          childAllowanceRows,
+          { compact: true }
+        );
+      }
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_Kinderzulagen_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // 5. Yearly Report - Wage Summary by Gender
+  app.get("/api/pdf/yearly-wage-summary", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      if (!year) {
+        return res.status(400).json({ error: "Invalid year" });
+      }
+
+      const report = await storage.getYearlyReport(year);
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      const pdf = new PDFGenerator();
+      const companyAddress = formatAddressMultiline(company.street, company.postalCode, company.city);
+      pdf.addCompanyHeader(company.name, companyAddress, company.ahvAccountingNumber, "Lohnsummen nach Geschlecht", year);
+
+      // Add wage summary by gender section
+      if (report.wageSummary) {
+        const uvgMaxIncomeFormatted = formatCurrencyNumber(parseFloat(report.uvgMaxIncome));
+        
+        pdf.addText("Hinweis", "Höchstlohn pro Person und Jahr CHF 300'000");
+        
+        const wageSummaryRows = [
+          [
+            "AHV-pflichtige Löhne gemäss Lohnbescheinigung",
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.ahvSubject)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.ahvSubject))
+          ],
+          [
+            "+ Nicht AHV-pflichtige Löhne",
+            report.wageSummary.male.nonAhvSubject !== "0.00" ? `+ ${formatCurrencyNumber(parseFloat(report.wageSummary.male.nonAhvSubject))}` : "-",
+            report.wageSummary.female.nonAhvSubject !== "0.00" ? `+ ${formatCurrencyNumber(parseFloat(report.wageSummary.female.nonAhvSubject))}` : "-"
+          ],
+          [
+            "= Total massgebende Lohnsummen",
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.totalRelevant))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.totalRelevant))}`
+          ],
+          [
+            `Total Überschusslohnsumme (ab ${uvgMaxIncomeFormatted})`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.excessWage))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.excessWage))}`
+          ],
+          [
+            "- nicht UVG-prämienpflichtige Löhne",
+            report.wageSummary.male.nonUvgPremium !== "0.00" ? `- ${formatCurrencyNumber(parseFloat(report.wageSummary.male.nonUvgPremium))}` : "-",
+            report.wageSummary.female.nonUvgPremium !== "0.00" ? `- ${formatCurrencyNumber(parseFloat(report.wageSummary.female.nonUvgPremium))}` : "-"
+          ],
+          [
+            `= Total UVG-Lohnsumme (bis ${uvgMaxIncomeFormatted})`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgWage))}`,
+            `= ${formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgWage))}`
+          ],
+          [
+            "",
+            "",
+            ""
+          ],
+          [
+            "UVGO-Lohnsummen Personen 70+ (BU)",
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgo70Plus_BU)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgo70Plus_BU))
+          ],
+          [
+            "UVGO-Lohnsummen Personen 70+ (NBU)",
+            formatCurrencyNumber(parseFloat(report.wageSummary.male.uvgo70Plus_NBU)),
+            formatCurrencyNumber(parseFloat(report.wageSummary.female.uvgo70Plus_NBU))
+          ]
+        ];
+        
+        pdf.addTable(
+          ["Kategorie", "Lohn Männer", "Lohn Frauen"],
+          wageSummaryRows,
+          { compact: true }
+        );
+      }
+
+      pdf.addFooter(`Erstellt am ${formatDate(new Date())} - ${company.name}`);
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Jahresabrechnung_Lohnsummen_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // DEBUG: Inspect PDF form fields
   app.get("/api/pdf/inspect-form-fields", async (req, res) => {
     try {
