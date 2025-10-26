@@ -8,6 +8,8 @@ import { ExcelGenerator, formatExcelCurrency, formatExcelDate } from "./utils/ex
 import { fillLohnausweisForm, inspectFormFields, type LohnausweisData } from "./utils/fill-lohnausweis-form";
 import { sendPayslipEmail } from "./services/email";
 import { sendPayslipEmailViaOutlook, sendLohnausweisEmailViaOutlook } from "./services/email-outlook";
+import multer from "multer";
+import { parseQCSPayrollPDF, getMonthNumber, type QCSPayrollData } from "./services/qcs-pdf-parser";
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -2286,6 +2288,243 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.setHeader("Content-Disposition", `attachment; filename=${filename}`);
       res.send(buffer);
     } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ============================================================================
+  // QCS PDF IMPORT
+  // ============================================================================
+  
+  // Configure multer for file upload
+  const upload = multer({
+    storage: multer.memoryStorage(),
+    limits: {
+      fileSize: 10 * 1024 * 1024, // 10MB limit
+    },
+    fileFilter: (_req, file, cb) => {
+      if (file.mimetype === 'application/pdf') {
+        cb(null, true);
+      } else {
+        cb(new Error('Only PDF files are allowed'));
+      }
+    },
+  });
+
+  app.post("/api/qcs/import-payroll", upload.single('pdf'), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No PDF file uploaded" });
+      }
+
+      // Parse PDF
+      const pdfData = await parseQCSPayrollPDF(req.file.buffer);
+      
+      // Get company
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found. Please configure company settings first." });
+      }
+
+      // Find employee by AHV number
+      let employee = await storage.getEmployeeByAhvNumber(pdfData.ahvNumber);
+      
+      const validation: {
+        employeeExists: boolean;
+        employeeCreated: boolean;
+        employeeUpdated: boolean;
+        nameMatches: boolean;
+        bvgMatches: boolean;
+        employeeId: string | null;
+        changes: string[];
+      } = {
+        employeeExists: !!employee,
+        employeeCreated: false,
+        employeeUpdated: false,
+        nameMatches: false,
+        bvgMatches: false,
+        employeeId: employee?.id || null,
+        changes: [],
+      };
+
+      if (employee) {
+        // Employee exists - check name and BVG rate
+        const nameMatches = 
+          employee.firstName.toLowerCase() === pdfData.firstName.toLowerCase() &&
+          employee.lastName.toLowerCase() === pdfData.lastName.toLowerCase();
+        
+        validation.nameMatches = nameMatches;
+        
+        // Check if BVG percentage matches (tolerance of 0.01%)
+        const bvgMatches = employee.bvgDeductionPercentage
+          ? Math.abs(parseFloat(employee.bvgDeductionPercentage) - pdfData.bvgRate) < 0.01
+          : false;
+        
+        validation.bvgMatches = bvgMatches;
+        
+        // Update employee if needed
+        const updates: any = {};
+        
+        if (!nameMatches) {
+          updates.firstName = pdfData.firstName;
+          updates.lastName = pdfData.lastName;
+          validation.changes.push(`Name geändert von "${employee.firstName} ${employee.lastName}" zu "${pdfData.firstName} ${pdfData.lastName}"`);
+        }
+        
+        if (!bvgMatches) {
+          updates.bvgDeductionPercentage = pdfData.bvgRate.toFixed(4);
+          validation.changes.push(`BVG-Prozentsatz geändert von ${employee.bvgDeductionPercentage}% zu ${pdfData.bvgRate}%`);
+        }
+        
+        // Update KTG and Berufsbeitrag if they differ
+        const ktgMatches = employee.ktgGavPercentage
+          ? Math.abs(parseFloat(employee.ktgGavPercentage) - pdfData.ktgGavRate) < 0.01
+          : false;
+        
+        if (!ktgMatches) {
+          updates.ktgGavPercentage = pdfData.ktgGavRate.toFixed(4);
+          validation.changes.push(`KTG GAV Prozentsatz geändert zu ${pdfData.ktgGavRate}%`);
+        }
+        
+        const berufsbeitragMatches = employee.berufsbeitragGavPercentage
+          ? Math.abs(parseFloat(employee.berufsbeitragGavPercentage) - pdfData.berufsbeitragGavRate) < 0.01
+          : false;
+        
+        if (!berufsbeitragMatches) {
+          updates.berufsbeitragGavPercentage = pdfData.berufsbeitragGavRate.toFixed(4);
+          validation.changes.push(`Berufsbeitrag GAV Prozentsatz geändert zu ${pdfData.berufsbeitragGavRate}%`);
+        }
+        
+        if (Object.keys(updates).length > 0) {
+          employee = await storage.updateEmployee(employee.id, updates);
+          validation.employeeUpdated = true;
+        }
+      } else {
+        // Create new employee
+        const monthNum = getMonthNumber(pdfData.month);
+        const entryDate = new Date(pdfData.year, monthNum - 1, 1);
+        
+        const newEmployeeData = {
+          companyId: company.id,
+          firstName: pdfData.firstName,
+          lastName: pdfData.lastName,
+          gender: "Mann", // Default - can be updated later
+          birthDate: "1990-01-01", // Default - should be updated later
+          street: pdfData.address.street,
+          postalCode: pdfData.address.postalCode,
+          city: pdfData.address.city,
+          email: `${pdfData.firstName.toLowerCase()}.${pdfData.lastName.toLowerCase()}@example.com`, // Placeholder
+          entryDate: entryDate.toISOString().split('T')[0],
+          ahvNumber: pdfData.ahvNumber,
+          hasAccidentInsurance: true,
+          hasAhv: true,
+          hasAlv: true,
+          isNbuInsured: true,
+          isRentner: false,
+          bankName: "Bank (bitte aktualisieren)",
+          bankIban: "CH00 0000 0000 0000 0000 0",
+          hourlyRate: pdfData.hourlyRate.toFixed(2),
+          bvgDeductionPercentage: pdfData.bvgRate.toFixed(4),
+          ktgGavPercentage: pdfData.ktgGavRate.toFixed(4),
+          berufsbeitragGavPercentage: pdfData.berufsbeitragGavRate.toFixed(4),
+          isActive: true,
+        };
+        
+        employee = await storage.createEmployee(newEmployeeData);
+        validation.employeeCreated = true;
+        validation.employeeId = employee.id;
+        validation.nameMatches = true;
+        validation.bvgMatches = true;
+        validation.changes.push("Neuer Mitarbeiter erstellt");
+      }
+
+      // Create payroll payment
+      const monthNum = getMonthNumber(pdfData.month);
+      const periodStart = new Date(pdfData.year, monthNum - 1, 1);
+      const periodEnd = new Date(pdfData.year, monthNum, 0);
+      
+      const payrollData = {
+        employeeId: employee!.id,
+        period: periodStart.toISOString().split('T')[0],
+        periodStart: periodStart.toISOString().split('T')[0],
+        periodEnd: periodEnd.toISOString().split('T')[0],
+        isLocked: false,
+      };
+      
+      // Get payroll item types
+      const itemTypes = await storage.getPayrollItemTypes();
+      const lohnType = itemTypes.find(t => t.name.toLowerCase().includes('stundenlohn') || t.name.toLowerCase() === 'lohn');
+      const zuschlagType = itemTypes.find(t => t.name.toLowerCase().includes('zuschlag') || t.name.toLowerCase().includes('zulage'));
+      
+      // Prepare payroll items (Lohn + Sonntagszulage)
+      const payrollItems = [];
+      
+      if (lohnType) {
+        payrollItems.push({
+          payrollItemTypeId: lohnType.id,
+          quantity: pdfData.hoursWorked.toFixed(2),
+          rate: pdfData.hourlyRate.toFixed(2),
+          amount: pdfData.wageAmount.toFixed(2),
+        });
+      }
+      
+      if (zuschlagType && pdfData.sundayAmount > 0) {
+        payrollItems.push({
+          payrollItemTypeId: zuschlagType.id,
+          quantity: pdfData.sundayHours.toFixed(2),
+          rate: pdfData.sundaySupplement.toFixed(2),
+          amount: pdfData.sundayAmount.toFixed(2),
+        });
+      }
+      
+      // Preview deductions to get the correct deduction list
+      const deductionsList = await storage.previewDeductions(
+        employee!.id,
+        monthNum,
+        pdfData.year,
+        payrollItems
+      );
+      
+      // Create payroll payment with items and deductions
+      const payrollPayment = await storage.createPayrollPayment(payrollData, payrollItems, deductionsList);
+      
+      // Get the full payroll payment with all calculations
+      const fullPayrollPayment = await storage.getPayrollPayment(payrollPayment.id);
+      
+      // Validate payment amount (tolerance of 0.05 CHF for rounding)
+      const calculatedAmount = fullPayrollPayment?.totalNetSalary ? parseFloat(fullPayrollPayment.totalNetSalary) : 0;
+      const pdfAmount = pdfData.paymentAmount;
+      const amountDifference = Math.abs(calculatedAmount - pdfAmount);
+      const amountMatches = amountDifference <= 0.05;
+      
+      res.json({
+        success: true,
+        validation: {
+          ...validation,
+          paymentValidation: {
+            pdfAmount: pdfAmount.toFixed(2),
+            calculatedAmount: calculatedAmount.toFixed(2),
+            difference: amountDifference.toFixed(2),
+            matches: amountMatches,
+          },
+        },
+        data: {
+          employee: {
+            id: employee!.id,
+            name: `${employee!.firstName} ${employee!.lastName}`,
+            ahvNumber: employee!.ahvNumber,
+          },
+          payrollPayment: {
+            id: payrollPayment.id,
+            period: pdfData.month + ' ' + pdfData.year,
+            grossSalary: pdfData.grossSalary.toFixed(2),
+            netSalary: calculatedAmount.toFixed(2),
+          },
+        },
+        pdfData,
+      });
+    } catch (error: any) {
+      console.error('QCS PDF Import Error:', error);
       res.status(500).json({ error: error.message });
     }
   });

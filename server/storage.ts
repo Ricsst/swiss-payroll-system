@@ -33,6 +33,7 @@ export interface IStorage {
   // Employees
   getEmployees(): Promise<Employee[]>;
   getEmployee(id: string): Promise<Employee | undefined>;
+  getEmployeeByAhvNumber(ahvNumber: string): Promise<Employee | undefined>;
   createEmployee(employee: InsertEmployee): Promise<Employee>;
   updateEmployee(id: string, employee: Partial<InsertEmployee>): Promise<Employee>;
   deleteEmployee(id: string): Promise<void>;
@@ -123,6 +124,14 @@ export class DatabaseStorage implements IStorage {
       .select()
       .from(employees)
       .where(eq(employees.id, id));
+    return employee || undefined;
+  }
+
+  async getEmployeeByAhvNumber(ahvNumber: string): Promise<Employee | undefined> {
+    const [employee] = await db
+      .select()
+      .from(employees)
+      .where(eq(employees.ahvNumber, ahvNumber));
     return employee || undefined;
   }
 
