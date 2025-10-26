@@ -76,6 +76,18 @@ interface YearlyReportData {
     employedTo: number;
     ahvWage: string;
     alvWage: string;
+    alv1Wage: string;
+    alv2Wage: string;
+    childAllowance: string;
+  }>;
+  childAllowanceEmployees: Array<{
+    ahvNumber: string;
+    birthDate: string;
+    firstName: string;
+    lastName: string;
+    employedFrom: number;
+    employedTo: number;
+    childAllowance: string;
   }>;
   uvgMaxIncome: string;
   wageSummary: {
@@ -408,6 +420,8 @@ export default function YearlyReport() {
                       <TableHead className="text-center">Beschäftigt</TableHead>
                       <TableHead className="text-right">AHV Lohn</TableHead>
                       <TableHead className="text-right">ALV Lohn</TableHead>
+                      <TableHead className="text-right">ALV1 Lohn</TableHead>
+                      <TableHead className="text-right">ALV2 Lohn</TableHead>
                     </TableRow>
                   </TableHeader>
                   <TableBody>
@@ -431,6 +445,62 @@ export default function YearlyReport() {
                         </TableCell>
                         <TableCell className="text-right font-mono">
                           CHF {Number(emp.alvWage).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          CHF {Number(emp.alv1Wage).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          CHF {Number(emp.alv2Wage).toLocaleString("de-CH", {
+                            minimumFractionDigits: 2,
+                            maximumFractionDigits: 2,
+                          })}
+                        </TableCell>
+                      </TableRow>
+                    ))}
+                  </TableBody>
+                </Table>
+              </CardContent>
+            </Card>
+          )}
+
+          {/* Kinderzulagen-Tabelle */}
+          {report.childAllowanceEmployees && report.childAllowanceEmployees.length > 0 && (
+            <Card>
+              <CardHeader>
+                <CardTitle>Personen mit Kindergeld</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Table>
+                  <TableHeader>
+                    <TableRow>
+                      <TableHead>Versicherten-Nr.</TableHead>
+                      <TableHead>Geburtstag</TableHead>
+                      <TableHead>Name</TableHead>
+                      <TableHead className="text-center">Beschäftigungszeit von bis</TableHead>
+                      <TableHead className="text-right">Kindergeld</TableHead>
+                    </TableRow>
+                  </TableHeader>
+                  <TableBody>
+                    {report.childAllowanceEmployees.map((emp, idx) => (
+                      <TableRow key={idx}>
+                        <TableCell className="font-mono text-sm">{emp.ahvNumber}</TableCell>
+                        <TableCell>
+                          {new Date(emp.birthDate).toLocaleDateString("de-CH")}
+                        </TableCell>
+                        <TableCell className="font-medium">
+                          {emp.lastName} {emp.firstName}
+                        </TableCell>
+                        <TableCell className="text-center">
+                          {emp.employedFrom.toString().padStart(2, '0')}/{selectedYear} - {emp.employedTo.toString().padStart(2, '0')}/{selectedYear}
+                        </TableCell>
+                        <TableCell className="text-right font-mono">
+                          CHF {Number(emp.childAllowance).toLocaleString("de-CH", {
                             minimumFractionDigits: 2,
                             maximumFractionDigits: 2,
                           })}

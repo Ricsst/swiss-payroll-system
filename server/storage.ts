@@ -841,6 +841,9 @@ export class DatabaseStorage implements IStorage {
           employedTo: null,
           ahvWage: 0,
           alvWage: 0,
+          alv1Wage: 0,
+          alv2Wage: 0,
+          childAllowance: 0,
         });
       }
 
@@ -862,16 +865,48 @@ export class DatabaseStorage implements IStorage {
       empData.alvWage += grossSalary;
     }
 
-    // Convert to array and apply ALV limit
+    // Calculate ALV1/ALV2 split and child allowances per employee
+    for (const [empId, empData] of Array.from(employeeMap.entries())) {
+      // ALV split based on annual limit
+      const alv1Amount = Math.min(empData.alvWage, alvMaxIncome);
+      const alv2Amount = Math.max(0, empData.alvWage - alvMaxIncome);
+      empData.alv1Wage = alv1Amount;
+      empData.alv2Wage = alv2Amount;
+
+      // Calculate child allowances (Kinderzulagen) for this employee
+      const empPayments = allPayments.filter(p => p.employeeId === empId);
+      const empPaymentIds = empPayments.map(p => p.id);
+      
+      if (empPaymentIds.length > 0) {
+        const empItems = allPayrollItems.filter(item => empPaymentIds.includes(item.payrollPaymentId));
+        const childAllowanceItems = empItems.filter(item => {
+          const itemType = typeMap.get(item.type);
+          return itemType?.name === 'Kinderzulagen';
+        });
+        
+        empData.childAllowance = childAllowanceItems.reduce((sum, item) => {
+          return sum + parseFloat(item.amount);
+        }, 0);
+      }
+    }
+
+    // Convert to array and format
     const employeeSummary = Array.from(employeeMap.values()).map(emp => ({
-      ...emp,
-      alvWage: Math.min(emp.alvWage, alvMaxIncome),
+      ahvNumber: emp.ahvNumber,
+      birthDate: emp.birthDate,
+      firstName: emp.firstName,
+      lastName: emp.lastName,
+      employedFrom: emp.employedFrom,
+      employedTo: emp.employedTo,
       ahvWage: emp.ahvWage.toFixed(2),
-      alvWageRaw: emp.alvWage,
-    })).map(emp => ({
-      ...emp,
-      alvWage: emp.alvWage.toFixed(2),
+      alvWage: Math.min(emp.alvWage, alvMaxIncome).toFixed(2),
+      alv1Wage: emp.alv1Wage.toFixed(2),
+      alv2Wage: emp.alv2Wage.toFixed(2),
+      childAllowance: emp.childAllowance.toFixed(2),
     }));
+
+    // Filter employees with child allowances for separate table
+    const childAllowanceEmployees = employeeSummary.filter(emp => parseFloat(emp.childAllowance) > 0);
 
     // Monthly breakdown
     const allMonths = [];
@@ -997,6 +1032,7 @@ export class DatabaseStorage implements IStorage {
         bvgBasis: bvgBasis.toFixed(2),
       },
       employeeSummary,
+      childAllowanceEmployees,
       uvgMaxIncome: uvgMaxIncome.toFixed(2),
       wageSummary: {
         male: {
