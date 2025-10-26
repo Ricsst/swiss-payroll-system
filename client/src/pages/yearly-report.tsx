@@ -120,45 +120,13 @@ export default function YearlyReport() {
 
   return (
     <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div>
-          <h1 className="text-2xl font-semibold" data-testid="heading-yearly-report">
-            Jahresabrechnung
-          </h1>
-          <p className="text-sm text-muted-foreground">
-            Übersicht aller 12 Monate für den Lohnausweis
-          </p>
-        </div>
-        <DropdownMenu>
-          <DropdownMenuTrigger asChild>
-            <Button variant="outline" data-testid="button-export-yearly">
-              <FileDown className="h-4 w-4 mr-2" />
-              Exportieren
-            </Button>
-          </DropdownMenuTrigger>
-          <DropdownMenuContent align="end">
-            <DropdownMenuLabel>Export Format</DropdownMenuLabel>
-            <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/pdf/yearly-report?year=${selectedYear}`, '_blank');
-            }}>
-              <FileType className="h-4 w-4 mr-2" />
-              PDF
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/excel/yearly-report?year=${selectedYear}&format=xlsx`, '_blank');
-            }}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              Excel (XLSX)
-            </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/excel/yearly-report?year=${selectedYear}&format=csv`, '_blank');
-            }}>
-              <FileSpreadsheet className="h-4 w-4 mr-2" />
-              CSV
-            </DropdownMenuItem>
-          </DropdownMenuContent>
-        </DropdownMenu>
+      <div>
+        <h1 className="text-2xl font-semibold" data-testid="heading-yearly-report">
+          Jahresabrechnung
+        </h1>
+        <p className="text-sm text-muted-foreground">
+          Übersicht aller 12 Monate für den Lohnausweis
+        </p>
       </div>
 
       <Card>
@@ -181,6 +149,123 @@ export default function YearlyReport() {
               ))}
             </SelectContent>
           </Select>
+        </CardContent>
+      </Card>
+
+      <Card>
+        <CardHeader>
+          <CardTitle>Jahresabrechnung Dokumente</CardTitle>
+          <p className="text-sm text-muted-foreground">
+            Laden Sie die einzelnen Abrechnungsdokumente als PDF herunter
+          </p>
+        </CardHeader>
+        <CardContent>
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => window.open(`/api/pdf/yearly-recap?year=${selectedYear}`, '_blank')}
+              data-testid="button-download-recap"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <FileType className="h-4 w-4" />
+                  <span className="font-semibold">1. Rekapitulation</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Jahresgesamtsummen</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => window.open(`/api/pdf/yearly-months?year=${selectedYear}`, '_blank')}
+              data-testid="button-download-months"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <FileType className="h-4 w-4" />
+                  <span className="font-semibold">2. Monatsübersicht</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Alle 12 Monate</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => window.open(`/api/pdf/yearly-employees?year=${selectedYear}`, '_blank')}
+              data-testid="button-download-employees"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <FileType className="h-4 w-4" />
+                  <span className="font-semibold">3. Mitarbeiterübersicht</span>
+                </div>
+                <span className="text-xs text-muted-foreground">A4 Querformat</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => window.open(`/api/pdf/yearly-childallowances?year=${selectedYear}`, '_blank')}
+              data-testid="button-download-childallowances"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <FileType className="h-4 w-4" />
+                  <span className="font-semibold">4. Kinderzulagen</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Übersicht Kindergeld</span>
+              </div>
+            </Button>
+
+            <Button
+              variant="outline"
+              className="justify-start h-auto p-4"
+              onClick={() => window.open(`/api/pdf/yearly-wage-summary?year=${selectedYear}`, '_blank')}
+              data-testid="button-download-wage-summary"
+            >
+              <div className="flex flex-col items-start gap-1 w-full">
+                <div className="flex items-center gap-2">
+                  <FileType className="h-4 w-4" />
+                  <span className="font-semibold">5. Lohnsummen</span>
+                </div>
+                <span className="text-xs text-muted-foreground">Nach Geschlecht</span>
+              </div>
+            </Button>
+
+            <DropdownMenu>
+              <DropdownMenuTrigger asChild>
+                <Button variant="outline" className="justify-start h-auto p-4" data-testid="button-export-excel">
+                  <div className="flex flex-col items-start gap-1 w-full">
+                    <div className="flex items-center gap-2">
+                      <FileSpreadsheet className="h-4 w-4" />
+                      <span className="font-semibold">Excel Export</span>
+                    </div>
+                    <span className="text-xs text-muted-foreground">Alle Daten</span>
+                  </div>
+                </Button>
+              </DropdownMenuTrigger>
+              <DropdownMenuContent align="end">
+                <DropdownMenuLabel>Excel Format</DropdownMenuLabel>
+                <DropdownMenuSeparator />
+                <DropdownMenuItem onClick={() => {
+                  window.open(`/api/excel/yearly-report?year=${selectedYear}&format=xlsx`, '_blank');
+                }}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  Excel (XLSX)
+                </DropdownMenuItem>
+                <DropdownMenuItem onClick={() => {
+                  window.open(`/api/excel/yearly-report?year=${selectedYear}&format=csv`, '_blank');
+                }}>
+                  <FileSpreadsheet className="h-4 w-4 mr-2" />
+                  CSV
+                </DropdownMenuItem>
+              </DropdownMenuContent>
+            </DropdownMenu>
+          </div>
         </CardContent>
       </Card>
 
