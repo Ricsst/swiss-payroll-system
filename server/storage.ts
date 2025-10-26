@@ -1344,15 +1344,50 @@ export class DatabaseStorage implements IStorage {
       bvgMonthly[m] = bvgAmount;
     }
 
+    // Calculate child allowances for the year
+    const childAllowanceItems = allPayrollItems.filter(item => {
+      const itemType = typeMap.get(item.type);
+      return itemType?.name === 'Kinderzulagen';
+    });
+
+    const totalChildAllowance = childAllowanceItems.reduce((sum, item) => {
+      return sum + parseFloat(item.amount);
+    }, 0);
+
+    // Determine employment period for the year
+    const yearStart = new Date(year, 0, 1);
+    const yearEnd = new Date(year, 11, 31);
+    const entryDate = employee.entryDate ? new Date(employee.entryDate) : null;
+    const exitDate = employee.exitDate ? new Date(employee.exitDate) : null;
+
+    let employmentStart = yearStart;
+    let employmentEnd = yearEnd;
+
+    if (entryDate && entryDate > yearStart) {
+      employmentStart = entryDate;
+    }
+    if (exitDate && exitDate < yearEnd) {
+      employmentEnd = exitDate;
+    }
+
     return {
       employee: {
         id: employee.id,
         firstName: employee.firstName,
         lastName: employee.lastName,
         ahvNumber: employee.ahvNumber,
+        birthDate: employee.birthDate,
         entryDate: employee.entryDate,
         exitDate: employee.exitDate,
         isNbuInsured: employee.isNbuInsured,
+      },
+      childAllowance: {
+        hasChildAllowance: totalChildAllowance > 0,
+        totalAmount: totalChildAllowance.toFixed(2),
+        employmentPeriod: {
+          from: employmentStart.toISOString().split('T')[0],
+          to: employmentEnd.toISOString().split('T')[0],
+        },
       },
       year,
       payrollItems: payrollItemsBreakdown,

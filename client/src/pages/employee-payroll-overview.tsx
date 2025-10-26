@@ -25,9 +25,18 @@ interface EmployeePayrollOverview {
     firstName: string;
     lastName: string;
     ahvNumber: string;
+    birthDate: string | null;
     entryDate: string | null;
     exitDate: string | null;
     isNbuInsured: boolean;
+  };
+  childAllowance: {
+    hasChildAllowance: boolean;
+    totalAmount: string;
+    employmentPeriod: {
+      from: string;
+      to: string;
+    };
   };
   year: number;
   payrollItems: Array<{
@@ -386,6 +395,47 @@ export default function EmployeePayrollOverview() {
           </CardContent>
         </Card>
       ) : null}
+
+      {/* Child Allowances Table */}
+      {overview && overview.childAllowance.hasChildAllowance && (
+        <Card>
+          <CardHeader>
+            <CardTitle className="text-base">Personen mit Kindergeld</CardTitle>
+          </CardHeader>
+          <CardContent>
+            <Table>
+              <TableHeader>
+                <TableRow className="bg-muted/50">
+                  <TableHead className="text-xs">Versicherten-Nr.</TableHead>
+                  <TableHead className="text-xs">Geburtstag</TableHead>
+                  <TableHead className="text-xs">Name</TableHead>
+                  <TableHead className="text-xs">Beschäftigungszeit von bis</TableHead>
+                  <TableHead className="text-right text-xs">Kindergeld</TableHead>
+                </TableRow>
+              </TableHeader>
+              <TableBody>
+                <TableRow>
+                  <TableCell className="text-xs font-mono">{overview.employee.ahvNumber}</TableCell>
+                  <TableCell className="text-xs">
+                    {overview.employee.birthDate 
+                      ? new Date(overview.employee.birthDate).toLocaleDateString("de-CH")
+                      : "-"}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {overview.employee.firstName} {overview.employee.lastName}
+                  </TableCell>
+                  <TableCell className="text-xs">
+                    {new Date(overview.childAllowance.employmentPeriod.from).toLocaleDateString("de-CH")} - {new Date(overview.childAllowance.employmentPeriod.to).toLocaleDateString("de-CH")}
+                  </TableCell>
+                  <TableCell className="text-right text-xs font-mono font-semibold">
+                    {parseFloat(overview.childAllowance.totalAmount).toFixed(2)}
+                  </TableCell>
+                </TableRow>
+              </TableBody>
+            </Table>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }
