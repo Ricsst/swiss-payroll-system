@@ -571,7 +571,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const monthName = monthNames[payment.paymentMonth - 1];
 
           const pdf = new PDFGenerator();
-          pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`);
+          const dateRange = `${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)}`;
+          pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`, dateRange);
           const employeeName = `${employee.firstName} ${employee.lastName}`;
           pdf.addWindowEnvelopeAddress(employeeName, formatAddressMultiline(employee.street, employee.postalCode, employee.city));
           pdf.addSection("LOHNBESTANDTEILE");
@@ -615,7 +616,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(parseFloat(payment.totalDeductions)), true, true);
           pdf.addSeparatorLine();
           pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
-          pdf.addFooter(`Periode: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlung: ${formatDate(payment.paymentDate)}`);
+          
+          // Add footer with company info
+          const companyInfo = await storage.getCompany();
+          if (companyInfo) {
+            const companyAddress = formatAddress(companyInfo.street, companyInfo.postalCode, companyInfo.city);
+            pdf.addFooter(`${companyInfo.name} | ${companyAddress}`);
+          }
 
           const pdfBlob = pdf.getBlob();
           const pdfBuffer = Buffer.from(await pdfBlob.arrayBuffer());
@@ -762,8 +769,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         const monthName = monthNames[payment.paymentMonth - 1];
 
-        // Add title on the left
-        pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`);
+        // Add title on the left with date range
+        const dateRange = `${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)}`;
+        pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`, dateRange);
         
         // Add employee address on the right (for window envelope)
         const employeeName = `${employee.firstName} ${employee.lastName}`;
@@ -825,12 +833,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
         // Net salary - highlighted
         pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
 
-        // Add footer with period, employee info, and company details
+        // Add footer with company info
         const companyAddress = formatAddress(company.street, company.postalCode, company.city);
-        pdf.addFooter([
-          `Zeitraum: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlungsdatum: ${formatDate(payment.paymentDate)}`,
-          `${company.name} | ${companyAddress}`
-        ]);
+        pdf.addFooter(`${company.name} | ${companyAddress}`);
       }
 
       const pdfBlob = pdf.getBlob();
@@ -875,8 +880,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const pdf = new PDFGenerator();
       
-      // Add title on the left
-      pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`);
+      // Add title on the left with date range
+      const dateRange = `${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)}`;
+      pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${payment.paymentYear}`, dateRange);
       
       // Add employee address on the right (for window envelope)
       const employeeName = `${employee.firstName} ${employee.lastName}`;
@@ -938,12 +944,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Net salary - highlighted
       pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
 
-      // Add footer with period, employee info, and company details
+      // Add footer with company info
       const companyAddress = formatAddress(company.street, company.postalCode, company.city);
-      pdf.addFooter([
-        `Zeitraum: ${formatDate(payment.periodStart)} - ${formatDate(payment.periodEnd)} | AHV-Nr: ${employee.ahvNumber} | Auszahlungsdatum: ${formatDate(payment.paymentDate)}`,
-        `${company.name} | ${companyAddress}`
-      ]);
+      pdf.addFooter(`${company.name} | ${companyAddress}`);
 
       const pdfBlob = pdf.getBlob();
       const buffer = Buffer.from(await pdfBlob.arrayBuffer());

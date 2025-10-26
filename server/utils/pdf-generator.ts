@@ -180,7 +180,7 @@ export class PDFGenerator {
     });
   }
 
-  addPayrollTitle(title: string, period: string) {
+  addPayrollTitle(title: string, period: string, dateRange?: string) {
     this.doc.setFontSize(18);
     this.doc.setFont("helvetica", "bold");
     this.doc.text(title, 20, 20);
@@ -188,6 +188,12 @@ export class PDFGenerator {
     this.doc.setFontSize(12);
     this.doc.setFont("helvetica", "normal");
     this.doc.text(period, 20, 28);
+    
+    if (dateRange) {
+      this.doc.setFontSize(10);
+      this.doc.setFont("helvetica", "normal");
+      this.doc.text(dateRange, 20, 35);
+    }
     
     this.yPosition = 85; // Start content below address window
   }
