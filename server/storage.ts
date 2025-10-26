@@ -843,6 +843,7 @@ export class DatabaseStorage implements IStorage {
           alvWage: 0,
           alv1Wage: 0,
           alv2Wage: 0,
+          bvgWage: 0,
           childAllowance: 0,
         });
       }
@@ -858,11 +859,12 @@ export class DatabaseStorage implements IStorage {
         empData.employedTo = month;
       }
 
-      // For simplicity, use gross salary as AHV/ALV wage
+      // For simplicity, use gross salary as AHV/ALV/BVG wage
       // In a more complex system, you would check which items are subject to each
       const grossSalary = parseFloat(payment.grossSalary);
       empData.ahvWage += grossSalary;
       empData.alvWage += grossSalary;
+      empData.bvgWage += grossSalary;
     }
 
     // Calculate ALV1/ALV2 split and child allowances per employee
@@ -902,6 +904,7 @@ export class DatabaseStorage implements IStorage {
       alvWage: Math.min(emp.alvWage, alvMaxIncome).toFixed(2),
       alv1Wage: emp.alv1Wage.toFixed(2),
       alv2Wage: emp.alv2Wage.toFixed(2),
+      bvgWage: emp.bvgWage.toFixed(2),
       childAllowance: emp.childAllowance.toFixed(2),
     }));
 
