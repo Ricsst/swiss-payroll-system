@@ -456,6 +456,27 @@ export default function YearlyReport() {
                         </TableCell>
                       </TableRow>
                     ))}
+                    <TableRow className="bg-muted/50 font-semibold">
+                      <TableCell colSpan={4} className="text-right">Total</TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {report.employeeSummary.reduce((sum, emp) => sum + Number(emp.ahvWage), 0).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {report.employeeSummary.reduce((sum, emp) => sum + Number(emp.alv1Wage), 0).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                      <TableCell className="text-right font-mono">
+                        CHF {report.employeeSummary.reduce((sum, emp) => sum + Number(emp.alv2Wage), 0).toLocaleString("de-CH", {
+                          minimumFractionDigits: 2,
+                          maximumFractionDigits: 2,
+                        })}
+                      </TableCell>
+                    </TableRow>
                   </TableBody>
                 </Table>
               </CardContent>
