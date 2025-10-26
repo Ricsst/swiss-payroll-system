@@ -38,6 +38,8 @@ const defaultFormValues: InsertCompany = {
   suvaNbuMaleRate: "1.1680",
   suvaNbuFemaleRate: "1.1680",
   suvaMaxIncomePerYear: "148200.00",
+  ktgGavRate: "1.5150",
+  berufsbeitragGavRate: "0.4000",
 };
 
 export default function CompanyPage() {
@@ -75,6 +77,8 @@ export default function CompanyPage() {
         suvaNbuMaleRate: String(company.suvaNbuMaleRate),
         suvaNbuFemaleRate: String(company.suvaNbuFemaleRate),
         suvaMaxIncomePerYear: String(company.suvaMaxIncomePerYear),
+        ktgGavRate: String(company.ktgGavRate),
+        berufsbeitragGavRate: String(company.berufsbeitragGavRate),
       };
       form.reset(formData);
     }
@@ -513,6 +517,56 @@ export default function CompanyPage() {
                         />
                       </FormControl>
                       <FormDescription>Standard: CHF 148'200</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>KTG GAV und Berufsbeitrag GAV</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-2 gap-4">
+                <FormField
+                  control={form.control}
+                  name="ktgGavRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>KTG GAV Personalverleih (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.0001"
+                          className="font-mono"
+                          data-testid="input-ktg-gav-rate"
+                        />
+                      </FormControl>
+                      <FormDescription>Standard: 1.515%</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="berufsbeitragGavRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Berufsbeitrag GAV Personalverleih (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.0001"
+                          className="font-mono"
+                          data-testid="input-berufsbeitrag-gav-rate"
+                        />
+                      </FormControl>
+                      <FormDescription>Standard: 0.4%</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
