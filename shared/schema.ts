@@ -35,6 +35,11 @@ export const companies = pgTable("companies", {
   ktgGavRate: numeric("ktg_gav_rate", { precision: 5, scale: 4 }).notNull().default("1.5150"), // 1.515% KTG GAV Personalverleih
   berufsbeitragGavRate: numeric("berufsbeitrag_gav_rate", { precision: 5, scale: 4 }).notNull().default("0.4000"), // 0.4% Berufsbeitrag GAV Personalverleih
   
+  // Allowance rates (Zulagen)
+  thirteenthMonthRate: numeric("thirteenth_month_rate", { precision: 5, scale: 4 }).notNull().default("8.3300"), // 8.33% 13. Monatslohn
+  vacationCompensationRate: numeric("vacation_compensation_rate", { precision: 5, scale: 4 }).notNull().default("8.3300"), // 8.33% Ferienentschädigung
+  vacationRate: numeric("vacation_rate", { precision: 5, scale: 4 }).notNull().default("3.2000"), // 3.2% Ferien
+  
   createdAt: timestamp("created_at").defaultNow().notNull(),
   updatedAt: timestamp("updated_at").defaultNow().notNull(),
 });
