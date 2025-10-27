@@ -33,6 +33,27 @@ export interface QCSPayrollData {
   sundayHours: number;
   sundayAmount: number;
   
+  // Additional wage items
+  thirteenthMonthRate: number; // 13. Monatslohn
+  thirteenthMonthHours: number;
+  thirteenthMonthAmount: number;
+  
+  vacationCompensationRate: number; // Ferienentschädigung
+  vacationCompensationHours: number;
+  vacationCompensationAmount: number;
+  
+  vacationRate: number; // Ferien
+  vacationHours: number;
+  vacationAmount: number;
+  
+  eveningNightRate: number; // Abend/Nachtzulage
+  eveningNightHours: number;
+  eveningNightAmount: number;
+  
+  sundayHolidayRate: number; // Sonntags/Ferientagszulage
+  sundayHolidayHours: number;
+  sundayHolidayAmount: number;
+  
   grossSalary: number;
   
   // Deductions
@@ -196,6 +217,36 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
   const sundayHours = sundayMatch ? parseSwissNumber(sundayMatch[2]) : 0;
   const sundayAmount = sundayMatch ? parseSwissNumber(sundayMatch[3]) : 0;
   
+  // Extract 13. Monatslohn
+  const thirteenthMonthMatch = text.match(/13\.\s*Monatslohn\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  const thirteenthMonthRate = thirteenthMonthMatch ? parseSwissNumber(thirteenthMonthMatch[1]) : 0;
+  const thirteenthMonthHours = thirteenthMonthMatch ? parseSwissNumber(thirteenthMonthMatch[2]) : 0;
+  const thirteenthMonthAmount = thirteenthMonthMatch ? parseSwissNumber(thirteenthMonthMatch[3]) : 0;
+  
+  // Extract Ferienentschädigung
+  const vacationCompMatch = text.match(/Ferienentsch[aä]digung\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  const vacationCompensationRate = vacationCompMatch ? parseSwissNumber(vacationCompMatch[1]) : 0;
+  const vacationCompensationHours = vacationCompMatch ? parseSwissNumber(vacationCompMatch[2]) : 0;
+  const vacationCompensationAmount = vacationCompMatch ? parseSwissNumber(vacationCompMatch[3]) : 0;
+  
+  // Extract Ferien
+  const vacationMatch = text.match(/Ferien\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  const vacationRate = vacationMatch ? parseSwissNumber(vacationMatch[1]) : 0;
+  const vacationHours = vacationMatch ? parseSwissNumber(vacationMatch[2]) : 0;
+  const vacationAmount = vacationMatch ? parseSwissNumber(vacationMatch[3]) : 0;
+  
+  // Extract Abend/Nachtzulage
+  const eveningNightMatch = text.match(/Abend\/Nachtzulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  const eveningNightRate = eveningNightMatch ? parseSwissNumber(eveningNightMatch[1]) : 0;
+  const eveningNightHours = eveningNightMatch ? parseSwissNumber(eveningNightMatch[2]) : 0;
+  const eveningNightAmount = eveningNightMatch ? parseSwissNumber(eveningNightMatch[3]) : 0;
+  
+  // Extract Sonntags/Ferientagszulage
+  const sundayHolidayMatch = text.match(/Sonntags\/Ferientagszulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  const sundayHolidayRate = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[1]) : 0;
+  const sundayHolidayHours = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[2]) : 0;
+  const sundayHolidayAmount = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[3]) : 0;
+  
   // Extract Bruttolohn
   const grossMatch = text.match(/Bruttolohn\s+([\d'\u2019.,]+)/);
   const grossSalary = grossMatch ? parseSwissNumber(grossMatch[1]) : 0;
@@ -267,6 +318,21 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
     sundaySupplement,
     sundayHours,
     sundayAmount,
+    thirteenthMonthRate,
+    thirteenthMonthHours,
+    thirteenthMonthAmount,
+    vacationCompensationRate,
+    vacationCompensationHours,
+    vacationCompensationAmount,
+    vacationRate,
+    vacationHours,
+    vacationAmount,
+    eveningNightRate,
+    eveningNightHours,
+    eveningNightAmount,
+    sundayHolidayRate,
+    sundayHolidayHours,
+    sundayHolidayAmount,
     grossSalary,
     ahvRate,
     ahvBasis,
