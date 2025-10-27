@@ -235,14 +235,14 @@ export async function parseQCSPayrollPDF(pdfBuffer: Buffer): Promise<QCSPayrollD
   const vacationHours = vacationMatch ? parseSwissNumber(vacationMatch[2]) : 0;
   const vacationAmount = vacationMatch ? parseSwissNumber(vacationMatch[3]) : 0;
   
-  // Extract Abend/Nachtzulage
-  const eveningNightMatch = text.match(/Abend\/Nachtzulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  // Extract Abend/Nachtzulage (allow optional spaces around slash)
+  const eveningNightMatch = text.match(/Abend\s*\/\s*Nachtzulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
   const eveningNightRate = eveningNightMatch ? parseSwissNumber(eveningNightMatch[1]) : 0;
   const eveningNightHours = eveningNightMatch ? parseSwissNumber(eveningNightMatch[2]) : 0;
   const eveningNightAmount = eveningNightMatch ? parseSwissNumber(eveningNightMatch[3]) : 0;
   
-  // Extract Sonntags/Ferientagszulage
-  const sundayHolidayMatch = text.match(/Sonntags\/Ferientagszulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
+  // Extract Sonntags/Feiertags Zulage (allow optional spaces)
+  const sundayHolidayMatch = text.match(/Sonntags\s*\/\s*Feiertags\s+Zulage\s+([\d'\u2019.,]+)\s+([\d'\u2019.,]+)\s+Std\.\s+([\d'\u2019.,]+)/);
   const sundayHolidayRate = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[1]) : 0;
   const sundayHolidayHours = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[2]) : 0;
   const sundayHolidayAmount = sundayHolidayMatch ? parseSwissNumber(sundayHolidayMatch[3]) : 0;
