@@ -113,7 +113,15 @@ export default function MonthlyReport() {
     }
     
     const employeeIds = Array.from(selectedEmployees).join(',');
-    window.open(`/api/pdf/monthly-payslips?year=${selectedYear}&month=${selectedMonth}&employeeIds=${employeeIds}`, '_blank');
+    const url = `/api/pdf/monthly-payslips?year=${selectedYear}&month=${selectedMonth}&employeeIds=${employeeIds}`;
+    
+    // Create invisible link to trigger download
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `Monatslohnabrechnungen_${monthNames[selectedMonth - 1]}_${selectedYear}.pdf`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
   };
 
   return (

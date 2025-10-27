@@ -989,7 +989,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         pdf.addSection("LOHNBESTANDTEILE");
         
         // Add aggregated payroll items
-        for (const [key, item] of aggregatedItems) {
+        for (const [key, item] of Array.from(aggregatedItems)) {
           const itemType = payrollItemTypes.find(t => t.code === item.type);
           const typeName = itemType ? itemType.name : item.type;
           let label = `${item.type} - ${typeName}`;
@@ -999,7 +999,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           if (item.hours > 0) {
             // Calculate average hourly rate if available
             const avgRate = item.hourlyRates.length > 0 
-              ? item.hourlyRates.reduce((a, b) => a + b, 0) / item.hourlyRates.length 
+              ? item.hourlyRates.reduce((a: number, b: number) => a + b, 0) / item.hourlyRates.length 
               : 0;
             if (avgRate > 0) {
               label += ` - ${item.hours.toFixed(2)}h à ${formatCurrency(avgRate)}`;
@@ -1021,7 +1021,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         if (aggregatedDeductions.size > 0) {
           pdf.addSection("ABZÜGE");
           
-          for (const [key, deduction] of aggregatedDeductions) {
+          for (const [key, deduction] of Array.from(aggregatedDeductions)) {
             let label = `${deduction.type}`;
             if (deduction.description) {
               label = `${deduction.type} - ${deduction.description}`;
