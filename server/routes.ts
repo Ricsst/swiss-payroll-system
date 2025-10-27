@@ -850,6 +850,218 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  app.get("/api/pdf/monthly-payslips", async (req, res) => {
+    try {
+      const year = parseInt(req.query.year as string);
+      const month = parseInt(req.query.month as string);
+      const employeeIds = (req.query.employeeIds as string)?.split(',') || [];
+
+      if (!year || !month || month < 1 || month > 12) {
+        return res.status(400).json({ error: "Invalid year or month" });
+      }
+
+      if (employeeIds.length === 0) {
+        return res.status(400).json({ error: "No employees selected" });
+      }
+
+      const company = await storage.getCompany();
+      if (!company) {
+        return res.status(404).json({ error: "Company not found" });
+      }
+
+      // Load payroll item types for name mapping
+      const payrollItemTypes = await storage.getPayrollItemTypes();
+
+      // Month names in German
+      const monthNames = [
+        "Januar", "Februar", "März", "April", "Mai", "Juni",
+        "Juli", "August", "September", "Oktober", "November", "Dezember"
+      ];
+      
+      const monthName = monthNames[month - 1];
+
+      const pdf = new PDFGenerator();
+      
+      // Get all payroll payments for the month
+      const allPayments = await storage.getPayrollPayments(year, month);
+      
+      // Process each selected employee
+      for (let empIndex = 0; empIndex < employeeIds.length; empIndex++) {
+        const employeeId = employeeIds[empIndex];
+        
+        // Filter payments for this employee
+        const employeePayments = allPayments.filter((p: any) => p.employee.id === employeeId);
+        
+        if (employeePayments.length === 0) {
+          continue; // Skip if no payments for this employee
+        }
+        
+        // Get employee details
+        const employee = await storage.getEmployee(employeeId);
+        if (!employee) {
+          continue;
+        }
+        
+        // Add page break between employees (but not before first employee)
+        if (empIndex > 0) {
+          pdf.addPageBreak();
+        }
+        
+        // Calculate totals across all payments
+        let totalGrossSalary = 0;
+        let totalDeductions = 0;
+        let totalNetSalary = 0;
+        
+        // Aggregate payroll items by type
+        const aggregatedItems = new Map<string, { type: string; description: string; hours: number; amount: number; hourlyRates: number[] }>();
+        
+        // Aggregate deductions by type
+        const aggregatedDeductions = new Map<string, { type: string; description: string; percentage: number; baseAmount: number; amount: number }>();
+        
+        for (const payment of employeePayments) {
+          totalGrossSalary += parseFloat(payment.grossSalary);
+          totalDeductions += parseFloat(payment.totalDeductions);
+          totalNetSalary += parseFloat(payment.netSalary);
+          
+          // Get full payment details with items and deductions
+          const fullPayment = await storage.getPayrollPayment(payment.id);
+          
+          // Aggregate payroll items
+          if (fullPayment?.payrollItems) {
+            for (const item of fullPayment.payrollItems) {
+              const key = item.type;
+              if (aggregatedItems.has(key)) {
+                const existing = aggregatedItems.get(key)!;
+                existing.hours += parseFloat(item.hours || "0");
+                existing.amount += parseFloat(item.amount);
+                if (item.hourlyRate) {
+                  existing.hourlyRates.push(parseFloat(item.hourlyRate));
+                }
+              } else {
+                aggregatedItems.set(key, {
+                  type: item.type,
+                  description: item.description || "",
+                  hours: parseFloat(item.hours || "0"),
+                  amount: parseFloat(item.amount),
+                  hourlyRates: item.hourlyRate ? [parseFloat(item.hourlyRate)] : []
+                });
+              }
+            }
+          }
+          
+          // Aggregate deductions
+          if (fullPayment?.deductions) {
+            for (const deduction of fullPayment.deductions) {
+              const key = deduction.type;
+              if (aggregatedDeductions.has(key)) {
+                const existing = aggregatedDeductions.get(key)!;
+                existing.amount += parseFloat(deduction.amount);
+                existing.baseAmount += parseFloat(deduction.baseAmount || "0");
+              } else {
+                aggregatedDeductions.set(key, {
+                  type: deduction.type,
+                  description: deduction.description || "",
+                  percentage: parseFloat(deduction.percentage || "0"),
+                  baseAmount: parseFloat(deduction.baseAmount || "0"),
+                  amount: parseFloat(deduction.amount)
+                });
+              }
+            }
+          }
+        }
+        
+        // Determine date range from first and last payment
+        const sortedPayments = [...employeePayments].sort((a, b) => 
+          new Date(a.periodStart).getTime() - new Date(b.periodStart).getTime()
+        );
+        const firstPayment = sortedPayments[0];
+        const lastPayment = sortedPayments[sortedPayments.length - 1];
+        const dateRange = `${formatDate(firstPayment.periodStart)} - ${formatDate(lastPayment.periodEnd)}`;
+        
+        // Add title with date range
+        pdf.addPayrollTitle("Lohnabrechnung", `${monthName} ${year}`, dateRange);
+        
+        // Add employee address on the right (for window envelope)
+        const employeeName = `${employee.firstName} ${employee.lastName}`;
+        pdf.addWindowEnvelopeAddress(employeeName, formatAddressMultiline(employee.street, employee.postalCode, employee.city));
+
+        // Add section header
+        pdf.addSection("LOHNBESTANDTEILE");
+        
+        // Add aggregated payroll items
+        for (const [key, item] of aggregatedItems) {
+          const itemType = payrollItemTypes.find(t => t.code === item.type);
+          const typeName = itemType ? itemType.name : item.type;
+          let label = `${item.type} - ${typeName}`;
+          if (item.description) {
+            label += ` (${item.description})`;
+          }
+          if (item.hours > 0) {
+            // Calculate average hourly rate if available
+            const avgRate = item.hourlyRates.length > 0 
+              ? item.hourlyRates.reduce((a, b) => a + b, 0) / item.hourlyRates.length 
+              : 0;
+            if (avgRate > 0) {
+              label += ` - ${item.hours.toFixed(2)}h à ${formatCurrency(avgRate)}`;
+            } else {
+              label += ` - ${item.hours.toFixed(2)}h`;
+            }
+          }
+          pdf.addPayrollLine(label, formatCurrency(item.amount), false, false);
+        }
+
+        pdf.addSeparatorLine();
+        
+        // Gross salary total
+        pdf.addPayrollLine("BRUTTOLOHN", formatCurrency(totalGrossSalary), true, false);
+        
+        pdf.addSeparatorLine();
+        
+        // Add deductions section
+        if (aggregatedDeductions.size > 0) {
+          pdf.addSection("ABZÜGE");
+          
+          for (const [key, deduction] of aggregatedDeductions) {
+            let label = `${deduction.type}`;
+            if (deduction.description) {
+              label = `${deduction.type} - ${deduction.description}`;
+            }
+            if (deduction.percentage > 0 && deduction.baseAmount > 0) {
+              label += ` (${formatPercentage(deduction.percentage)} von ${formatCurrency(deduction.baseAmount)})`;
+            } else if (deduction.percentage > 0) {
+              label += ` (${formatPercentage(deduction.percentage)})`;
+            }
+            pdf.addPayrollLine(label, formatCurrency(deduction.amount), false, true);
+          }
+          
+          pdf.addSeparatorLine();
+        }
+
+        // Total deductions
+        pdf.addPayrollLine("TOTAL ABZÜGE", formatCurrency(totalDeductions), true, true);
+        
+        pdf.addSeparatorLine();
+        
+        // Net salary - highlighted
+        pdf.addPayrollLine("NETTOLOHN", formatCurrency(totalNetSalary), true, false);
+
+        // Add footer with company info
+        const companyAddress = formatAddress(company.street, company.postalCode, company.city);
+        pdf.addFooter(`${company.name} | ${companyAddress}`);
+      }
+
+      const pdfBlob = pdf.getBlob();
+      const buffer = Buffer.from(await pdfBlob.arrayBuffer());
+
+      res.setHeader("Content-Type", "application/pdf");
+      res.setHeader("Content-Disposition", `attachment; filename=Monatslohnabrechnungen_${monthName}_${year}.pdf`);
+      res.send(buffer);
+    } catch (error: any) {
+      console.error("Monthly Payslips PDF Generation Error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   app.get("/api/pdf/payroll/:id", async (req, res) => {
     try {
       const payment = await storage.getPayrollPayment(req.params.id);
