@@ -2594,7 +2594,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         isLocked: false,
       };
       
-      // Prepare payroll items (Lohn + Sonntagszulage)
+      // Prepare payroll items (Lohn + all allowances/supplements)
       const payrollItems = [];
       
       // Add base wage item (use code "02" for Stundenlohn)
@@ -2614,6 +2614,61 @@ export async function registerRoutes(app: Express): Promise<Server> {
           hours: pdfData.sundayHours.toFixed(2),
           hourlyRate: pdfData.sundaySupplement.toFixed(2),
           amount: pdfData.sundayAmount.toFixed(2),
+        });
+      }
+      
+      // Add 13. Monatslohn if applicable (use code "04")
+      if (pdfData.thirteenthMonthAmount > 0) {
+        payrollItems.push({
+          type: "04",
+          description: "13. Monatslohn",
+          hours: pdfData.thirteenthMonthHours.toFixed(2),
+          hourlyRate: pdfData.thirteenthMonthRate.toFixed(2),
+          amount: pdfData.thirteenthMonthAmount.toFixed(2),
+        });
+      }
+      
+      // Add Ferienentschädigung if applicable (use code "07")
+      if (pdfData.vacationCompensationAmount > 0) {
+        payrollItems.push({
+          type: "07",
+          description: "Ferienentschädigung",
+          hours: pdfData.vacationCompensationHours.toFixed(2),
+          hourlyRate: pdfData.vacationCompensationRate.toFixed(2),
+          amount: pdfData.vacationCompensationAmount.toFixed(2),
+        });
+      }
+      
+      // Add Ferien if applicable (use code "14")
+      if (pdfData.vacationAmount > 0) {
+        payrollItems.push({
+          type: "14",
+          description: "Ferien",
+          hours: pdfData.vacationHours.toFixed(2),
+          hourlyRate: pdfData.vacationRate.toFixed(2),
+          amount: pdfData.vacationAmount.toFixed(2),
+        });
+      }
+      
+      // Add Abend/Nachtzulage if applicable (use code "15")
+      if (pdfData.eveningNightAmount > 0) {
+        payrollItems.push({
+          type: "15",
+          description: "Abend/Nachtzulage",
+          hours: pdfData.eveningNightHours.toFixed(2),
+          hourlyRate: pdfData.eveningNightRate.toFixed(2),
+          amount: pdfData.eveningNightAmount.toFixed(2),
+        });
+      }
+      
+      // Add Sonntags/Ferientagszulage if applicable (use code "16")
+      if (pdfData.sundayHolidayAmount > 0) {
+        payrollItems.push({
+          type: "16",
+          description: "Sonntags/Ferientagszulage",
+          hours: pdfData.sundayHolidayHours.toFixed(2),
+          hourlyRate: pdfData.sundayHolidayRate.toFixed(2),
+          amount: pdfData.sundayHolidayAmount.toFixed(2),
         });
       }
       
