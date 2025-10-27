@@ -40,6 +40,9 @@ const defaultFormValues: InsertCompany = {
   suvaMaxIncomePerYear: "148200.00",
   ktgGavRate: "1.5150",
   berufsbeitragGavRate: "0.4000",
+  thirteenthMonthRate: "8.3300",
+  vacationCompensationRate: "8.3300",
+  vacationRate: "3.2000",
 };
 
 export default function CompanyPage() {
@@ -79,6 +82,9 @@ export default function CompanyPage() {
         suvaMaxIncomePerYear: String(company.suvaMaxIncomePerYear),
         ktgGavRate: String(company.ktgGavRate),
         berufsbeitragGavRate: String(company.berufsbeitragGavRate),
+        thirteenthMonthRate: String(company.thirteenthMonthRate),
+        vacationCompensationRate: String(company.vacationCompensationRate),
+        vacationRate: String(company.vacationRate),
       };
       form.reset(formData);
     }
@@ -567,6 +573,76 @@ export default function CompanyPage() {
                         />
                       </FormControl>
                       <FormDescription>Standard: 0.4%</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+              </div>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Zulagen</CardTitle>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <div className="grid grid-cols-3 gap-4">
+                <FormField
+                  control={form.control}
+                  name="thirteenthMonthRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>13. Monatslohn (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.0001"
+                          className="font-mono"
+                          data-testid="input-thirteenth-month-rate"
+                        />
+                      </FormControl>
+                      <FormDescription>Standard: 8.33%</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="vacationCompensationRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ferienentschädigung (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.0001"
+                          className="font-mono"
+                          data-testid="input-vacation-compensation-rate"
+                        />
+                      </FormControl>
+                      <FormDescription>Standard: 8.33%</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+                <FormField
+                  control={form.control}
+                  name="vacationRate"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel>Ferien (%)</FormLabel>
+                      <FormControl>
+                        <Input
+                          {...field}
+                          type="number"
+                          step="0.0001"
+                          className="font-mono"
+                          data-testid="input-vacation-rate"
+                        />
+                      </FormControl>
+                      <FormDescription>Standard: 3.2%</FormDescription>
                       <FormMessage />
                     </FormItem>
                   )}
