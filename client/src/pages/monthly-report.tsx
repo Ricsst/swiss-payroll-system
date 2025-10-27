@@ -19,7 +19,7 @@ import {
   TableFooter,
 } from "@/components/ui/table";
 import { Skeleton } from "@/components/ui/skeleton";
-import { FileDown, FileSpreadsheet, FileType } from "lucide-react";
+import { FileDown, FileSpreadsheet, FileType, FileText } from "lucide-react";
 import {
   DropdownMenu,
   DropdownMenuContent,
@@ -29,6 +29,8 @@ import {
   DropdownMenuTrigger,
 } from "@/components/ui/dropdown-menu";
 import { Separator } from "@/components/ui/separator";
+import { Checkbox } from "@/components/ui/checkbox";
+import { useToast } from "@/hooks/use-toast";
 
 interface MonthlyReportData {
   month: number;
@@ -60,6 +62,8 @@ export default function MonthlyReport() {
 
   const [selectedYear, setSelectedYear] = useState(currentYear);
   const [selectedMonth, setSelectedMonth] = useState(currentMonth);
+  const [selectedEmployees, setSelectedEmployees] = useState<Set<string>>(new Set());
+  const { toast } = useToast();
 
   const { data: report, isLoading } = useQuery<MonthlyReportData>({
     queryKey: ["/api/reports/monthly", selectedYear, selectedMonth],
@@ -76,6 +80,41 @@ export default function MonthlyReport() {
   ];
 
   const availableYears = [2023, 2024, 2025, 2026];
+  
+  const toggleEmployeeSelection = (employeeId: string) => {
+    setSelectedEmployees(prev => {
+      const newSet = new Set(prev);
+      if (newSet.has(employeeId)) {
+        newSet.delete(employeeId);
+      } else {
+        newSet.add(employeeId);
+      }
+      return newSet;
+    });
+  };
+  
+  const toggleAllEmployees = () => {
+    if (!report) return;
+    if (selectedEmployees.size === report.employees.length) {
+      setSelectedEmployees(new Set());
+    } else {
+      setSelectedEmployees(new Set(report.employees.map(e => e.employeeId)));
+    }
+  };
+  
+  const downloadMonthlyPayslips = async () => {
+    if (selectedEmployees.size === 0) {
+      toast({
+        title: "Keine Auswahl",
+        description: "Bitte wählen Sie mindestens einen Mitarbeiter aus.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
+    const employeeIds = Array.from(selectedEmployees).join(',');
+    window.open(`/api/pdf/monthly-payslips?year=${selectedYear}&month=${selectedMonth}&employeeIds=${employeeIds}`, '_blank');
+  };
 
   return (
     <div className="space-y-6">
@@ -259,15 +298,30 @@ export default function MonthlyReport() {
 
           {/* Employee Table */}
           <Card>
-            <CardHeader>
+            <CardHeader className="flex flex-row items-center justify-between gap-4 space-y-0 pb-4">
               <CardTitle>
                 Mitarbeiter Übersicht - {monthNames[selectedMonth - 1]} {selectedYear}
               </CardTitle>
+              <Button
+                onClick={downloadMonthlyPayslips}
+                disabled={selectedEmployees.size === 0}
+                data-testid="button-download-monthly-payslips"
+              >
+                <FileText className="h-4 w-4 mr-2" />
+                Lohnabrechnungen ({selectedEmployees.size})
+              </Button>
             </CardHeader>
             <CardContent>
               <Table>
                 <TableHeader>
                   <TableRow>
+                    <TableHead className="w-12">
+                      <Checkbox
+                        checked={report.employees.length > 0 && selectedEmployees.size === report.employees.length}
+                        onCheckedChange={toggleAllEmployees}
+                        data-testid="checkbox-select-all"
+                      />
+                    </TableHead>
                     <TableHead>Mitarbeiter</TableHead>
                     <TableHead className="text-center">Anzahl Auszahlungen</TableHead>
                     <TableHead className="text-right">Bruttolohn</TableHead>
@@ -278,6 +332,13 @@ export default function MonthlyReport() {
                 <TableBody>
                   {report.employees.map((employee) => (
                     <TableRow key={employee.employeeId} data-testid={`row-employee-${employee.employeeId}`}>
+                      <TableCell>
+                        <Checkbox
+                          checked={selectedEmployees.has(employee.employeeId)}
+                          onCheckedChange={() => toggleEmployeeSelection(employee.employeeId)}
+                          data-testid={`checkbox-employee-${employee.employeeId}`}
+                        />
+                      </TableCell>
                       <TableCell className="font-medium">
                         {employee.employeeName}
                       </TableCell>
@@ -307,7 +368,7 @@ export default function MonthlyReport() {
                 </TableBody>
                 <TableFooter>
                   <TableRow>
-                    <TableCell colSpan={2} className="font-semibold">
+                    <TableCell colSpan={3} className="font-semibold">
                       Total {monthNames[selectedMonth - 1]} {selectedYear}
                     </TableCell>
                     <TableCell className="text-right font-mono font-semibold">
