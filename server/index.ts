@@ -1,10 +1,34 @@
 import express, { type Request, Response, NextFunction } from "express";
+import session from "express-session";
+import createMemoryStore from "memorystore";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { tenantMiddleware } from "./middleware/tenant";
 
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+
+// Session configuration for multi-tenant support
+const MemoryStore = createMemoryStore(session);
+app.use(
+  session({
+    secret: process.env.SESSION_SECRET || "development-secret-change-in-production",
+    resave: false,
+    saveUninitialized: false,
+    store: new MemoryStore({
+      checkPeriod: 86400000, // prune expired entries every 24h
+    }),
+    cookie: {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true,
+      secure: process.env.NODE_ENV === "production",
+    },
+  })
+);
+
+// Multi-tenant database selection middleware
+app.use(tenantMiddleware);
 
 app.use((req, res, next) => {
   const start = Date.now();
@@ -37,6 +61,17 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Health check: Verify all databases are accessible
+  try {
+    log("Checking database connectivity...");
+    const { healthCheckDatabases } = await import("./db");
+    await healthCheckDatabases();
+    log("✓ All databases are accessible");
+  } catch (error: any) {
+    log(`✗ Database health check failed: ${error.message}`);
+    process.exit(1);
+  }
+
   const server = await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {

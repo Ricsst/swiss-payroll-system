@@ -1,10 +1,18 @@
 # Swiss Payroll Management System
 
 ## Overview
-A comprehensive payroll management system for Swiss businesses, designed to manage employee data, process payroll, and generate compliance reports. It handles Swiss-specific social insurance calculations (AHV, ALV, SUVA) and supports both monthly and yearly reporting. The system aims to simplify payroll management and ensure compliance with Swiss regulations, offering features like employee management, payroll processing, and various report generations.
+A comprehensive payroll management system for Swiss businesses, designed to manage employee data, process payroll, and generate compliance reports. It handles Swiss-specific social insurance calculations (AHV, ALV, SUVA) and supports both monthly and yearly reporting. The system is designed for self-hosted deployment with Option B1 architecture: single application installation serving multiple companies with separate PostgreSQL databases per company, managed via GitHub for centralized updates.
 
 ## User Preferences
 Preferred communication style: Simple, everyday language.
+
+## Deployment Architecture
+**Option B1: Multi-Tenant with Separate Databases**
+- One app installation manages three separate PostgreSQL databases
+- Each company (Firma A, B, C) has its own isolated database
+- Updates are centralized through GitHub
+- Self-hosted on company server for maximum data privacy
+- Access from workstations via browser at http://server-ip:5000
 
 ## System Architecture
 

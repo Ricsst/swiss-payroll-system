@@ -1,5 +1,6 @@
-import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck, FileBarChart, Upload } from "lucide-react";
+import { Building2, Users, Wallet, Calendar, FileText, LayoutDashboard, FileCheck, PlusCircle, Tags, UserCheck, FileBarChart, Upload, LogOut } from "lucide-react";
 import { Link, useLocation } from "wouter";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import {
   Sidebar,
   SidebarContent,
@@ -10,7 +11,21 @@ import {
   SidebarMenuButton,
   SidebarMenuItem,
   SidebarHeader,
+  SidebarFooter,
 } from "@/components/ui/sidebar";
+import { Button } from "@/components/ui/button";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+
+interface TenantStatus {
+  companyKey: string | null;
+  isSelected: boolean;
+}
+
+const companyNames: Record<string, string> = {
+  'firma-a': 'Firma A',
+  'firma-b': 'Firma B',
+  'firma-c': 'Firma C',
+};
 
 const menuItems = [
   {
@@ -76,7 +91,25 @@ const menuItems = [
 ];
 
 export function AppSidebar() {
-  const [location] = useLocation();
+  const [location, setLocation] = useLocation();
+
+  const { data: tenantStatus } = useQuery<TenantStatus>({
+    queryKey: ["/api/tenant/current"],
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      await apiRequest("POST", "/api/tenant/logout", {});
+    },
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ["/api/tenant/current"] });
+      setLocation("/select-company");
+    },
+  });
+
+  const currentCompanyName = tenantStatus?.companyKey 
+    ? companyNames[tenantStatus.companyKey] || tenantStatus.companyKey
+    : 'Keine Firma ausgewählt';
 
   return (
     <Sidebar>
@@ -85,9 +118,9 @@ export function AppSidebar() {
           <div className="flex h-10 w-10 items-center justify-center rounded-md bg-primary text-primary-foreground">
             <Wallet className="h-6 w-6" />
           </div>
-          <div>
+          <div className="flex-1">
             <h2 className="text-lg font-semibold">Lohnprogramm</h2>
-            <p className="text-xs text-muted-foreground">Schweizer Lohnabrechnung</p>
+            <p className="text-xs text-muted-foreground truncate">{currentCompanyName}</p>
           </div>
         </div>
       </SidebarHeader>
@@ -113,6 +146,18 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
+      <SidebarFooter className="border-t p-4">
+        <Button
+          variant="outline"
+          className="w-full justify-start"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          data-testid="button-change-company"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Firma wechseln
+        </Button>
+      </SidebarFooter>
     </Sidebar>
   );
 }

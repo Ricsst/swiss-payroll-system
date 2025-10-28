@@ -13,11 +13,51 @@ import { parseQCSPayrollPDF, getMonthNumber, type QCSPayrollData } from "./servi
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
+  // TENANT SELECTION (Multi-Company Support)
+  // ============================================================================
+  
+  // Get current selected company
+  app.get("/api/tenant/current", (req, res) => {
+    res.json({ 
+      companyKey: req.session.companyKey || null,
+      isSelected: !!req.session.companyKey 
+    });
+  });
+
+  // Get available companies
+  app.get("/api/tenant/companies", (_req, res) => {
+    const companies = [
+      { key: 'firma-a', name: 'Firma A', hasDatabase: !!process.env.DATABASE_URL_FIRMA_A || !!process.env.DATABASE_URL },
+      { key: 'firma-b', name: 'Firma B', hasDatabase: !!process.env.DATABASE_URL_FIRMA_B },
+      { key: 'firma-c', name: 'Firma C', hasDatabase: !!process.env.DATABASE_URL_FIRMA_C },
+    ];
+    res.json(companies);
+  });
+
+  // Select a company
+  app.post("/api/tenant", (req, res) => {
+    const { companyKey } = req.body;
+    
+    if (!companyKey || !['firma-a', 'firma-b', 'firma-c'].includes(companyKey)) {
+      return res.status(400).json({ error: "Invalid company key" });
+    }
+
+    req.session.companyKey = companyKey;
+    res.json({ success: true, companyKey });
+  });
+
+  // Clear company selection (logout)
+  app.post("/api/tenant/logout", (req, res) => {
+    req.session.companyKey = undefined;
+    res.json({ success: true });
+  });
+
+  // ============================================================================
   // DASHBOARD
   // ============================================================================
-  app.get("/api/dashboard/stats", async (_req, res) => {
+  app.get("/api/dashboard/stats", async (req, res) => {
     try {
-      const stats = await storage.getDashboardStats();
+      const stats = await req.storage.getDashboardStats();
       res.json(stats);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -27,9 +67,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // COMPANY
   // ============================================================================
-  app.get("/api/company", async (_req, res) => {
+  app.get("/api/company", async (req, res) => {
     try {
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       // Return null if no company exists (not 404) so frontend can handle it gracefully
       res.json(company || null);
     } catch (error: any) {
@@ -45,7 +85,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: fromError(result.error).toString(),
         });
       }
-      const company = await storage.createCompany(result.data);
+      const company = await req.storage.createCompany(result.data);
       res.status(201).json(company);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -60,7 +100,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: fromError(result.error).toString(),
         });
       }
-      const company = await storage.updateCompany(result.data);
+      const company = await req.storage.updateCompany(result.data);
       res.json(company);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -70,9 +110,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   // EMPLOYEES
   // ============================================================================
-  app.get("/api/employees", async (_req, res) => {
+  app.get("/api/employees", async (req, res) => {
     try {
-      const employees = await storage.getEmployees();
+      const employees = await req.storage.getEmployees();
       res.json(employees);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -81,7 +121,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/employees/:id", async (req, res) => {
     try {
-      const employee = await storage.getEmployee(req.params.id);
+      const employee = await req.storage.getEmployee(req.params.id);
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
@@ -99,7 +139,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: fromError(result.error).toString(),
         });
       }
-      const employee = await storage.createEmployee(result.data);
+      const employee = await req.storage.createEmployee(result.data);
       res.status(201).json(employee);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -116,7 +156,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           error: fromError(result.error).toString(),
         });
       }
-      const employee = await storage.updateEmployee(req.params.id, result.data);
+      const employee = await req.storage.updateEmployee(req.params.id, result.data);
       res.json(employee);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -125,7 +165,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/employees/:id", async (req, res) => {
     try {
-      await storage.deleteEmployee(req.params.id);
+      await req.storage.deleteEmployee(req.params.id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -139,7 +179,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
     try {
       const year = req.query.year ? parseInt(req.query.year as string) : undefined;
       const month = req.query.month ? parseInt(req.query.month as string) : undefined;
-      const payments = await storage.getPayrollPayments(year, month);
+      const payments = await req.storage.getPayrollPayments(year, month);
       res.json(payments);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -157,7 +197,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "employeeId and year are required" });
       }
 
-      const data = await storage.getCumulativeAlvData(employeeId, year, excludePaymentId);
+      const data = await req.storage.getCumulativeAlvData(employeeId, year, excludePaymentId);
       res.json(data);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -175,7 +215,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "employeeId and year are required" });
       }
 
-      const data = await storage.getCumulativeNbuData(employeeId, year, excludePaymentId);
+      const data = await req.storage.getCumulativeNbuData(employeeId, year, excludePaymentId);
       res.json(data);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -184,7 +224,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/payroll/payments/:id", async (req, res) => {
     try {
-      const payment = await storage.getPayrollPayment(req.params.id);
+      const payment = await req.storage.getPayrollPayment(req.params.id);
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" });
       }
@@ -228,7 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const payment = await storage.createPayrollPayment(
+      const payment = await req.storage.createPayrollPayment(
         paymentResult.data,
         itemsResults.map((r: any) => r.data!),
         deductionResults.map((r: any) => r.data!)
@@ -250,7 +290,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const deductions = await storage.previewDeductions(
+      const deductions = await req.storage.previewDeductions(
         employeeId,
         paymentMonth,
         paymentYear,
@@ -266,7 +306,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payroll/payments/:id/lock", async (req, res) => {
     try {
-      const payment = await storage.lockPayrollPayment(req.params.id);
+      const payment = await req.storage.lockPayrollPayment(req.params.id);
       res.json(payment);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -275,7 +315,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.post("/api/payroll/payments/:id/unlock", async (req, res) => {
     try {
-      const payment = await storage.unlockPayrollPayment(req.params.id);
+      const payment = await req.storage.unlockPayrollPayment(req.params.id);
       res.json(payment);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -316,7 +356,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      const payment = await storage.updatePayrollPayment(
+      const payment = await req.storage.updatePayrollPayment(
         req.params.id,
         paymentResult.data,
         itemsResults.map((r: any) => r.data!),
@@ -335,7 +375,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/payroll/payments/:id", async (req, res) => {
     try {
-      await storage.deletePayrollPayment(req.params.id);
+      await req.storage.deletePayrollPayment(req.params.id);
       res.status(204).send();
     } catch (error: any) {
       if (error.message.includes("Abgeschlossene")) {
@@ -362,7 +402,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       const yearNum = typeof year === 'string' ? parseInt(year) : year;
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -373,13 +413,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const results = [];
-      const payments = await storage.getPayrollPayments(yearNum);
+      const payments = await req.storage.getPayrollPayments(yearNum);
 
       for (const employeeId of employeeIds) {
         try {
           console.log('[Send Lohnausweise] Processing employee:', employeeId);
           
-          const employee = await storage.getEmployee(employeeId);
+          const employee = await req.storage.getEmployee(employeeId);
           if (!employee) {
             console.log('[Send Lohnausweise] Employee not found:', employeeId);
             results.push({ employeeId, success: false, error: "Employee not found" });
@@ -412,7 +452,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           for (const payment of employeePayments) {
             totalGross += Number(payment.grossSalary);
             
-            const fullPayment = await storage.getPayrollPayment(payment.id);
+            const fullPayment = await req.storage.getPayrollPayment(payment.id);
             if (fullPayment && fullPayment.deductions) {
               fullPayment.deductions.forEach((d: any) => {
                 const amount = Number(d.amount);
@@ -521,21 +561,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Load company data to get sender email configuration
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (company?.payrollSenderEmail) {
         console.log('[Send Payslips] Using configured sender email:', company.payrollSenderEmail);
         console.log('[Send Payslips] Note: Outlook integration will send from the connected account');
       }
 
       const results = [];
-      const payrollItemTypes = await storage.getPayrollItemTypes();
+      const payrollItemTypes = await req.storage.getPayrollItemTypes();
 
       for (const paymentId of paymentIds) {
         try {
           console.log('[Send Payslips] Processing payment:', paymentId);
           
           // Get payment details
-          const payment = await storage.getPayrollPayment(paymentId);
+          const payment = await req.storage.getPayrollPayment(paymentId);
           if (!payment) {
             console.log('[Send Payslips] Payment not found:', paymentId);
             results.push({ paymentId, success: false, error: "Payment not found" });
@@ -543,7 +583,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           }
 
           // Get employee details
-          const employee = await storage.getEmployee(payment.employee.id);
+          const employee = await req.storage.getEmployee(payment.employee.id);
           if (!employee) {
             console.log('[Send Payslips] Employee not found:', payment.employee.id);
             results.push({ paymentId, success: false, error: "Employee not found" });
@@ -618,7 +658,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdf.addPayrollLine("NETTOLOHN", formatCurrency(parseFloat(payment.netSalary)), true, false);
           
           // Add footer with company info
-          const companyInfo = await storage.getCompany();
+          const companyInfo = await req.storage.getCompany();
           if (companyInfo) {
             const companyAddress = formatAddress(companyInfo.street, companyInfo.postalCode, companyInfo.city);
             pdf.addFooter(`${companyInfo.name} | ${companyAddress}`);
@@ -678,7 +718,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year or month" });
       }
 
-      const report = await storage.getMonthlyReport(year, month);
+      const report = await req.storage.getMonthlyReport(year, month);
       res.json(report);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -693,7 +733,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
+      const report = await req.storage.getYearlyReport(year);
       res.json(report);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -709,7 +749,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid employee ID or year" });
       }
 
-      const overview = await storage.getEmployeePayrollOverview(employeeId, year);
+      const overview = await req.storage.getEmployeePayrollOverview(employeeId, year);
       res.json(overview);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -732,13 +772,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No valid payment IDs provided" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
       // Load payroll item types for name mapping
-      const payrollItemTypes = await storage.getPayrollItemTypes();
+      const payrollItemTypes = await req.storage.getPayrollItemTypes();
 
       // Month names in German
       const monthNames = [
@@ -751,12 +791,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Generate PDF for each payment
       for (const paymentId of paymentIds) {
-        const payment = await storage.getPayrollPayment(paymentId);
+        const payment = await req.storage.getPayrollPayment(paymentId);
         if (!payment) {
           continue; // Skip if payment not found
         }
 
-        const employee = await storage.getEmployee(payment.employee.id);
+        const employee = await req.storage.getEmployee(payment.employee.id);
         if (!employee) {
           continue; // Skip if employee not found
         }
@@ -864,13 +904,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "No employees selected" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
       // Load payroll item types for name mapping
-      const payrollItemTypes = await storage.getPayrollItemTypes();
+      const payrollItemTypes = await req.storage.getPayrollItemTypes();
 
       // Month names in German
       const monthNames = [
@@ -883,7 +923,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pdf = new PDFGenerator();
       
       // Get all payroll payments for the month
-      const allPayments = await storage.getPayrollPayments(year, month);
+      const allPayments = await req.storage.getPayrollPayments(year, month);
       
       // Process each selected employee
       for (let empIndex = 0; empIndex < employeeIds.length; empIndex++) {
@@ -897,7 +937,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // Get employee details
-        const employee = await storage.getEmployee(employeeId);
+        const employee = await req.storage.getEmployee(employeeId);
         if (!employee) {
           continue;
         }
@@ -924,7 +964,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalNetSalary += parseFloat(payment.netSalary);
           
           // Get full payment details with items and deductions
-          const fullPayment = await storage.getPayrollPayment(payment.id);
+          const fullPayment = await req.storage.getPayrollPayment(payment.id);
           
           // Aggregate payroll items
           if (fullPayment?.payrollItems) {
@@ -1064,23 +1104,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/pdf/payroll/:id", async (req, res) => {
     try {
-      const payment = await storage.getPayrollPayment(req.params.id);
+      const payment = await req.storage.getPayrollPayment(req.params.id);
       if (!payment) {
         return res.status(404).json({ error: "Payment not found" });
       }
 
-      const employee = await storage.getEmployee(payment.employee.id);
+      const employee = await req.storage.getEmployee(payment.employee.id);
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
       // Load payroll item types for name mapping
-      const payrollItemTypes = await storage.getPayrollItemTypes();
+      const payrollItemTypes = await req.storage.getPayrollItemTypes();
 
       // Month names in German
       const monthNames = [
@@ -1181,8 +1221,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year or month" });
       }
 
-      const report = await storage.getMonthlyReport(year, month);
-      const company = await storage.getCompany();
+      const report = await req.storage.getMonthlyReport(year, month);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1208,7 +1248,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           pdf.addPayrollTitle("Lohnabrechnung", `${monthNames[month - 1]} ${year}`);
 
           // Employee address (right side)
-          const employeeData = await storage.getEmployee(emp.employeeId);
+          const employeeData = await req.storage.getEmployee(emp.employeeId);
           if (employeeData) {
             pdf.addWindowEnvelopeAddress(
               `${employeeData.firstName} ${employeeData.lastName}`,
@@ -1275,8 +1315,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1459,8 +1499,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1569,8 +1609,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1619,8 +1659,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1672,8 +1712,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1735,8 +1775,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
@@ -1842,12 +1882,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
-      const payments = await storage.getPayrollPayments(year);
+      const payments = await req.storage.getPayrollPayments(year);
       
       // Import PDFDocument for merging
       const { PDFDocument } = await import('pdf-lib');
@@ -1856,7 +1896,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Generate Lohnausweis for each selected employee
       for (let i = 0; i < employeeIds.length; i++) {
         const employeeId = employeeIds[i];
-        const employee = await storage.getEmployee(employeeId);
+        const employee = await req.storage.getEmployee(employeeId);
         
         if (!employee) {
           continue; // Skip if employee not found
@@ -1877,7 +1917,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalGross += Number(payment.grossSalary);
           
           // Get full payment details with deductions
-          const fullPayment = await storage.getPayrollPayment(payment.id);
+          const fullPayment = await req.storage.getPayrollPayment(payment.id);
           if (fullPayment && fullPayment.deductions) {
             fullPayment.deductions.forEach((d: any) => {
               const amount = Number(d.amount);
@@ -1967,19 +2007,19 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
-      const allEmployees = await storage.getEmployees();
+      const allEmployees = await req.storage.getEmployees();
       const activeEmployees = allEmployees.filter((e: any) => e.isActive);
 
       if (activeEmployees.length === 0) {
         return res.status(404).json({ error: "No active employees found" });
       }
 
-      const payments = await storage.getPayrollPayments(year);
+      const payments = await req.storage.getPayrollPayments(year);
       
       // Import PDFDocument for merging
       const { PDFDocument } = await import('pdf-lib');
@@ -2003,7 +2043,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           totalGross += Number(payment.grossSalary);
           
           // Get full payment details with deductions
-          const fullPayment = await storage.getPayrollPayment(payment.id);
+          const fullPayment = await req.storage.getPayrollPayment(payment.id);
           if (fullPayment && fullPayment.deductions) {
             fullPayment.deductions.forEach((d: any) => {
               const amount = Number(d.amount);
@@ -2094,18 +2134,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const employee = await storage.getEmployee(employeeId);
+      const employee = await req.storage.getEmployee(employeeId);
       if (!employee) {
         return res.status(404).json({ error: "Employee not found" });
       }
 
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found" });
       }
 
       // Get all payments for this employee in the year
-      const payments = await storage.getPayrollPayments(year);
+      const payments = await req.storage.getPayrollPayments(year);
       const employeePayments = payments.filter((p: any) => p.employee.id === employeeId);
 
       // Calculate totals - get full payment details including deductions
@@ -2121,7 +2161,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         totalGross += Number(payment.grossSalary);
         
         // Get full payment details with deductions
-        const fullPayment = await storage.getPayrollPayment(payment.id);
+        const fullPayment = await req.storage.getPayrollPayment(payment.id);
         if (fullPayment && fullPayment.deductions) {
           fullPayment.deductions.forEach((d: any) => {
             const amount = Number(d.amount);
@@ -2200,7 +2240,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   app.get("/api/payroll-item-types", async (req, res) => {
     try {
-      const itemTypes = await storage.getPayrollItemTypes();
+      const itemTypes = await req.storage.getPayrollItemTypes();
       res.json(itemTypes);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2209,7 +2249,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/payroll-item-types/:id", async (req, res) => {
     try {
-      const itemType = await storage.getPayrollItemType(req.params.id);
+      const itemType = await req.storage.getPayrollItemType(req.params.id);
       if (!itemType) {
         return res.status(404).json({ error: "Payroll item type not found" });
       }
@@ -2222,7 +2262,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/payroll-item-types", async (req, res) => {
     try {
       const validatedData = insertPayrollItemTypeSchema.parse(req.body);
-      const itemType = await storage.createPayrollItemType(validatedData);
+      const itemType = await req.storage.createPayrollItemType(validatedData);
       res.status(201).json(itemType);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -2236,7 +2276,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/payroll-item-types/:id", async (req, res) => {
     try {
       const validatedData = insertPayrollItemTypeSchema.parse(req.body);
-      const itemType = await storage.updatePayrollItemType(req.params.id, validatedData);
+      const itemType = await req.storage.updatePayrollItemType(req.params.id, validatedData);
       res.json(itemType);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -2249,7 +2289,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/payroll-item-types/:id", async (req, res) => {
     try {
-      await storage.deletePayrollItemType(req.params.id);
+      await req.storage.deletePayrollItemType(req.params.id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2261,7 +2301,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
   app.get("/api/templates", async (req, res) => {
     try {
-      const templates = await storage.getPayrollTemplates();
+      const templates = await req.storage.getPayrollTemplates();
       res.json(templates);
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2270,7 +2310,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.get("/api/templates/:id", async (req, res) => {
     try {
-      const template = await storage.getPayrollTemplate(req.params.id);
+      const template = await req.storage.getPayrollTemplate(req.params.id);
       if (!template) {
         return res.status(404).json({ error: "Template not found" });
       }
@@ -2283,7 +2323,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/templates", async (req, res) => {
     try {
       const validatedData = insertPayrollTemplateSchema.parse(req.body);
-      const template = await storage.createPayrollTemplate(validatedData);
+      const template = await req.storage.createPayrollTemplate(validatedData);
       res.status(201).json(template);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -2297,7 +2337,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.patch("/api/templates/:id", async (req, res) => {
     try {
       const validatedData = insertPayrollTemplateSchema.parse(req.body);
-      const template = await storage.updatePayrollTemplate(req.params.id, validatedData);
+      const template = await req.storage.updatePayrollTemplate(req.params.id, validatedData);
       res.json(template);
     } catch (error: any) {
       if (error.name === "ZodError") {
@@ -2310,7 +2350,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.delete("/api/templates/:id", async (req, res) => {
     try {
-      await storage.deletePayrollTemplate(req.params.id);
+      await req.storage.deletePayrollTemplate(req.params.id);
       res.status(204).send();
     } catch (error: any) {
       res.status(500).json({ error: error.message });
@@ -2330,8 +2370,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year or month" });
       }
 
-      const report = await storage.getMonthlyReport(year, month);
-      const company = await storage.getCompany();
+      const report = await req.storage.getMonthlyReport(year, month);
+      const company = await req.storage.getCompany();
 
       const monthNames = [
         "Januar", "Februar", "März", "April", "Mai", "Juni",
@@ -2398,8 +2438,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(400).json({ error: "Invalid year" });
       }
 
-      const report = await storage.getYearlyReport(year);
-      const company = await storage.getCompany();
+      const report = await req.storage.getYearlyReport(year);
+      const company = await req.storage.getCompany();
 
       const excel = new ExcelGenerator();
 
@@ -2617,13 +2657,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const pdfData = await parseQCSPayrollPDF(req.file.buffer);
       
       // Get company
-      const company = await storage.getCompany();
+      const company = await req.storage.getCompany();
       if (!company) {
         return res.status(404).json({ error: "Company not found. Please configure company settings first." });
       }
 
       // Find employee by AHV number
-      let employee = await storage.getEmployeeByAhvNumber(pdfData.ahvNumber);
+      let employee = await req.storage.getEmployeeByAhvNumber(pdfData.ahvNumber);
       
       const validation: {
         employeeExists: boolean;
@@ -2728,7 +2768,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         if (Object.keys(updates).length > 0) {
-          employee = await storage.updateEmployee(employee.id, updates);
+          employee = await req.storage.updateEmployee(employee.id, updates);
           validation.employeeUpdated = true;
         }
       } else {
@@ -2764,7 +2804,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           isActive: true,
         };
         
-        employee = await storage.createEmployee(newEmployeeData);
+        employee = await req.storage.createEmployee(newEmployeeData);
         validation.employeeCreated = true;
         validation.employeeId = employee.id;
         validation.nameMatches = true;
@@ -2885,7 +2925,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
       
       // Preview deductions to get the correct deduction list
-      const deductionsList = await storage.previewDeductions(
+      const deductionsList = await req.storage.previewDeductions(
         employee!.id,
         monthNum,
         pdfData.year,
@@ -2893,10 +2933,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
       );
       
       // Create payroll payment with items and deductions
-      const payrollPayment = await storage.createPayrollPayment(payrollData, payrollItems, deductionsList);
+      const payrollPayment = await req.storage.createPayrollPayment(payrollData, payrollItems, deductionsList);
       
       // Get the full payroll payment with all calculations
-      const fullPayrollPayment = await storage.getPayrollPayment(payrollPayment.id);
+      const fullPayrollPayment = await req.storage.getPayrollPayment(payrollPayment.id);
       
       // Validate payment amount (tolerance of 0.05 CHF for rounding)
       const calculatedAmount = fullPayrollPayment?.totalNetSalary ? parseFloat(fullPayrollPayment.totalNetSalary) : 0;

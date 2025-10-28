@@ -7,6 +7,7 @@ import { SidebarProvider, SidebarTrigger } from "@/components/ui/sidebar";
 import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
+import { RequireTenant } from "@/components/require-tenant";
 import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
 import CompanyPage from "@/pages/company";
@@ -22,26 +23,88 @@ import Lohnausweise from "@/pages/lohnausweise";
 import PayrollItemTypes from "@/pages/payroll-item-types";
 import Templates from "@/pages/templates";
 import QcsImport from "@/pages/qcs-import";
+import CompanySelector from "@/pages/company-selector";
 import NotFound from "@/pages/not-found";
 
 function Router() {
   return (
     <Switch>
-      <Route path="/" component={Dashboard} />
-      <Route path="/employees" component={Employees} />
-      <Route path="/company" component={CompanyPage} />
-      <Route path="/payroll" component={Payroll} />
-      <Route path="/payroll/new" component={PayrollNew} />
-      <Route path="/payroll/:id/edit" component={PayrollEdit} />
-      <Route path="/payroll/:id" component={PayrollDetail} />
-      <Route path="/employee-payroll" component={EmployeePayroll} />
-      <Route path="/employee-payroll-overview" component={EmployeePayrollOverview} />
-      <Route path="/monthly-report" component={MonthlyReport} />
-      <Route path="/yearly-report" component={YearlyReport} />
-      <Route path="/lohnausweise" component={Lohnausweise} />
-      <Route path="/payroll-item-types" component={PayrollItemTypes} />
-      <Route path="/templates" component={Templates} />
-      <Route path="/qcs-import" component={QcsImport} />
+      <Route path="/select-company" component={CompanySelector} />
+      <Route path="/" component={() => (
+        <RequireTenant>
+          <Dashboard />
+        </RequireTenant>
+      )} />
+      <Route path="/employees" component={() => (
+        <RequireTenant>
+          <Employees />
+        </RequireTenant>
+      )} />
+      <Route path="/company" component={() => (
+        <RequireTenant>
+          <CompanyPage />
+        </RequireTenant>
+      )} />
+      <Route path="/payroll" component={() => (
+        <RequireTenant>
+          <Payroll />
+        </RequireTenant>
+      )} />
+      <Route path="/payroll/new" component={() => (
+        <RequireTenant>
+          <PayrollNew />
+        </RequireTenant>
+      )} />
+      <Route path="/payroll/:id/edit" component={(props) => (
+        <RequireTenant>
+          <PayrollEdit params={props.params} />
+        </RequireTenant>
+      )} />
+      <Route path="/payroll/:id" component={(props) => (
+        <RequireTenant>
+          <PayrollDetail params={props.params} />
+        </RequireTenant>
+      )} />
+      <Route path="/employee-payroll" component={() => (
+        <RequireTenant>
+          <EmployeePayroll />
+        </RequireTenant>
+      )} />
+      <Route path="/employee-payroll-overview" component={() => (
+        <RequireTenant>
+          <EmployeePayrollOverview />
+        </RequireTenant>
+      )} />
+      <Route path="/monthly-report" component={() => (
+        <RequireTenant>
+          <MonthlyReport />
+        </RequireTenant>
+      )} />
+      <Route path="/yearly-report" component={() => (
+        <RequireTenant>
+          <YearlyReport />
+        </RequireTenant>
+      )} />
+      <Route path="/lohnausweise" component={() => (
+        <RequireTenant>
+          <Lohnausweise />
+        </RequireTenant>
+      )} />
+      <Route path="/payroll-item-types" component={() => (
+        <RequireTenant>
+          <PayrollItemTypes />
+        </RequireTenant>
+      )} />
+      <Route path="/templates" component={() => (
+        <RequireTenant>
+          <Templates />
+        </RequireTenant>
+      )} />
+      <Route path="/qcs-import" component={() => (
+        <RequireTenant>
+          <QcsImport />
+        </RequireTenant>
+      )} />
       <Route component={NotFound} />
     </Switch>
   );

@@ -22,8 +22,10 @@ import {
   type PayrollTemplate,
   type InsertPayrollTemplate,
 } from "@shared/schema";
-import { db } from "./db";
+import { db, getDbForCompany } from "./db";
 import { eq, and, desc, sql } from "drizzle-orm";
+
+type DbConnection = ReturnType<typeof getDbForCompany>;
 
 export interface IStorage {
   // Company
@@ -84,11 +86,17 @@ export interface IStorage {
 }
 
 export class DatabaseStorage implements IStorage {
+  private db: DbConnection;
+
+  constructor(dbConnection?: DbConnection) {
+    this.db = dbConnection || db;
+  }
+
   // ============================================================================
   // COMPANY
   // ============================================================================
   async getCompany(): Promise<Company | undefined> {
-    const [company] = await db.select().from(companies).limit(1);
+    const [company] = await this.db.select().from(companies).limit(1);
     return company || undefined;
   }
 
@@ -117,7 +125,7 @@ export class DatabaseStorage implements IStorage {
   // EMPLOYEES
   // ============================================================================
   async getEmployees(): Promise<Employee[]> {
-    return db.select().from(employees).orderBy(desc(employees.createdAt));
+    return this.db.select().from(employees).orderBy(desc(employees.createdAt));
   }
 
   async getEmployee(id: string): Promise<Employee | undefined> {
@@ -157,7 +165,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deleteEmployee(id: string): Promise<void> {
-    await db.delete(employees).where(eq(employees.id, id));
+    await this.db.delete(employees).where(eq(employees.id, id));
   }
 
   // ============================================================================
@@ -305,7 +313,7 @@ export class DatabaseStorage implements IStorage {
 
     // Insert payroll items
     if (items.length > 0) {
-      await db.insert(payrollItems).values(
+      await this.db.insert(payrollItems).values(
         items.map((item) => ({
           ...item,
           payrollPaymentId: paymentRecord.id,
@@ -315,7 +323,7 @@ export class DatabaseStorage implements IStorage {
 
     // Insert deductions
     if (adjustedDeductions.length > 0) {
-      await db.insert(deductions).values(
+      await this.db.insert(deductions).values(
         adjustedDeductions.map((d) => ({
           ...d,
           payrollPaymentId: paymentRecord.id,
@@ -426,12 +434,12 @@ export class DatabaseStorage implements IStorage {
       .returning();
 
     // Delete old items and deductions
-    await db.delete(payrollItems).where(eq(payrollItems.payrollPaymentId, id));
-    await db.delete(deductions).where(eq(deductions.payrollPaymentId, id));
+    await this.db.delete(payrollItems).where(eq(payrollItems.payrollPaymentId, id));
+    await this.db.delete(deductions).where(eq(deductions.payrollPaymentId, id));
 
     // Insert new payroll items (use effectiveItems which includes existing items if items was empty)
     if (effectiveItems.length > 0) {
-      await db.insert(payrollItems).values(
+      await this.db.insert(payrollItems).values(
         effectiveItems.map((item) => ({
           ...item,
           payrollPaymentId: id,
@@ -441,7 +449,7 @@ export class DatabaseStorage implements IStorage {
 
     // Insert new deductions
     if (adjustedDeductions.length > 0) {
-      await db.insert(deductions).values(
+      await this.db.insert(deductions).values(
         adjustedDeductions.map((d) => ({
           ...d,
           payrollPaymentId: id,
@@ -481,7 +489,7 @@ export class DatabaseStorage implements IStorage {
       throw new Error("Abgeschlossene Lohnauszahlungen können nicht gelöscht werden");
     }
     
-    await db.delete(payrollPayments).where(eq(payrollPayments.id, id));
+    await this.db.delete(payrollPayments).where(eq(payrollPayments.id, id));
   }
 
   // ============================================================================
@@ -749,7 +757,7 @@ export class DatabaseStorage implements IStorage {
       .where(eq(payrollPayments.paymentYear, year));
 
     // Get all payroll item types to map codes to names
-    const allPayrollItemTypes = await db.select().from(payrollItemTypes);
+    const allPayrollItemTypes = await this.db.select().from(payrollItemTypes);
     const typeMap = new Map<string, { code: string; name: string }>();
     for (const type of allPayrollItemTypes) {
       typeMap.set(type.code, { code: type.code, name: type.name });
@@ -834,7 +842,7 @@ export class DatabaseStorage implements IStorage {
     const employeeMap = new Map<string, any>();
     
     for (const payment of allPayments) {
-      const employee = await db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
+      const employee = await this.db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
       if (employee.length === 0) continue;
 
       const emp = employee[0];
@@ -984,7 +992,7 @@ export class DatabaseStorage implements IStorage {
     const employeeAnnualWages = new Map<string, { employee: any; totalWage: number }>();
     
     for (const payment of allPayments) {
-      const employee = await db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
+      const employee = await this.db.select().from(employees).where(eq(employees.id, payment.employeeId)).limit(1);
       if (employee.length === 0) continue;
 
       const emp = employee[0];
@@ -1086,7 +1094,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getDashboardStats(): Promise<any> {
-    const allEmployees = await db.select().from(employees);
+    const allEmployees = await this.db.select().from(employees);
     const activeEmployees = allEmployees.filter((e) => e.isActive).length;
 
     const company = await this.getCompany();
@@ -1122,7 +1130,7 @@ export class DatabaseStorage implements IStorage {
   // PAYROLL ITEM TYPES (Lohnarten)
   // ============================================================================
   async getPayrollItemTypes(): Promise<PayrollItemType[]> {
-    return db.select().from(payrollItemTypes).orderBy(payrollItemTypes.sortOrder, payrollItemTypes.code);
+    return this.db.select().from(payrollItemTypes).orderBy(payrollItemTypes.sortOrder, payrollItemTypes.code);
   }
 
   async getPayrollItemType(id: string): Promise<PayrollItemType | undefined> {
@@ -1154,14 +1162,14 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePayrollItemType(id: string): Promise<void> {
-    await db.delete(payrollItemTypes).where(eq(payrollItemTypes.id, id));
+    await this.db.delete(payrollItemTypes).where(eq(payrollItemTypes.id, id));
   }
 
   // ============================================================================
   // PAYROLL TEMPLATES
   // ============================================================================
   async getPayrollTemplates(): Promise<PayrollTemplate[]> {
-    return db.select().from(payrollTemplates).orderBy(desc(payrollTemplates.createdAt));
+    return this.db.select().from(payrollTemplates).orderBy(desc(payrollTemplates.createdAt));
   }
 
   async getPayrollTemplate(id: string): Promise<PayrollTemplate | undefined> {
@@ -1193,7 +1201,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async deletePayrollTemplate(id: string): Promise<void> {
-    await db.delete(payrollTemplates).where(eq(payrollTemplates.id, id));
+    await this.db.delete(payrollTemplates).where(eq(payrollTemplates.id, id));
   }
 
   // ============================================================================
@@ -1236,7 +1244,7 @@ export class DatabaseStorage implements IStorage {
       : [];
 
     // Get all payroll item types to map codes to names
-    const allPayrollItemTypes = await db.select().from(payrollItemTypes);
+    const allPayrollItemTypes = await this.db.select().from(payrollItemTypes);
     const typeMap = new Map<string, { code: string; name: string }>();
     for (const type of allPayrollItemTypes) {
       typeMap.set(type.code, { code: type.code, name: type.name });
@@ -2085,3 +2093,8 @@ export class DatabaseStorage implements IStorage {
 }
 
 export const storage = new DatabaseStorage();
+
+// Helper function to create storage instance based on request context
+export function createStorage(dbConnection?: DbConnection): DatabaseStorage {
+  return new DatabaseStorage(dbConnection);
+}
