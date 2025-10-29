@@ -94,7 +94,15 @@ export default function EmployeePayrollOverview() {
     queryKey: ["/api/reports/employee-payroll-overview", { employeeId: selectedEmployeeId, year: selectedYear }],
     queryFn: async () => {
       if (!selectedEmployeeId) return null;
-      const res = await fetch(`/api/reports/employee-payroll-overview?employeeId=${selectedEmployeeId}&year=${selectedYear}`, { credentials: "include" });
+      const selectedCompany = localStorage.getItem('selectedCompany');
+      const headers: HeadersInit = {};
+      if (selectedCompany) {
+        headers['X-Company-Key'] = selectedCompany;
+      }
+      const res = await fetch(`/api/reports/employee-payroll-overview?employeeId=${selectedEmployeeId}&year=${selectedYear}`, { 
+        credentials: "include",
+        headers,
+      });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
