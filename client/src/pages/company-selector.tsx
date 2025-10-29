@@ -25,10 +25,10 @@ export default function CompanySelector() {
       await apiRequest("POST", "/api/tenant", { companyKey });
     },
     onSuccess: async () => {
-      // Force immediate refetch to bypass browser cache
-      await queryClient.refetchQueries({ queryKey: ["/api/tenant/current"] });
-      // Reload the entire app to ensure fresh state
-      window.location.href = "/";
+      // Invalidate all queries to force fresh data
+      queryClient.clear();
+      // Navigate to dashboard (no full page reload)
+      setLocation("/");
     },
   });
 
