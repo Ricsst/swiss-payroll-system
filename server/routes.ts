@@ -18,9 +18,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Get current selected company
   app.get("/api/tenant/current", (req, res) => {
+    // Try cookie first (more reliable on Replit), fallback to session
+    const companyKey = req.cookies?.companyKey || req.session.companyKey || null;
     res.json({ 
-      companyKey: req.session.companyKey || null,
-      isSelected: !!req.session.companyKey 
+      companyKey,
+      isSelected: !!companyKey 
     });
   });
 
@@ -42,11 +44,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "Invalid company key" });
     }
 
+    // Store in both cookie (primary) and session (backup)
+    res.cookie('companyKey', companyKey, {
+      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
+      httpOnly: true,
+      secure: false,
+      sameSite: 'lax',
+    });
+    
     req.session.companyKey = companyKey;
     req.session.save((err) => {
       if (err) {
         console.error('Session save error:', err);
-        return res.status(500).json({ error: "Failed to save session" });
       }
       res.json({ success: true, companyKey });
     });
@@ -54,11 +63,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Clear company selection (logout)
   app.post("/api/tenant/logout", (req, res) => {
+    // Clear both cookie and session
+    res.clearCookie('companyKey');
     req.session.companyKey = undefined;
     req.session.save((err) => {
       if (err) {
         console.error('Session save error during logout:', err);
-        return res.status(500).json({ error: "Failed to save session" });
       }
       res.json({ success: true });
     });

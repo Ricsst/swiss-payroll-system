@@ -5,6 +5,7 @@ config();
 import express, { type Request, Response, NextFunction } from "express";
 import session from "express-session";
 import createMemoryStore from "memorystore";
+import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { tenantMiddleware } from "./middleware/tenant";
@@ -12,6 +13,7 @@ import { tenantMiddleware } from "./middleware/tenant";
 const app = express();
 app.use(express.json());
 app.use(express.urlencoded({ extended: false }));
+app.use(cookieParser());
 
 // Session configuration for multi-tenant support
 const MemoryStore = createMemoryStore(session);
