@@ -172,7 +172,7 @@ export class DatabaseStorage implements IStorage {
   // PAYROLL PAYMENTS
   // ============================================================================
   async getPayrollPayments(year?: number, month?: number): Promise<any[]> {
-    let query = db
+    let query = this.db
       .select({
         id: payrollPayments.id,
         paymentDate: payrollPayments.paymentDate,
