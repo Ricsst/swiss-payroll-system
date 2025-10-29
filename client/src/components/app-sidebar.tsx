@@ -99,10 +99,12 @@ export function AppSidebar() {
 
   const logoutMutation = useMutation({
     mutationFn: async () => {
+      // Clear localStorage first (for Replit iframe compatibility)
+      localStorage.removeItem('selectedCompany');
       await apiRequest("POST", "/api/tenant/logout", {});
     },
     onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/current"] });
+      queryClient.clear(); // Clear all cached queries
       setLocation("/select-company");
     },
   });
