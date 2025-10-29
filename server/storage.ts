@@ -1229,7 +1229,7 @@ export class DatabaseStorage implements IStorage {
     // Get all payroll items for these payments
     const paymentIds = payments.map(p => p.id);
     const allPayrollItems = paymentIds.length > 0
-      ? await db
+      ? await this.db
           .select()
           .from(payrollItems)
           .where(sql`${payrollItems.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
@@ -1237,7 +1237,7 @@ export class DatabaseStorage implements IStorage {
 
     // Get all deductions for these payments
     const allDeductions = paymentIds.length > 0
-      ? await db
+      ? await this.db
           .select()
           .from(deductions)
           .where(sql`${deductions.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
