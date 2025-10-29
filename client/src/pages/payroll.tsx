@@ -78,7 +78,15 @@ export default function Payroll() {
   const { data: payments, isLoading } = useQuery<PayrollPaymentWithEmployee[]>({
     queryKey: buildQueryKey(),
     queryFn: async () => {
-      const res = await fetch(buildQueryUrl(), { credentials: "include" });
+      const selectedCompany = localStorage.getItem('selectedCompany');
+      const headers: HeadersInit = {};
+      if (selectedCompany) {
+        headers['X-Company-Key'] = selectedCompany;
+      }
+      const res = await fetch(buildQueryUrl(), { 
+        credentials: "include",
+        headers,
+      });
       if (!res.ok) throw new Error(await res.text());
       return res.json();
     },
