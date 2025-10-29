@@ -496,7 +496,7 @@ export class DatabaseStorage implements IStorage {
   // REPORTS
   // ============================================================================
   async getMonthlyReport(year: number, month: number): Promise<any> {
-    const payments = await db
+    const payments = await this.db
       .select({
         employeeId: employees.id,
         employeeName: sql<string>`${employees.firstName} || ' ' || ${employees.lastName}`,
@@ -515,7 +515,7 @@ export class DatabaseStorage implements IStorage {
       );
 
     // Get all deductions for this month
-    const allDeductions = await db
+    const allDeductions = await this.db
       .select()
       .from(deductions)
       .where(
@@ -751,7 +751,7 @@ export class DatabaseStorage implements IStorage {
     const alvMaxIncome = company ? parseFloat(company.alvMaxIncomePerYear) : 148200;
 
     // Get all payments for the year
-    const allPayments = await db
+    const allPayments = await this.db
       .select()
       .from(payrollPayments)
       .where(eq(payrollPayments.paymentYear, year));
@@ -766,7 +766,7 @@ export class DatabaseStorage implements IStorage {
     // Get all payroll items for the year
     const paymentIds = allPayments.map(p => p.id);
     const allPayrollItems = paymentIds.length > 0 
-      ? await db
+      ? await this.db
           .select()
           .from(payrollItems)
           .where(sql`${payrollItems.payrollPaymentId} IN (${sql.join(paymentIds.map(id => sql`${id}`), sql`, `)})`)
@@ -1103,7 +1103,7 @@ export class DatabaseStorage implements IStorage {
     const currentMonth = currentDate.getMonth() + 1;
     const currentYear = currentDate.getFullYear();
 
-    const currentMonthPayments = await db
+    const currentMonthPayments = await this.db
       .select()
       .from(payrollPayments)
       .where(
