@@ -18,15 +18,16 @@ const MemoryStore = createMemoryStore(session);
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "development-secret-change-in-production",
-    resave: false,
-    saveUninitialized: false,
+    resave: true, // Force session save even if not modified
+    saveUninitialized: true, // Create session for every request
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: process.env.NODE_ENV === "production",
+      secure: false, // Allow cookies over HTTP (required for Replit and local development)
+      sameSite: 'lax',
     },
   })
 );
