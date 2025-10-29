@@ -18,8 +18,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Get current selected company
   app.get("/api/tenant/current", (req, res) => {
-    // Try cookie first (more reliable on Replit), fallback to session
-    const companyKey = req.cookies?.companyKey || req.session.companyKey || null;
+    // Try custom header first (for Replit iframe), then cookie, then session
+    const companyKey = req.headers['x-company-key'] as string || req.cookies?.companyKey || req.session.companyKey || null;
     
     // Prevent caching to ensure fresh data after tenant selection
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');

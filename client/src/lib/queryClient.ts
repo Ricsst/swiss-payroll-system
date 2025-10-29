@@ -12,9 +12,16 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
+  // Send selectedCompany from localStorage as header (for Replit iframe compatibility)
+  const selectedCompany = localStorage.getItem('selectedCompany');
+  const headers: HeadersInit = data ? { "Content-Type": "application/json" } : {};
+  if (selectedCompany) {
+    headers['X-Company-Key'] = selectedCompany;
+  }
+  
   const res = await fetch(url, {
     method,
-    headers: data ? { "Content-Type": "application/json" } : {},
+    headers,
     body: data ? JSON.stringify(data) : undefined,
     credentials: "include",
   });
@@ -29,9 +36,17 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
+    // Send selectedCompany from localStorage as header (for Replit iframe compatibility)
+    const selectedCompany = localStorage.getItem('selectedCompany');
+    const headers: HeadersInit = {};
+    if (selectedCompany) {
+      headers['X-Company-Key'] = selectedCompany;
+    }
+    
     const res = await fetch(queryKey.join("/") as string, {
       credentials: "include",
       cache: "no-store", // Always bypass browser cache
+      headers,
     });
 
     if (unauthorizedBehavior === "returnNull" && res.status === 401) {

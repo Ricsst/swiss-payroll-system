@@ -14,10 +14,10 @@ declare global {
   }
 }
 
-// Middleware to attach the correct database connection based on session or cookie
+// Middleware to attach the correct database connection based on header, cookie, or session
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
-  // Try cookie first (more reliable on Replit), fallback to session
-  const companyKey = req.cookies?.companyKey || req.session.companyKey;
+  // Try custom header first (for Replit iframe), then cookie, then session
+  const companyKey = req.headers['x-company-key'] as string || req.cookies?.companyKey || req.session.companyKey;
   
   // If no company selected, allow only specific routes
   if (!companyKey) {

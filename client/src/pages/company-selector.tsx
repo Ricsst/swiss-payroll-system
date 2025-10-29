@@ -20,12 +20,15 @@ export default function CompanySelector() {
 
   const selectCompanyMutation = useMutation({
     mutationFn: async (companyKey: string) => {
+      // Store in localStorage for Replit iframe compatibility
+      localStorage.setItem('selectedCompany', companyKey);
       await apiRequest("POST", "/api/tenant", { companyKey });
     },
     onSuccess: async () => {
       // Force immediate refetch to bypass browser cache
       await queryClient.refetchQueries({ queryKey: ["/api/tenant/current"] });
-      setLocation("/");
+      // Reload the entire app to ensure fresh state
+      window.location.href = "/";
     },
   });
 
