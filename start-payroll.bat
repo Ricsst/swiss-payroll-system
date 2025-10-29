@@ -37,6 +37,6 @@ set SESSION_SECRET=swiss-payroll-secret-key-2025-min-32-chars
 set PORT=5000
 
 REM Start the application
-npm run dev
+npx tsx server/index.ts
 
 pause
