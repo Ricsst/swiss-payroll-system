@@ -110,7 +110,15 @@ export default function YearlyReport() {
   const { data: report, isLoading } = useQuery<YearlyReportData>({
     queryKey: ["/api/reports/yearly", selectedYear],
     queryFn: async () => {
-      const response = await fetch(`/api/reports/yearly?year=${selectedYear}`);
+      const selectedCompany = localStorage.getItem('selectedCompany');
+      const headers: HeadersInit = {};
+      if (selectedCompany) {
+        headers['X-Company-Key'] = selectedCompany;
+      }
+      const response = await fetch(`/api/reports/yearly?year=${selectedYear}`, {
+        credentials: "include",
+        headers,
+      });
       if (!response.ok) throw new Error("Failed to fetch yearly report");
       return response.json();
     },
