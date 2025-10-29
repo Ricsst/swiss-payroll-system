@@ -43,13 +43,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
 
     req.session.companyKey = companyKey;
-    res.json({ success: true, companyKey });
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error:', err);
+        return res.status(500).json({ error: "Failed to save session" });
+      }
+      res.json({ success: true, companyKey });
+    });
   });
 
   // Clear company selection (logout)
   app.post("/api/tenant/logout", (req, res) => {
     req.session.companyKey = undefined;
-    res.json({ success: true });
+    req.session.save((err) => {
+      if (err) {
+        console.error('Session save error during logout:', err);
+        return res.status(500).json({ error: "Failed to save session" });
+      }
+      res.json({ success: true });
+    });
   });
 
   // ============================================================================
