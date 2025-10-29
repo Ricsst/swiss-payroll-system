@@ -41,6 +41,9 @@ export const getQueryFn: <T>(options: {
     const headers: HeadersInit = {};
     if (selectedCompany) {
       headers['X-Company-Key'] = selectedCompany;
+      console.log('[QueryClient] Sending X-Company-Key header:', selectedCompany, 'for', queryKey.join("/"));
+    } else {
+      console.log('[QueryClient] NO X-Company-Key header for', queryKey.join("/"));
     }
     
     const res = await fetch(queryKey.join("/") as string, {
