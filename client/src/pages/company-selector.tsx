@@ -22,8 +22,9 @@ export default function CompanySelector() {
     mutationFn: async (companyKey: string) => {
       await apiRequest("POST", "/api/tenant", { companyKey });
     },
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ["/api/tenant/current"] });
+    onSuccess: async () => {
+      // Force immediate refetch to bypass browser cache
+      await queryClient.refetchQueries({ queryKey: ["/api/tenant/current"] });
       setLocation("/");
     },
   });
