@@ -1,9 +1,6 @@
-import { Pool, neonConfig } from '@neondatabase/serverless';
-import { drizzle } from 'drizzle-orm/neon-serverless';
-import ws from "ws";
+import { Pool } from 'pg';
+import { drizzle } from 'drizzle-orm/node-postgres';
 import * as schema from "@shared/schema";
-
-neonConfig.webSocketConstructor = ws;
 
 // Validate that all required database URLs are configured
 function validateDatabaseConfig() {
@@ -84,6 +81,8 @@ export async function healthCheckDatabases() {
       await testPool.end();
       results[key] = { success: true };
     } catch (error: any) {
+      // Log full error for debugging
+      console.error(`Database connection error for ${key}:`, error.stack || error.message);
       results[key] = { success: false, error: error.message };
     }
   }
@@ -112,9 +111,9 @@ export function getDbForCompany(companyKey: string) {
     pools[companyKey] = new Pool({ connectionString: url });
   }
 
-  return drizzle({ client: pools[companyKey], schema });
+  return drizzle(pools[companyKey], { schema });
 }
 
 // Default export for backwards compatibility (uses firma-a)
 export const pool = new Pool({ connectionString: DATABASE_URLS['firma-a'] });
-export const db = drizzle({ client: pool, schema });
+export const db = drizzle(pool, { schema });
