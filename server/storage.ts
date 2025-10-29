@@ -101,7 +101,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createCompany(insertCompany: InsertCompany): Promise<Company> {
-    const [company] = await db
+    const [company] = await this.db
       .insert(companies)
       .values(insertCompany)
       .returning();
@@ -113,7 +113,7 @@ export class DatabaseStorage implements IStorage {
     if (!existing) {
       return this.createCompany(insertCompany);
     }
-    const [company] = await db
+    const [company] = await this.db
       .update(companies)
       .set({ ...insertCompany, updatedAt: new Date() })
       .where(eq(companies.id, existing.id))
@@ -129,7 +129,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmployee(id: string): Promise<Employee | undefined> {
-    const [employee] = await db
+    const [employee] = await this.db
       .select()
       .from(employees)
       .where(eq(employees.id, id));
@@ -137,7 +137,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getEmployeeByAhvNumber(ahvNumber: string): Promise<Employee | undefined> {
-    const [employee] = await db
+    const [employee] = await this.db
       .select()
       .from(employees)
       .where(eq(employees.ahvNumber, ahvNumber));
@@ -145,7 +145,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createEmployee(insertEmployee: InsertEmployee): Promise<Employee> {
-    const [employee] = await db
+    const [employee] = await this.db
       .insert(employees)
       .values(insertEmployee)
       .returning();
@@ -156,7 +156,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     insertEmployee: Partial<InsertEmployee>
   ): Promise<Employee> {
-    const [employee] = await db
+    const [employee] = await this.db
       .update(employees)
       .set({ ...insertEmployee, updatedAt: new Date() })
       .where(eq(employees.id, id))
@@ -213,7 +213,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPayrollPayment(id: string): Promise<any> {
-    const [payment] = await db
+    const [payment] = await this.db
       .select({
         id: payrollPayments.id,
         paymentDate: payrollPayments.paymentDate,
@@ -246,12 +246,12 @@ export class DatabaseStorage implements IStorage {
       return undefined;
     }
 
-    const items = await db
+    const items = await this.db
       .select()
       .from(payrollItems)
       .where(eq(payrollItems.payrollPaymentId, id));
 
-    const deductionsList = await db
+    const deductionsList = await this.db
       .select()
       .from(deductions)
       .where(eq(deductions.payrollPaymentId, id));
@@ -301,7 +301,7 @@ export class DatabaseStorage implements IStorage {
     );
     const netSalary = grossSalary - totalDeductions;
 
-    const [paymentRecord] = await db
+    const [paymentRecord] = await this.db
       .insert(payrollPayments)
       .values({
         ...payment,
@@ -341,7 +341,7 @@ export class DatabaseStorage implements IStorage {
     deductionsList: InsertDeduction[]
   ): Promise<PayrollPayment> {
     // Check if payment is locked
-    const [existingPayment] = await db
+    const [existingPayment] = await this.db
       .select({ 
         isLocked: payrollPayments.isLocked, 
         employeeId: payrollPayments.employeeId, 
@@ -367,7 +367,7 @@ export class DatabaseStorage implements IStorage {
     // If only items is empty (but deductions is not), allow clearing items
     let effectiveItems = items;
     if (items.length === 0 && deductionsList.length === 0) {
-      const existingItems = await db
+      const existingItems = await this.db
         .select()
         .from(payrollItems)
         .where(eq(payrollItems.payrollPaymentId, id));
@@ -421,7 +421,7 @@ export class DatabaseStorage implements IStorage {
     const netSalary = grossSalary - totalDeductions;
 
     // Update payment
-    const [paymentRecord] = await db
+    const [paymentRecord] = await this.db
       .update(payrollPayments)
       .set({
         ...payment,
@@ -461,7 +461,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async lockPayrollPayment(id: string): Promise<PayrollPayment> {
-    const [payment] = await db
+    const [payment] = await this.db
       .update(payrollPayments)
       .set({ isLocked: true, updatedAt: new Date() })
       .where(eq(payrollPayments.id, id))
@@ -470,7 +470,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async unlockPayrollPayment(id: string): Promise<PayrollPayment> {
-    const [payment] = await db
+    const [payment] = await this.db
       .update(payrollPayments)
       .set({ isLocked: false, updatedAt: new Date() })
       .where(eq(payrollPayments.id, id))
@@ -480,7 +480,7 @@ export class DatabaseStorage implements IStorage {
 
   async deletePayrollPayment(id: string): Promise<void> {
     // Check if payment is locked
-    const [payment] = await db
+    const [payment] = await this.db
       .select({ isLocked: payrollPayments.isLocked })
       .from(payrollPayments)
       .where(eq(payrollPayments.id, id));
@@ -528,7 +528,7 @@ export class DatabaseStorage implements IStorage {
       );
 
     // Get all payroll items for this month
-    const allPayrollItems = await db
+    const allPayrollItems = await this.db
       .select()
       .from(payrollItems)
       .where(
@@ -541,7 +541,7 @@ export class DatabaseStorage implements IStorage {
       );
 
     // Get payroll item types for name mapping
-    const allPayrollItemTypes = await db
+    const allPayrollItemTypes = await this.db
       .select()
       .from(payrollItemTypes);
 
@@ -1134,7 +1134,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPayrollItemType(id: string): Promise<PayrollItemType | undefined> {
-    const [itemType] = await db
+    const [itemType] = await this.db
       .select()
       .from(payrollItemTypes)
       .where(eq(payrollItemTypes.id, id));
@@ -1142,7 +1142,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPayrollItemType(insertItemType: InsertPayrollItemType): Promise<PayrollItemType> {
-    const [itemType] = await db
+    const [itemType] = await this.db
       .insert(payrollItemTypes)
       .values(insertItemType)
       .returning();
@@ -1153,7 +1153,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     insertItemType: InsertPayrollItemType
   ): Promise<PayrollItemType> {
-    const [itemType] = await db
+    const [itemType] = await this.db
       .update(payrollItemTypes)
       .set({ ...insertItemType, updatedAt: new Date() })
       .where(eq(payrollItemTypes.id, id))
@@ -1173,7 +1173,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async getPayrollTemplate(id: string): Promise<PayrollTemplate | undefined> {
-    const [template] = await db
+    const [template] = await this.db
       .select()
       .from(payrollTemplates)
       .where(eq(payrollTemplates.id, id));
@@ -1181,7 +1181,7 @@ export class DatabaseStorage implements IStorage {
   }
 
   async createPayrollTemplate(insertTemplate: InsertPayrollTemplate): Promise<PayrollTemplate> {
-    const [template] = await db
+    const [template] = await this.db
       .insert(payrollTemplates)
       .values(insertTemplate)
       .returning();
@@ -1192,7 +1192,7 @@ export class DatabaseStorage implements IStorage {
     id: string,
     insertTemplate: InsertPayrollTemplate
   ): Promise<PayrollTemplate> {
-    const [template] = await db
+    const [template] = await this.db
       .update(payrollTemplates)
       .set({ ...insertTemplate, updatedAt: new Date() })
       .where(eq(payrollTemplates.id, id))
@@ -1209,7 +1209,7 @@ export class DatabaseStorage implements IStorage {
   // ============================================================================
   async getEmployeePayrollOverview(employeeId: string, year: number) {
     // Get employee details
-    const [employee] = await db
+    const [employee] = await this.db
       .select()
       .from(employees)
       .where(eq(employees.id, employeeId));
@@ -1219,7 +1219,7 @@ export class DatabaseStorage implements IStorage {
     }
 
     // Get all payments for this employee in the year
-    const payments = await db
+    const payments = await this.db
       .select()
       .from(payrollPayments)
       .where(
@@ -1889,7 +1889,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${payrollPayments.paymentMonth} <= ${beforeMonth}`);
     }
     
-    let paymentsQuery = db
+    let paymentsQuery = this.db
       .select()
       .from(payrollPayments)
       .where(and(...conditions))
@@ -1912,7 +1912,7 @@ export class DatabaseStorage implements IStorage {
 
     // Calculate cumulative ALV-subject income from all payments
     for (const payment of filteredPayments) {
-      const items = await db
+      const items = await this.db
         .select()
         .from(payrollItems)
         .where(eq(payrollItems.payrollPaymentId, payment.id));
@@ -1926,7 +1926,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Sum up ALV deductions already paid (and their base amounts)
-      const alvDeductions = await db
+      const alvDeductions = await this.db
         .select()
         .from(deductions)
         .where(
@@ -1976,7 +1976,7 @@ export class DatabaseStorage implements IStorage {
       conditions.push(sql`${payrollPayments.paymentMonth} <= ${beforeMonth}`);
     }
     
-    let paymentsQuery = db
+    let paymentsQuery = this.db
       .select()
       .from(payrollPayments)
       .where(and(...conditions))
@@ -1998,7 +1998,7 @@ export class DatabaseStorage implements IStorage {
 
     // Calculate cumulative NBU-subject income from all payments
     for (const payment of filteredPayments) {
-      const items = await db
+      const items = await this.db
         .select()
         .from(payrollItems)
         .where(eq(payrollItems.payrollPaymentId, payment.id));
@@ -2012,7 +2012,7 @@ export class DatabaseStorage implements IStorage {
       }
 
       // Sum up NBU deductions already paid (and their base amounts)
-      const nbuDeductions = await db
+      const nbuDeductions = await this.db
         .select()
         .from(deductions)
         .where(
