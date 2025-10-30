@@ -1,18 +1,7 @@
 import { type Request, type Response, type NextFunction } from "express";
 import { getDbForCompany } from "../db";
-import { createStorage, type DatabaseStorage } from "../storage";
+import { createStorage } from "../storage";
 import "../types/session";
-
-// Extend Express Request to include db, storage and companyKey
-declare global {
-  namespace Express {
-    interface Request {
-      db: ReturnType<typeof getDbForCompany>;
-      storage: DatabaseStorage;
-      companyKey: string;
-    }
-  }
-}
 
 // Import authTokens from routes (will be passed via closure)
 let authTokensStore: Map<string, { isAuthenticated: boolean; companyKey?: string }> | null = null;

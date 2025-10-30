@@ -108,16 +108,19 @@ export default function MonthlyReport() {
       return;
     }
     
-    const employeeIds = Array.from(selectedEmployees).join(',');
-    const url = `/api/pdf/monthly-payslips?year=${selectedYear}&month=${selectedMonth}&employeeIds=${employeeIds}`;
-    
-    // Create invisible link to trigger download
-    const link = document.createElement('a');
-    link.href = url;
-    link.download = `Monatslohnabrechnungen_${monthNames[selectedMonth - 1]}_${selectedYear}.pdf`;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
+    try {
+      const employeeIds = Array.from(selectedEmployees).join(',');
+      const url = `/api/pdf/monthly-payslips?year=${selectedYear}&month=${selectedMonth}&employeeIds=${employeeIds}`;
+      
+      // Use downloadFile function with token/company authentication
+      await downloadFile(url);
+    } catch (error) {
+      toast({
+        title: "Fehler",
+        description: "PDF konnte nicht heruntergeladen werden",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
