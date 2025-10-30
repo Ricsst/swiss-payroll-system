@@ -34,6 +34,7 @@ set DATABASE_URL_FIRMA_B=postgresql://payroll_user:LohnPw2025@localhost:5432/pay
 set DATABASE_URL_FIRMA_C=postgresql://payroll_user:LohnPw2025@localhost:5432/payroll_qcs
 set DATABASE_URL=postgresql://payroll_user:LohnPw2025@localhost:5432/payroll_sk
 set SESSION_SECRET=swiss-payroll-secret-key-2025-min-32-chars
+set APP_PASSWORD=LohnAdmin2025
 set PORT=5000
 
 REM Start browser after 5 seconds in background

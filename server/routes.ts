@@ -13,6 +13,49 @@ import { parseQCSPayrollPDF, getMonthNumber, type QCSPayrollData } from "./servi
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
+  // AUTHENTICATION (Password Protection)
+  // ============================================================================
+  
+  // Check authentication status
+  app.get("/api/auth/status", (req, res) => {
+    res.json({ 
+      isAuthenticated: !!req.session.isAuthenticated 
+    });
+  });
+
+  // Login with password
+  app.post("/api/auth/login", (req, res) => {
+    const { password } = req.body;
+    const appPassword = process.env.APP_PASSWORD || "admin123"; // Default password for development
+    
+    if (password === appPassword) {
+      req.session.isAuthenticated = true;
+      req.session.save((err) => {
+        if (err) {
+          console.error('Session save error:', err);
+          return res.status(500).json({ error: "Failed to save session" });
+        }
+        res.json({ success: true });
+      });
+    } else {
+      res.status(401).json({ error: "Falsches Passwort" });
+    }
+  });
+
+  // Logout
+  app.post("/api/auth/logout", (req, res) => {
+    req.session.isAuthenticated = false;
+    req.session.companyKey = undefined;
+    res.clearCookie('companyKey');
+    req.session.destroy((err) => {
+      if (err) {
+        console.error('Session destroy error:', err);
+      }
+      res.json({ success: true });
+    });
+  });
+
+  // ============================================================================
   // TENANT SELECTION (Multi-Company Support)
   // ============================================================================
   

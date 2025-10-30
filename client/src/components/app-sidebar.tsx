@@ -97,7 +97,7 @@ export function AppSidebar() {
     queryKey: ["/api/tenant/current"],
   });
 
-  const logoutMutation = useMutation({
+  const changeCompanyMutation = useMutation({
     mutationFn: async () => {
       // Clear localStorage first (for Replit iframe compatibility)
       localStorage.removeItem('selectedCompany');
@@ -106,6 +106,17 @@ export function AppSidebar() {
     onSuccess: () => {
       queryClient.clear(); // Clear all cached queries
       setLocation("/select-company");
+    },
+  });
+
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      localStorage.removeItem('selectedCompany');
+      await apiRequest("POST", "/api/auth/logout", {});
+    },
+    onSuccess: () => {
+      queryClient.clear();
+      setLocation("/login");
     },
   });
 
@@ -148,16 +159,26 @@ export function AppSidebar() {
           </SidebarGroupContent>
         </SidebarGroup>
       </SidebarContent>
-      <SidebarFooter className="border-t p-4">
+      <SidebarFooter className="border-t p-4 space-y-2">
         <Button
           variant="outline"
           className="w-full justify-start"
-          onClick={() => logoutMutation.mutate()}
-          disabled={logoutMutation.isPending}
+          onClick={() => changeCompanyMutation.mutate()}
+          disabled={changeCompanyMutation.isPending}
           data-testid="button-change-company"
         >
           <LogOut className="h-4 w-4 mr-2" />
           Firma wechseln
+        </Button>
+        <Button
+          variant="outline"
+          className="w-full justify-start text-destructive hover:text-destructive"
+          onClick={() => logoutMutation.mutate()}
+          disabled={logoutMutation.isPending}
+          data-testid="button-logout"
+        >
+          <LogOut className="h-4 w-4 mr-2" />
+          Abmelden
         </Button>
       </SidebarFooter>
     </Sidebar>

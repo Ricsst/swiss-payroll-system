@@ -9,6 +9,8 @@ import cookieParser from "cookie-parser";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { tenantMiddleware } from "./middleware/tenant";
+import { authMiddleware } from "./middleware/auth";
+import "./types"; // Import type extensions
 
 const app = express();
 app.use(express.json());
@@ -33,6 +35,9 @@ app.use(
     },
   })
 );
+
+// Authentication middleware - protects all routes except login
+app.use(authMiddleware);
 
 // Multi-tenant database selection middleware
 app.use(tenantMiddleware);

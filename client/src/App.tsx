@@ -8,6 +8,8 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { ThemeProvider } from "@/components/theme-provider";
 import { ThemeToggle } from "@/components/theme-toggle";
 import { RequireTenant } from "@/components/require-tenant";
+import { RequireAuth } from "@/components/require-auth";
+import Login from "@/pages/login";
 import Dashboard from "@/pages/dashboard";
 import Employees from "@/pages/employees";
 import CompanyPage from "@/pages/company";
@@ -29,81 +31,116 @@ import NotFound from "@/pages/not-found";
 function Router() {
   return (
     <Switch>
-      <Route path="/select-company" component={CompanySelector} />
+      <Route path="/login" component={Login} />
+      <Route path="/select-company" component={() => (
+        <RequireAuth>
+          <CompanySelector />
+        </RequireAuth>
+      )} />
       <Route path="/" component={() => (
-        <RequireTenant>
-          <Dashboard />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <Dashboard />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/employees" component={() => (
-        <RequireTenant>
-          <Employees />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <Employees />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/company" component={() => (
-        <RequireTenant>
-          <CompanyPage />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <CompanyPage />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/payroll" component={() => (
-        <RequireTenant>
-          <Payroll />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <Payroll />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/payroll/new" component={() => (
-        <RequireTenant>
-          <PayrollNew />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <PayrollNew />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/payroll/:id/edit" component={(props) => (
-        <RequireTenant>
-          <PayrollEdit params={props.params} />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <PayrollEdit params={props.params} />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/payroll/:id" component={(props) => (
-        <RequireTenant>
-          <PayrollDetail params={props.params} />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <PayrollDetail params={props.params} />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/employee-payroll" component={() => (
-        <RequireTenant>
-          <EmployeePayroll />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <EmployeePayroll />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/employee-payroll-overview" component={() => (
-        <RequireTenant>
-          <EmployeePayrollOverview />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <EmployeePayrollOverview />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/monthly-report" component={() => (
-        <RequireTenant>
-          <MonthlyReport />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <MonthlyReport />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/yearly-report" component={() => (
-        <RequireTenant>
-          <YearlyReport />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <YearlyReport />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/lohnausweise" component={() => (
-        <RequireTenant>
-          <Lohnausweise />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <Lohnausweise />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/payroll-item-types" component={() => (
-        <RequireTenant>
-          <PayrollItemTypes />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <PayrollItemTypes />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/templates" component={() => (
-        <RequireTenant>
-          <Templates />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <Templates />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route path="/qcs-import" component={() => (
-        <RequireTenant>
-          <QcsImport />
-        </RequireTenant>
+        <RequireAuth>
+          <RequireTenant>
+            <QcsImport />
+          </RequireTenant>
+        </RequireAuth>
       )} />
       <Route component={NotFound} />
     </Switch>
