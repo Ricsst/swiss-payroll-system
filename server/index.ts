@@ -19,19 +19,23 @@ app.use(cookieParser());
 
 // Session configuration for multi-tenant support
 const MemoryStore = createMemoryStore(session);
+
+// Check if running in Replit environment
+const isReplit = process.env.REPL_ID !== undefined;
+
 app.use(
   session({
     secret: process.env.SESSION_SECRET || "development-secret-change-in-production",
-    resave: true, // Force session save even if not modified
-    saveUninitialized: true, // Create session for every request
+    resave: false, // Don't save session if unmodified
+    saveUninitialized: false, // Don't create session until something is stored
     store: new MemoryStore({
       checkPeriod: 86400000, // prune expired entries every 24h
     }),
     cookie: {
       maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
       httpOnly: true,
-      secure: false, // Allow cookies over HTTP (required for Replit and local development)
-      sameSite: 'lax',
+      secure: isReplit, // Use secure cookies in Replit (HTTPS), false for local HTTP
+      sameSite: isReplit ? 'none' : 'lax', // 'none' required for iframes in Replit
     },
   })
 );
