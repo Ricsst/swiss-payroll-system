@@ -86,7 +86,13 @@ export async function downloadFile(url: string, filename?: string) {
   
   await throwIfResNotOk(res);
   
-  const blob = await res.blob();
+  // Get content type from response headers
+  const contentType = res.headers.get('content-type') || 'application/octet-stream';
+  
+  // Create blob with correct MIME type
+  const arrayBuffer = await res.arrayBuffer();
+  const blob = new Blob([arrayBuffer], { type: contentType });
+  
   const downloadUrl = window.URL.createObjectURL(blob);
   const link = document.createElement('a');
   link.href = downloadUrl;
