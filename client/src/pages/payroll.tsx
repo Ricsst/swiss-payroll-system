@@ -16,7 +16,7 @@ import { Plus, Eye, Download, Lock, Unlock, Trash2, ArrowUpDown, ArrowUp, ArrowD
 import { Skeleton } from "@/components/ui/skeleton";
 import { Link } from "wouter";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, downloadFile } from "@/lib/queryClient";
 
 interface PayrollPaymentWithEmployee {
   id: string;
@@ -173,7 +173,7 @@ export default function Payroll() {
   const someSelected = selectedPayments.length > 0 && selectedPayments.length < (payments?.length || 0);
 
   // Handle bulk PDF export
-  const handleBulkPdfExport = () => {
+  const handleBulkPdfExport = async () => {
     if (selectedPayments.length === 0) {
       toast({
         title: "Keine Auswahl",
@@ -183,9 +183,9 @@ export default function Payroll() {
       return;
     }
 
-    // Open PDF export in new tab
+    // Download PDF export
     const paymentIds = selectedPayments.join(',');
-    window.open(`/api/pdf/payroll/bulk?ids=${paymentIds}`, '_blank');
+    await downloadFile(`/api/pdf/payroll/bulk?ids=${paymentIds}`);
     
     toast({
       title: "PDF wird generiert",

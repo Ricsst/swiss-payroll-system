@@ -50,7 +50,7 @@ import {
   FormLabel,
   FormMessage,
 } from "@/components/ui/form";
-import { apiRequest, queryClient } from "@/lib/queryClient";
+import { apiRequest, queryClient, downloadFile } from "@/lib/queryClient";
 import { useToast } from "@/hooks/use-toast";
 import { Skeleton } from "@/components/ui/skeleton";
 
@@ -1132,14 +1132,14 @@ export default function Employees() {
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             const year = new Date().getFullYear();
-                            window.open(`/api/pdf/lohnausweis/${employee.id}?year=${year}`, '_blank');
+                            downloadFile(`/api/pdf/lohnausweis/${employee.id}?year=${year}`);
                           }}>
                             <FileText className="h-4 w-4 mr-2" />
                             Lohnausweis {new Date().getFullYear()}
                           </DropdownMenuItem>
                           <DropdownMenuItem onClick={() => {
                             const year = new Date().getFullYear() - 1;
-                            window.open(`/api/pdf/lohnausweis/${employee.id}?year=${year}`, '_blank');
+                            downloadFile(`/api/pdf/lohnausweis/${employee.id}?year=${year}`);
                           }}>
                             <FileText className="h-4 w-4 mr-2" />
                             Lohnausweis {new Date().getFullYear() - 1}

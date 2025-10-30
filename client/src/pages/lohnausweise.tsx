@@ -21,7 +21,7 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Skeleton } from "@/components/ui/skeleton";
 import { FileDown, Download, Mail } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
-import { apiRequest } from "@/lib/queryClient";
+import { apiRequest, downloadFile } from "@/lib/queryClient";
 
 interface Employee {
   id: string;
@@ -50,18 +50,10 @@ export default function Lohnausweise() {
 
   const handleDownloadSingle = async (employeeId: string, employeeName: string) => {
     try {
-      const response = await fetch(`/api/pdf/lohnausweis/${employeeId}?year=${selectedYear}`);
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Lohnausweis_${selectedYear}_${employeeName.replace(/\s+/g, '_')}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await downloadFile(
+        `/api/pdf/lohnausweis/${employeeId}?year=${selectedYear}`,
+        `Lohnausweis_${selectedYear}_${employeeName.replace(/\s+/g, '_')}.pdf`
+      );
 
       toast({
         title: "Lohnausweis heruntergeladen",
@@ -94,18 +86,10 @@ export default function Lohnausweise() {
 
   const handleDownloadAll = async () => {
     try {
-      const response = await fetch(`/api/pdf/lohnausweise-bulk?year=${selectedYear}`);
-      if (!response.ok) throw new Error("Download failed");
-
-      const blob = await response.blob();
-      const url = window.URL.createObjectURL(blob);
-      const a = document.createElement("a");
-      a.href = url;
-      a.download = `Lohnausweise_${selectedYear}.pdf`;
-      document.body.appendChild(a);
-      a.click();
-      window.URL.revokeObjectURL(url);
-      document.body.removeChild(a);
+      await downloadFile(
+        `/api/pdf/lohnausweise-bulk?year=${selectedYear}`,
+        `Lohnausweise_${selectedYear}.pdf`
+      );
 
       toast({
         title: "Lohnausweise heruntergeladen",
@@ -131,12 +115,24 @@ export default function Lohnausweise() {
     }
 
     try {
+      const authToken = localStorage.getItem('authToken');
+      const selectedCompany = localStorage.getItem('selectedCompany');
+      const headers: HeadersInit = {
+        "Content-Type": "application/json",
+      };
+      
+      if (authToken) {
+        headers['X-Auth-Token'] = authToken;
+      }
+      if (selectedCompany) {
+        headers['X-Company-Key'] = selectedCompany;
+      }
+      
       const response = await fetch(`/api/pdf/lohnausweise-selected`, {
         method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
+        headers,
         body: JSON.stringify({ employeeIds: selectedEmployees, year: selectedYear }),
+        credentials: "include",
       });
       
       if (!response.ok) throw new Error("Download failed");

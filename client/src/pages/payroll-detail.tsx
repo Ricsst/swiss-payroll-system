@@ -1,6 +1,7 @@
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { downloadFile } from "@/lib/queryClient";
 import {
   Table,
   TableBody,
@@ -208,9 +209,7 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
             size="sm"
             variant="outline"
             data-testid="button-export-pdf"
-            onClick={() => {
-              window.open(`/api/pdf/payroll/${payment.id}`, '_blank');
-            }}
+            onClick={() => downloadFile(`/api/pdf/payroll/${payment.id}`)}
           >
             <FileDown className="h-3 w-3 mr-1" />
             PDF

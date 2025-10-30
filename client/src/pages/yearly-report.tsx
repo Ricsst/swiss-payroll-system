@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { downloadFile } from "@/lib/queryClient";
 import {
   Select,
   SelectContent,
@@ -159,7 +160,7 @@ export default function YearlyReport() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => window.open(`/api/pdf/yearly-recap?year=${selectedYear}`, '_blank')}
+              onClick={() => downloadFile(`/api/pdf/yearly-recap?year=${selectedYear}`)}
               data-testid="button-download-recap"
             >
               <div className="flex flex-col items-start gap-1 w-full">
@@ -174,7 +175,7 @@ export default function YearlyReport() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => window.open(`/api/pdf/yearly-months?year=${selectedYear}`, '_blank')}
+              onClick={() => downloadFile(`/api/pdf/yearly-months?year=${selectedYear}`)}
               data-testid="button-download-months"
             >
               <div className="flex flex-col items-start gap-1 w-full">
@@ -189,7 +190,7 @@ export default function YearlyReport() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => window.open(`/api/pdf/yearly-employees?year=${selectedYear}`, '_blank')}
+              onClick={() => downloadFile(`/api/pdf/yearly-employees?year=${selectedYear}`)}
               data-testid="button-download-employees"
             >
               <div className="flex flex-col items-start gap-1 w-full">
@@ -204,7 +205,7 @@ export default function YearlyReport() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => window.open(`/api/pdf/yearly-childallowances?year=${selectedYear}`, '_blank')}
+              onClick={() => downloadFile(`/api/pdf/yearly-childallowances?year=${selectedYear}`)}
               data-testid="button-download-childallowances"
             >
               <div className="flex flex-col items-start gap-1 w-full">
@@ -219,7 +220,7 @@ export default function YearlyReport() {
             <Button
               variant="outline"
               className="justify-start h-auto p-4"
-              onClick={() => window.open(`/api/pdf/yearly-wage-summary?year=${selectedYear}`, '_blank')}
+              onClick={() => downloadFile(`/api/pdf/yearly-wage-summary?year=${selectedYear}`)}
               data-testid="button-download-wage-summary"
             >
               <div className="flex flex-col items-start gap-1 w-full">
@@ -246,15 +247,11 @@ export default function YearlyReport() {
               <DropdownMenuContent align="end">
                 <DropdownMenuLabel>Excel Format</DropdownMenuLabel>
                 <DropdownMenuSeparator />
-                <DropdownMenuItem onClick={() => {
-                  window.open(`/api/excel/yearly-report?year=${selectedYear}&format=xlsx`, '_blank');
-                }}>
+                <DropdownMenuItem onClick={() => downloadFile(`/api/excel/yearly-report?year=${selectedYear}&format=xlsx`)}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   Excel (XLSX)
                 </DropdownMenuItem>
-                <DropdownMenuItem onClick={() => {
-                  window.open(`/api/excel/yearly-report?year=${selectedYear}&format=csv`, '_blank');
-                }}>
+                <DropdownMenuItem onClick={() => downloadFile(`/api/excel/yearly-report?year=${selectedYear}&format=csv`)}>
                   <FileSpreadsheet className="h-4 w-4 mr-2" />
                   CSV
                 </DropdownMenuItem>

@@ -67,6 +67,48 @@ export const getQueryFn: <T>(options: {
     return await res.json();
   };
 
+export async function downloadFile(url: string, filename?: string) {
+  const authToken = localStorage.getItem('authToken');
+  const selectedCompany = localStorage.getItem('selectedCompany');
+  const headers: HeadersInit = {};
+  
+  if (authToken) {
+    headers['X-Auth-Token'] = authToken;
+  }
+  if (selectedCompany) {
+    headers['X-Company-Key'] = selectedCompany;
+  }
+  
+  const res = await fetch(url, {
+    credentials: "include",
+    headers,
+  });
+  
+  await throwIfResNotOk(res);
+  
+  const blob = await res.blob();
+  const downloadUrl = window.URL.createObjectURL(blob);
+  const link = document.createElement('a');
+  link.href = downloadUrl;
+  
+  if (filename) {
+    link.download = filename;
+  } else {
+    const contentDisposition = res.headers.get('content-disposition');
+    if (contentDisposition) {
+      const filenameMatch = contentDisposition.match(/filename="?(.+)"?/i);
+      if (filenameMatch) {
+        link.download = filenameMatch[1];
+      }
+    }
+  }
+  
+  document.body.appendChild(link);
+  link.click();
+  document.body.removeChild(link);
+  window.URL.revokeObjectURL(downloadUrl);
+}
+
 export const queryClient = new QueryClient({
   defaultOptions: {
     queries: {

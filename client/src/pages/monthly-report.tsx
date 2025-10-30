@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
+import { downloadFile } from "@/lib/queryClient";
 import {
   Select,
   SelectContent,
@@ -140,21 +141,15 @@ export default function MonthlyReport() {
           <DropdownMenuContent align="end">
             <DropdownMenuLabel>Export Format</DropdownMenuLabel>
             <DropdownMenuSeparator />
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/pdf/monthly-report?year=${selectedYear}&month=${selectedMonth}`, '_blank');
-            }}>
+            <DropdownMenuItem onClick={() => downloadFile(`/api/pdf/monthly-report?year=${selectedYear}&month=${selectedMonth}`)}>
               <FileType className="h-4 w-4 mr-2" />
               PDF
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/excel/monthly-report?year=${selectedYear}&month=${selectedMonth}&format=xlsx`, '_blank');
-            }}>
+            <DropdownMenuItem onClick={() => downloadFile(`/api/excel/monthly-report?year=${selectedYear}&month=${selectedMonth}&format=xlsx`)}>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               Excel (XLSX)
             </DropdownMenuItem>
-            <DropdownMenuItem onClick={() => {
-              window.open(`/api/excel/monthly-report?year=${selectedYear}&month=${selectedMonth}&format=csv`, '_blank');
-            }}>
+            <DropdownMenuItem onClick={() => downloadFile(`/api/excel/monthly-report?year=${selectedYear}&month=${selectedMonth}&format=csv`)}>
               <FileSpreadsheet className="h-4 w-4 mr-2" />
               CSV
             </DropdownMenuItem>
