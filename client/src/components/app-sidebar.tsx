@@ -113,6 +113,7 @@ export function AppSidebar() {
     mutationFn: async () => {
       localStorage.removeItem('selectedCompany');
       await apiRequest("POST", "/api/auth/logout", {});
+      localStorage.removeItem('authToken'); // Clear auth token after logout
     },
     onSuccess: () => {
       queryClient.clear();

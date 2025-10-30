@@ -18,9 +18,14 @@ export default function Login() {
   const loginMutation = useMutation({
     mutationFn: async (password: string) => {
       const response = await apiRequest("POST", "/api/auth/login", { password });
-      return response;
+      const data = await response.json();
+      return data;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
+      // Store auth token in localStorage
+      if (data.token) {
+        localStorage.setItem('authToken', data.token);
+      }
       queryClient.clear();
       setLocation("/");
     },

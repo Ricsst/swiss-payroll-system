@@ -1,5 +1,12 @@
 import type { Request, Response, NextFunction } from "express";
 
+// Import authTokens from routes (will be passed via closure)
+let authTokensStore: Map<string, { isAuthenticated: boolean; companyKey?: string }> | null = null;
+
+export function setAuthTokensStore(store: Map<string, { isAuthenticated: boolean; companyKey?: string }>) {
+  authTokensStore = store;
+}
+
 /**
  * Authentication middleware - protects all routes except auth and public routes
  */
@@ -9,8 +16,12 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
-  // Check if user is authenticated
-  if (!req.session.isAuthenticated) {
+  // Check if user is authenticated via token
+  const token = req.headers['x-auth-token'] as string;
+  const tokenData = token && authTokensStore ? authTokensStore.get(token) : null;
+  const isAuthenticated = tokenData?.isAuthenticated || false;
+
+  if (!isAuthenticated) {
     // For API routes, return 401
     if (req.path.startsWith("/api/")) {
       return res.status(401).json({ 

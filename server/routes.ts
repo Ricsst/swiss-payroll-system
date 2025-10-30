@@ -10,6 +10,14 @@ import { sendPayslipEmail } from "./services/email";
 import { sendPayslipEmailViaOutlook, sendLohnausweisEmailViaOutlook } from "./services/email-outlook";
 import multer from "multer";
 import { parseQCSPayrollPDF, getMonthNumber, type QCSPayrollData } from "./services/qcs-pdf-parser";
+import crypto from "crypto";
+
+// Token-based authentication store (for Replit iframe compatibility)
+export const authTokens = new Map<string, { isAuthenticated: boolean; companyKey?: string }>();
+
+function generateAuthToken(): string {
+  return crypto.randomBytes(32).toString('hex');
+}
 
 export async function registerRoutes(app: Express): Promise<Server> {
   // ============================================================================
@@ -18,25 +26,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Check authentication status
   app.get("/api/auth/status", (req, res) => {
+    const token = req.headers['x-auth-token'] as string;
+    const tokenData = token ? authTokens.get(token) : null;
+    
     res.json({ 
-      isAuthenticated: !!req.session.isAuthenticated 
+      isAuthenticated: tokenData?.isAuthenticated || false
     });
   });
 
   // Login with password
   app.post("/api/auth/login", (req, res) => {
     const { password } = req.body;
-    const appPassword = process.env.APP_PASSWORD || "admin123"; // Default password for development
+    const appPassword = process.env.APP_PASSWORD || "admin123";
     
     if (password === appPassword) {
-      req.session.isAuthenticated = true;
-      req.session.save((err) => {
-        if (err) {
-          console.error('Session save error:', err);
-          return res.status(500).json({ error: "Failed to save session" });
-        }
-        res.json({ success: true });
-      });
+      const token = generateAuthToken();
+      authTokens.set(token, { isAuthenticated: true });
+      res.json({ success: true, token });
     } else {
       res.status(401).json({ error: "Falsches Passwort" });
     }
@@ -44,15 +50,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   // Logout
   app.post("/api/auth/logout", (req, res) => {
-    req.session.isAuthenticated = false;
-    req.session.companyKey = undefined;
-    res.clearCookie('companyKey');
-    req.session.destroy((err) => {
-      if (err) {
-        console.error('Session destroy error:', err);
-      }
-      res.json({ success: true });
-    });
+    const token = req.headers['x-auth-token'] as string;
+    if (token) {
+      authTokens.delete(token);
+    }
+    res.json({ success: true });
   });
 
   // ============================================================================

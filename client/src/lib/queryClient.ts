@@ -12,9 +12,14 @@ export async function apiRequest(
   url: string,
   data?: unknown | undefined,
 ): Promise<Response> {
-  // Send selectedCompany from localStorage as header (for Replit iframe compatibility)
+  // Send auth token and selectedCompany from localStorage as headers (for Replit iframe compatibility)
+  const authToken = localStorage.getItem('authToken');
   const selectedCompany = localStorage.getItem('selectedCompany');
   const headers: HeadersInit = data ? { "Content-Type": "application/json" } : {};
+  
+  if (authToken) {
+    headers['X-Auth-Token'] = authToken;
+  }
   if (selectedCompany) {
     headers['X-Company-Key'] = selectedCompany;
   }
@@ -36,9 +41,14 @@ export const getQueryFn: <T>(options: {
 }) => QueryFunction<T> =
   ({ on401: unauthorizedBehavior }) =>
   async ({ queryKey }) => {
-    // Send selectedCompany from localStorage as header (for Replit iframe compatibility)
+    // Send auth token and selectedCompany from localStorage as headers (for Replit iframe compatibility)
+    const authToken = localStorage.getItem('authToken');
     const selectedCompany = localStorage.getItem('selectedCompany');
     const headers: HeadersInit = {};
+    
+    if (authToken) {
+      headers['X-Auth-Token'] = authToken;
+    }
     if (selectedCompany) {
       headers['X-Company-Key'] = selectedCompany;
     }
