@@ -16,6 +16,11 @@ declare global {
 
 // Middleware to attach the correct database connection based on header, cookie, or session
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
+  // Skip tenant middleware for auth routes
+  if (req.path.startsWith("/api/auth/")) {
+    return next();
+  }
+
   // Try custom header first (for Replit iframe), then cookie, then session
   const companyKey = req.headers['x-company-key'] as string || req.cookies?.companyKey || req.session.companyKey;
   
