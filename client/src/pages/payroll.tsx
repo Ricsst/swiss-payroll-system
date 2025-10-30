@@ -57,39 +57,15 @@ export default function Payroll() {
   };
 
   const buildQueryKey = () => {
-    const key: any[] = ['/api/payroll/payments'];
-    if (selectedYear || selectedMonth) {
-      const params: Record<string, any> = {};
-      if (selectedYear) params.year = selectedYear;
-      if (selectedMonth) params.month = selectedMonth;
-      key.push(params);
-    }
-    return key;
-  };
-
-  const buildQueryUrl = () => {
     const params = new URLSearchParams();
     if (selectedYear) params.append('year', selectedYear.toString());
     if (selectedMonth) params.append('month', selectedMonth.toString());
     const queryString = params.toString();
-    return `/api/payroll/payments${queryString ? `?${queryString}` : ''}`;
+    return [`/api/payroll/payments${queryString ? `?${queryString}` : ''}`];
   };
 
   const { data: payments, isLoading } = useQuery<PayrollPaymentWithEmployee[]>({
     queryKey: buildQueryKey(),
-    queryFn: async () => {
-      const selectedCompany = localStorage.getItem('selectedCompany');
-      const headers: HeadersInit = {};
-      if (selectedCompany) {
-        headers['X-Company-Key'] = selectedCompany;
-      }
-      const res = await fetch(buildQueryUrl(), { 
-        credentials: "include",
-        headers,
-      });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
   });
 
   const lockMutation = useMutation({
