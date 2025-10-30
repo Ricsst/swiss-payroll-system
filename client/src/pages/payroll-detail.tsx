@@ -88,12 +88,7 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
   };
   
   const { data: filteredPayments } = useQuery<PayrollPaymentListItem[]>({
-    queryKey: ['/api/payroll/payments', filterYear ? { year: filterYear, month: filterMonth } : undefined],
-    queryFn: async () => {
-      const res = await fetch(buildFilterQueryUrl(), { credentials: "include" });
-      if (!res.ok) throw new Error(await res.text());
-      return res.json();
-    },
+    queryKey: [buildFilterQueryUrl()],
     enabled: !!filterYear || !!filterMonth,
   });
   
