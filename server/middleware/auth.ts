@@ -16,8 +16,8 @@ export function authMiddleware(req: Request, res: Response, next: NextFunction) 
     return next();
   }
 
-  // Check if user is authenticated via token
-  const token = req.headers['x-auth-token'] as string;
+  // Check if user is authenticated via token (from header or query param)
+  const token = (req.headers['x-auth-token'] as string) || (req.query.token as string);
   const tokenData = token && authTokensStore ? authTokensStore.get(token) : null;
   const isAuthenticated = tokenData?.isAuthenticated || false;
 

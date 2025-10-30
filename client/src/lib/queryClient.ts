@@ -73,74 +73,24 @@ export async function downloadFile(url: string, filename?: string) {
     
     const authToken = localStorage.getItem('authToken');
     const selectedCompany = localStorage.getItem('selectedCompany');
-    const headers: HeadersInit = {};
     
+    // For Replit iframe compatibility, we need to add auth to URL as query params
+    // since window.open doesn't allow custom headers
+    const urlObj = new URL(url, window.location.origin);
     if (authToken) {
-      headers['X-Auth-Token'] = authToken;
-      console.log('[downloadFile] Auth token added');
+      urlObj.searchParams.set('token', authToken);
+      console.log('[downloadFile] Auth token added to URL');
     }
     if (selectedCompany) {
-      headers['X-Company-Key'] = selectedCompany;
-      console.log('[downloadFile] Company key added:', selectedCompany);
+      urlObj.searchParams.set('company', selectedCompany);
+      console.log('[downloadFile] Company key added to URL:', selectedCompany);
     }
     
-    console.log('[downloadFile] Fetching with headers:', Object.keys(headers));
-    const res = await fetch(url, {
-      credentials: "include",
-      headers,
-    });
+    const finalUrl = urlObj.toString();
+    console.log('[downloadFile] Opening URL in new tab:', finalUrl);
     
-    console.log('[downloadFile] Response status:', res.status);
-    console.log('[downloadFile] Response headers:', {
-      contentType: res.headers.get('content-type'),
-      contentDisposition: res.headers.get('content-disposition'),
-      contentLength: res.headers.get('content-length'),
-    });
-    
-    if (!res.ok) {
-      const errorText = await res.text();
-      console.error('[downloadFile] Error response:', errorText);
-      throw new Error(`Download failed: ${res.status} ${res.statusText}`);
-    }
-    
-    // Get content type from response headers
-    const contentType = res.headers.get('content-type') || 'application/octet-stream';
-    console.log('[downloadFile] Content type:', contentType);
-    
-    // Create blob with correct MIME type
-    const arrayBuffer = await res.arrayBuffer();
-    console.log('[downloadFile] ArrayBuffer size:', arrayBuffer.byteLength);
-    
-    const blob = new Blob([arrayBuffer], { type: contentType });
-    console.log('[downloadFile] Blob created:', blob.size, 'bytes, type:', blob.type);
-    
-    const downloadUrl = window.URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.href = downloadUrl;
-    
-    if (filename) {
-      link.download = filename;
-    } else {
-      const contentDisposition = res.headers.get('content-disposition');
-      if (contentDisposition) {
-        const filenameMatch = contentDisposition.match(/filename[^;=\n]*=((['"]).*?\2|[^;\n]*)/i);
-        if (filenameMatch && filenameMatch[1]) {
-          link.download = filenameMatch[1].replace(/['"]/g, '');
-        }
-      }
-    }
-    
-    console.log('[downloadFile] Download filename:', link.download);
-    
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Clean up after a longer delay to allow Chrome to access the blob
-    setTimeout(() => {
-      window.URL.revokeObjectURL(downloadUrl);
-      console.log('[downloadFile] Cleanup complete');
-    }, 5000);
+    // Open in new tab - this works better in iframe environments like Replit
+    window.open(finalUrl, '_blank');
     
     console.log('[downloadFile] Download triggered successfully');
   } catch (error) {

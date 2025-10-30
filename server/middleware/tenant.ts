@@ -28,8 +28,8 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     return next();
   }
 
-  // Try to get company from auth token first, then custom header
-  const token = req.headers['x-auth-token'] as string;
+  // Try to get company from auth token first (from header or query param), then custom header
+  const token = (req.headers['x-auth-token'] as string) || (req.query.token as string);
   let companyKey: string | undefined;
   
   if (token && authTokensStore) {
@@ -39,9 +39,9 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     }
   }
   
-  // Fallback to custom header
+  // Fallback to custom header or query param
   if (!companyKey) {
-    companyKey = req.headers['x-company-key'] as string;
+    companyKey = (req.headers['x-company-key'] as string) || (req.query.company as string);
   }
   
   // If no company selected, allow only specific routes
