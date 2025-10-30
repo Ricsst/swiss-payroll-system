@@ -2,6 +2,7 @@ import { useQuery } from "@tanstack/react-query";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { downloadFile } from "@/lib/queryClient";
+import { useToast } from "@/hooks/use-toast";
 import {
   Table,
   TableBody,
@@ -68,6 +69,7 @@ interface PayrollPaymentListItem {
 }
 
 export default function PayrollDetail({ params }: { params: { id: string } }) {
+  const { toast } = useToast();
   const [, setLocation] = useLocation();
   
   // Get filter params from URL
@@ -209,7 +211,17 @@ export default function PayrollDetail({ params }: { params: { id: string } }) {
             size="sm"
             variant="outline"
             data-testid="button-export-pdf"
-            onClick={() => downloadFile(`/api/pdf/payroll/${payment.id}`)}
+            onClick={async () => {
+              try {
+                await downloadFile(`/api/pdf/payroll/${payment.id}`);
+              } catch (error) {
+                toast({
+                  title: "Fehler",
+                  description: "PDF konnte nicht heruntergeladen werden",
+                  variant: "destructive",
+                });
+              }
+            }}
           >
             <FileDown className="h-3 w-3 mr-1" />
             PDF

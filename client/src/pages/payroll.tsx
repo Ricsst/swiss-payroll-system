@@ -616,6 +616,25 @@ export default function Payroll() {
                             </Button>
                           </Link>
                         )}
+                        <Button
+                          variant="ghost"
+                          size="icon"
+                          onClick={async () => {
+                            try {
+                              await downloadFile(`/api/pdf/payroll/${payment.id}`);
+                            } catch (error) {
+                              toast({
+                                title: "Fehler",
+                                description: "PDF konnte nicht heruntergeladen werden",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          data-testid={`button-download-${payment.id}`}
+                          title="PDF herunterladen"
+                        >
+                          <Download className="h-4 w-4" />
+                        </Button>
                         <Link href={buildDetailUrl(payment.id)}>
                           <Button
                             variant="ghost"
