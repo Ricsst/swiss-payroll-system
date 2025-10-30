@@ -14,6 +14,13 @@ declare global {
   }
 }
 
+// Import authTokens from routes (will be passed via closure)
+let authTokensStore: Map<string, { isAuthenticated: boolean; companyKey?: string }> | null = null;
+
+export function setTenantAuthTokensStore(store: Map<string, { isAuthenticated: boolean; companyKey?: string }>) {
+  authTokensStore = store;
+}
+
 // Middleware to attach the correct database connection based on header, cookie, or session
 export function tenantMiddleware(req: Request, res: Response, next: NextFunction) {
   // Skip tenant middleware for auth routes
@@ -21,8 +28,21 @@ export function tenantMiddleware(req: Request, res: Response, next: NextFunction
     return next();
   }
 
-  // Try custom header first (for Replit iframe), then cookie, then session
-  const companyKey = req.headers['x-company-key'] as string || req.cookies?.companyKey || req.session.companyKey;
+  // Try to get company from auth token first, then custom header
+  const token = req.headers['x-auth-token'] as string;
+  let companyKey: string | undefined;
+  
+  if (token && authTokensStore) {
+    const tokenData = authTokensStore.get(token);
+    if (tokenData) {
+      companyKey = tokenData.companyKey;
+    }
+  }
+  
+  // Fallback to custom header
+  if (!companyKey) {
+    companyKey = req.headers['x-company-key'] as string;
+  }
   
   // If no company selected, allow only specific routes
   if (!companyKey) {

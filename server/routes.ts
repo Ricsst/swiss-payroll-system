@@ -63,8 +63,18 @@ export async function registerRoutes(app: Express): Promise<Server> {
   
   // Get current selected company
   app.get("/api/tenant/current", (req, res) => {
-    // Try custom header first (for Replit iframe), then cookie, then session
-    const companyKey = req.headers['x-company-key'] as string || req.cookies?.companyKey || req.session.companyKey || null;
+    // Try from auth token first, then custom header
+    const token = req.headers['x-auth-token'] as string;
+    let companyKey: string | null = null;
+    
+    if (token && authTokens.has(token)) {
+      companyKey = authTokens.get(token)!.companyKey || null;
+    }
+    
+    // Fallback to header if not in token
+    if (!companyKey) {
+      companyKey = req.headers['x-company-key'] as string || null;
+    }
     
     // Prevent caching to ensure fresh data after tenant selection
     res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, private');
@@ -95,34 +105,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
       return res.status(400).json({ error: "Invalid company key" });
     }
 
-    // Store in both cookie (primary) and session (backup)
-    res.cookie('companyKey', companyKey, {
-      maxAge: 7 * 24 * 60 * 60 * 1000, // 7 days
-      httpOnly: true,
-      secure: false,
-      sameSite: 'lax',
-    });
+    // Store company selection in auth token
+    const token = req.headers['x-auth-token'] as string;
+    if (token && authTokens.has(token)) {
+      const tokenData = authTokens.get(token)!;
+      tokenData.companyKey = companyKey;
+      authTokens.set(token, tokenData);
+    }
     
-    req.session.companyKey = companyKey;
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error:', err);
-      }
-      res.json({ success: true, companyKey });
-    });
+    res.json({ success: true, companyKey });
   });
 
   // Clear company selection (logout)
   app.post("/api/tenant/logout", (req, res) => {
-    // Clear both cookie and session
-    res.clearCookie('companyKey');
-    req.session.companyKey = undefined;
-    req.session.save((err) => {
-      if (err) {
-        console.error('Session save error during logout:', err);
-      }
-      res.json({ success: true });
-    });
+    // Clear company from auth token
+    const token = req.headers['x-auth-token'] as string;
+    if (token && authTokens.has(token)) {
+      const tokenData = authTokens.get(token)!;
+      tokenData.companyKey = undefined;
+      authTokens.set(token, tokenData);
+    }
+    
+    res.json({ success: true });
   });
 
   // ============================================================================

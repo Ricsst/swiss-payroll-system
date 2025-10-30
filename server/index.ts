@@ -93,7 +93,9 @@ app.use((req, res, next) => {
   // Set authTokens store for middleware
   const { authTokens } = await import("./routes");
   const { setAuthTokensStore } = await import("./middleware/auth");
+  const { setTenantAuthTokensStore } = await import("./middleware/tenant");
   setAuthTokensStore(authTokens);
+  setTenantAuthTokensStore(authTokens);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
