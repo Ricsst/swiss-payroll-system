@@ -136,11 +136,11 @@ export async function downloadFile(url: string, filename?: string) {
     link.click();
     document.body.removeChild(link);
     
-    // Clean up after a short delay
+    // Clean up after a longer delay to allow Chrome to access the blob
     setTimeout(() => {
       window.URL.revokeObjectURL(downloadUrl);
       console.log('[downloadFile] Cleanup complete');
-    }, 100);
+    }, 5000);
     
     console.log('[downloadFile] Download triggered successfully');
   } catch (error) {
