@@ -1,0 +1,22 @@
+ANLEITUNG: Package.json für Windows anpassen
+
+Öffnen Sie die Datei "package.json" in einem Texteditor (z.B. Notepad++)
+
+Suchen Sie nach der Zeile:
+    "dev": "NODE_ENV=development tsx server/index.ts",
+
+Ersetzen Sie sie durch:
+    "dev": "cross-env NODE_ENV=development tsx server/index.ts",
+
+Suchen Sie nach der Zeile:
+    "start": "NODE_ENV=production node dist/index.js",
+
+Ersetzen Sie sie durch:
+    "start": "cross-env NODE_ENV=production node dist/index.js",
+
+Speichern Sie die Datei.
+
+Dann führen Sie aus:
+    npm run dev
+
+Das Paket "cross-env" ist bereits installiert und funktioniert auf Windows, Linux und Mac.
